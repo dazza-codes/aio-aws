@@ -1,11 +1,10 @@
 # KnoxPy Summary
 
 This presentation will follow the story of a developer wanting to
-create the a python package for analyzing malicious attempted ssh
-logins to their home machine using an
-[SQLite3](https://sqlite.org/index.html) database. In the end we will
-have created a continuously delivered [PyPi](https://pypi.org/)
-package that has documentation on
+create a python package for analyzing attempted ssh logins to their
+home machine using an [SQLite3](https://sqlite.org/index.html)
+database. In the end we will have created a continuously delivered
+[PyPi](https://pypi.org/) package that has documentation on
 [readthedocs](https://readthedocs.org/) generated with
 [sphinx](http://www.sphinx-doc.org/en/stable/) and tested via
 [pytest](https://docs.pytest.org/en/latest/).
