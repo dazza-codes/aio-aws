@@ -1,0 +1,5 @@
+* Notes
+   - [[https://github.com/pypa/sampleproject/blob/master/setup.py][pypi reference setup.py]]
+   - [[https://docs.pytest.org/en/latest/goodpractices.html][pytest integration]]
+   - [[https://dustingram.com/articles/2018/03/16/markdown-descriptions-on-pypi][pypi supports markdown]]
+   - [[https://read-the-docs.readthedocs.io/en/latest/getting_started.html][creating docs]]
