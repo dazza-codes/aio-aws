@@ -1,7 +1,10 @@
+variables:
+    PYPI_USER: SECURE
+    PYPI_PASSWORD: SECURE
+
 stages:
   - test
-  # - build
-  # - deploy
+  - deploy
 
 test:
   image: python:3.6
@@ -9,3 +12,11 @@ test:
   script:
     - pip install .
     - python setup.py test
+
+deploy:
+  image: python:3.6
+  stage: deploy
+  script:
+    - pip install twine
+    - python setup.py sdist bdist_wheel
+    - twine upload --repository-url https://test.pypi.org/legacy/ dist/*
