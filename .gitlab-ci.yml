@@ -27,3 +27,5 @@ deploy:
     - echo "======== Deploying Package to PyPi ========="
     - twine upload dist/*
     - echo "============================================"
+  only:
+    - /^v\d+\.\d+\.\d+([abc]\d*)?$/  # PEP-440 compliant version (tags)
