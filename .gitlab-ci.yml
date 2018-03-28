@@ -18,7 +18,7 @@ test:
     - echo "============================================"
 
 deploy:
-  image: python:3.6
+  image: python:3.7.0b2
   stage: deploy
   script:
     - pip install -U twine setuptools
