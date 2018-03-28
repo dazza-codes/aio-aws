@@ -10,8 +10,10 @@ test:
   image: python:3.6
   stage: test
   script:
+    - echo "============== Testing Package ============="
     - pip install .
     - python setup.py test
+    - echo "============================================"
 
 deploy:
   image: python:3.6
@@ -19,4 +21,7 @@ deploy:
   script:
     - pip install twine
     - python setup.py sdist bdist_wheel
+    - echo "======== Deploying Package to PyPi ========="
+    - printf "[distutils]\nindex-servers =\n   pypi\n\n[pypi]\nusername=$PYPI_USERNAME\npassword=$PYPI_PASSWORD\n" > ~/.pypirc
     - twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+    - echo "============================================"
