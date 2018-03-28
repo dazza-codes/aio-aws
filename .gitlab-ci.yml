@@ -12,6 +12,7 @@ test:
   script:
     - echo "============== Testing Package ============="
     - pip install .
+    - pip list
     - python setup.py test
     - echo "============================================"
 
@@ -19,7 +20,8 @@ deploy:
   image: python:3.6
   stage: deploy
   script:
-    - pip install twine
+    - pip install -U twine setuptools
+    - pip list
     - python setup.py sdist bdist_wheel
     - echo "======== Deploying Package to PyPi ========="
     - "printf \"[distutils]\nindex-servers =\n   testpypi\n\n[testpypi]\nrepository: https://test.pypi.org/legacy/\nusername=$PYPI_USERNAME\npassword=$PYPI_PASSWORD\n\" > ~/.pypirc"
