@@ -22,6 +22,6 @@ deploy:
     - pip install twine
     - python setup.py sdist bdist_wheel
     - echo "======== Deploying Package to PyPi ========="
-    # - printf "[distutils]\nindex-servers =\n   testpypi\n\n[testpypi]\nrepository: https://test.pypi.org/legacy/\nusername=$PYPI_USERNAME\npassword=$PYPI_PASSWORD\n" > ~/.pypirc
+    - "printf \"[distutils]\nindex-servers =\n   testpypi\n\n[testpypi]\nrepository: https://test.pypi.org/legacy/\nusername=$PYPI_USERNAME\npassword=$PYPI_PASSWORD\n\" > ~/.pypirc"
     - twine upload --repository-url "https://test.pypi.org/legacy/" dist/*
     - echo "============================================"
