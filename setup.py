@@ -13,7 +13,7 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='sshlog',
-    version='0.0.1',
+    version='0.0.2',
     description='A tool to analyze sshd logs',
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -26,6 +26,6 @@ setup(
     ],
     keywords='sqlite3 knoxpy ssh',
     packages=find_packages(exclude=['docs', 'tests', 'presentation']),
-    setup_requires=['pytest-runner'],
+    setup_requires=['pytest-runner', 'setuptools>=38.6.0'],
     tests_require=['pytest']
 )
