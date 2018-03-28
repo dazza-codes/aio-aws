@@ -1,6 +1,7 @@
 variables:
-    PYPI_USERNAME: SECURE
-    PYPI_PASSWORD: SECURE
+    TWINE_USERNAME: SECURE
+    TWINE_PASSWORD: SECURE
+    TWINE_REPOSITORY_URL: https://test.pypi.org/legacy/
 
 stages:
   - test
@@ -24,7 +25,5 @@ deploy:
     - pip list
     - python setup.py sdist bdist_wheel
     - echo "======== Deploying Package to PyPi ========="
-    - "printf \"[distutils]\nindex-servers =\n   testpypi\n\n[testpypi]\nrepository: https://test.pypi.org/legacy/\nusername=$PYPI_USERNAME\npassword=asdf\n\" > ~/.pypirc"
-    - cat ~/.pypirc
-    - twine upload --repository-url "https://test.pypi.org/legacy/" dist/*
+    - twine upload dist/*
     - echo "============================================"
