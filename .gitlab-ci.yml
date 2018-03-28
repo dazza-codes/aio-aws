@@ -1,0 +1,11 @@
+stages:
+  - test
+  # - build
+  # - deploy
+
+test:
+  image: python:3.6
+  stage: test
+  script:
+    - pip install .
+    - python setup.py test
