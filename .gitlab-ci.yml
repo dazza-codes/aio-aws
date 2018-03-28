@@ -18,14 +18,15 @@ test:
     - echo "============================================"
 
 deploy:
-  image: python:3.7.0b2
+  image: python:3.6
   stage: deploy
   script:
     - pip install -U twine setuptools
     - pip list
     - python setup.py sdist bdist_wheel
     - echo "======== Deploying Package to PyPi ========="
-    - twine upload dist/*
+    - twine upload dist/*.tar.gz
+    - twine upload dist/*.whl
     - echo "============================================"
   only:
     - /^v\d+\.\d+\.\d+([abc]\d*)?$/  # PEP-440 compliant version (tags)
