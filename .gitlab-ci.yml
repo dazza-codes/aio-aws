@@ -33,7 +33,7 @@ deploy:
     - /^v\d+\.\d+\.\d+([abc]\d*)?$/  # PEP-440 compliant version (tags)
 
 pages:
-  image: python3.6
+  image: python:3.6
   stage: docs
   script:
     - pip install sphinx sphinx_rtd_theme
