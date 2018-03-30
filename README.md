@@ -35,10 +35,10 @@ This project is a python package itself and full documentation is
 available on readthedocs. Each of the steps below includes a link to
 the section in the documentation.
 
-1. setup a bare python package with git repo (`setup.py`, `README.md`, `.gitignore`, `<package>`)
-2. setup pypi deployment with git tags `vX.X.X`
-3. setup testing on each commit with `pytest`
-4. setup documentation with `sphinx` on readthedocs and self hosted
+1. [setup a bare python package](https://costrouc-python-package-template.readthedocs.io/en/latest/packaging.html) with git repo (`setup.py`, `README.md`, `.gitignore`, `<package>`)
+2. [setup pypi deployment](https://costrouc-python-package-template.readthedocs.io/en/latest/pypi.html) with git tags `vX.X.X`
+3. [setup testing](https://costrouc-python-package-template.readthedocs.io/en/latest/testing.html) on each commit with `pytest`
+4. [setup documentation](https://costrouc-python-package-template.readthedocs.io/en/latest/documentation.html) with `sphinx` on readthedocs and self hosted
 
 # Requirements
 

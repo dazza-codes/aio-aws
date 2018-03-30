@@ -23,7 +23,8 @@ class HelloWorld:
         """
         return f'Hello {self.firstname} {self.lastname}'
 
-    def helloworld(self, name):
+    @staticmethod
+    def helloworld(name):
         """string with special hello message to name
 
         Args:
@@ -32,7 +33,7 @@ class HelloWorld:
         Returns:
             str: special hello world message
         """
-        return f'Hello World {self.name}!'
+        return f'Hello World {name}!'
 
 
 def fizzbuzz(n):
@@ -57,5 +58,5 @@ def fizzbuzz(n):
         elif i % 5 == 0:
             return 'Buzz'
         else:
-            return str(n)
-    print("\n".join(_fizzbuzz(i) for i in range(1, n)))
+            return str(i)
+    print("\n".join(_fizzbuzz(i+1) for i in range(n)))
