@@ -44,6 +44,10 @@ there is currently a flaw in the markdown processing (`issue
 <https://github.com/di/markdown-description-example/issues/1>`_). Hopefully
 this is fixed soon.
 
+--------------
+.gitlab-ci.yml
+--------------
+
 .. code-block:: yaml
 
    variables:
