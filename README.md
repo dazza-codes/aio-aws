@@ -39,3 +39,19 @@ the section in the documentation.
 2. setup pypi deployment with git tags `vX.X.X`
 3. setup testing on each commit with `pytest`
 4. setup documentation with `sphinx` on readthedocs and self hosted
+
+# Requirements
+
+None!
+
+# Contributing
+
+All contributions, bug reports, bug fixes, documentation improvements,
+enhancements and ideas are welcome.
+
+The goal of this project is to in an opinionated way guide modern
+python packaging development for myself.
+
+# License
+
+MIT
