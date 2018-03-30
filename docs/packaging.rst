@@ -14,7 +14,7 @@ This guide was taken from several resources:
  - `setup.py reference documentation <https://setuptools.readthedocs.io/en/latest/setuptools.html>`_
  - `pypi sample project <https://github.com/pypa/sampleproject>`_
  - `kennethreitz setup.py <https://github.com/kennethreitz/setup.py>`_
- - `pypi suports markdown <https://dustingram.com/articles/2018/03/16/markdown-descriptions-on-pypi>`_
+ - `pypi supports markdown <https://dustingram.com/articles/2018/03/16/markdown-descriptions-on-pypi>`_
 
 Is anyone else troubled by the fact that so many links are necissary
 for simple python package development?!
