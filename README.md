@@ -8,6 +8,8 @@ development practices. Number one this is a learning experience.
  - documentation ([sphinx](http://www.sphinx-doc.org/en/stable/), selfhosted + [readthedocs](https://readthedocs.org/))
  - testing ([pytest](https://docs.pytest.org/en/latest/))
  - deploy to pypi ([twine](https://github.com/pypa/twine))
+ - building a package (`setup.py`, `README.md`, `CHANGELOG.md`, `LICENSE.md`)
+ - command line interface with argparse
 
 This project will never actually deploy a project to pypi instead the
 package will be deployed to the testing pypi package repository.
