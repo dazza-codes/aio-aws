@@ -39,6 +39,10 @@ in the ``tests`` directory and runs all files with the name
 . For example create a file ``tests/test_example.py`` with
 the following code.
 
+--------------------
+test/test_example.py
+--------------------
+
 .. code-block:: python
 
    def test_example():
@@ -49,6 +53,10 @@ one test passes. Similarly how we discussed that all new tags of our
 project should be pushed to PyPi we should also test all commits when
 they are pushed to gitlab. Adding to the ``.gitlab-ci.yml`` setup in
 the :doc:`pypi`_ documentation.
+
+--------------
+.gitlab-ci.yml
+--------------
 
 .. code-block:: yaml
 
