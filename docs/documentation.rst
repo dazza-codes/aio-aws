@@ -47,9 +47,7 @@ docs/Makefile
    apidocs:
 	sphinx-apidoc -o source/ ../<package>
 
-At this point you are ready to go! You can run ``make html`` within
-the docs folder and it will build the website in
-``docs/_build/html``. If you wanted the readthedocs theme instead of the default you will need to modify ``docs/conf.py``.
+If you wanted the readthedocs theme instead of the default you will need to modify ``docs/conf.py``.
 
 .. code-block:: python
 
@@ -93,23 +91,94 @@ for further details.
        print("\n".join(_fizzbuzz(i+1) for i in range(n)))
 
 
-
-Okay so great we have the static files for the website but how do I
-deploy them?! There are two answers: self hosting and `readthedocs.org
+At this point you are ready to go! You can run ``make html`` within
+the docs folder and it will build the website in
+``docs/_build/html``. Okay so great we have the static files for the
+website but how do I deploy them?! There are two answers and you can
+choose both: self hosting and `readthedocs.org
 <https://readthedocs.org>`_.
 
-===============
+---------------
 readthedocs.org
-===============
+---------------
 
-First you will create a
+First you will signup an account with readthedocs.org. It is not
+necessary to link an account as readthedocs will work with any
+publicly available version controlled repo. ``Import a project ->
+Import Manually`` and give the project a unique name and specify the
+repository url. The name that you provide determines the url
+``<name>.readthedocs.org``. For full documentation see the
+``https://docs.readthedocs.io/en/latest/getting_started.html``.
+
+Readthedocs will detect and change in the repository and rebuilt the
+documentation. However often times the default configuration does not
+work with cutting edge projects and also by default does not install
+the project when building the documentation. To specify the
+readthedocs configuration in your project you should use
+`.readthedocs.yml
+<https://docs.readthedocs.io/en/latest/yaml-config.html?highlight=.readthedocs.yml>`_. A basic configuration is specified below. Readthedocs uses docker containers and has many more configuration options. With this you should be all setup! Read the documentation for additional options.
+
+----------------
+.readthedocs.yml
+----------------
+
+.. code-block:: yaml
+
+   build:
+     image: latest
+
+   python:
+     version: 3.6
+     setup_py_install: true
 
 
+-------------------------
+static documentation site
+-------------------------
 
+Sometime it is nicer to just deploy the static website yourself. Read
+the docs is an awesome resource but it does have limitations. For
+instance one issue I have had is that it does not generate docstrings
+from cextensions such as `cython <http://cython.org/>`_ code. In these
+cases we can use Gitlab CD/CI for deploying our own static site.
 
+Since we already have a pipeline for our project lets include the
+static website building. Add the following to ``.gitlab-ci.yml``
 
+--------------
+.gitlab-ci.yml
+--------------
 
-`yaml configuration readthedocs <https://docs.readthedocs.io/en/latest/yaml-config.html?highlight=.readthedocs.yml>`
+.. code-block:: yaml
 
+   stages:
+     - test
+     - deploy
+     - docs
 
-sphinx_rtd_theme use it. ``pip install sphinx_rtd_theme``.
+   pages:
+     image: python:3.6
+     stage: docs
+     script:
+       - pip install sphinx sphinx_rtd_theme
+       - mkdir public
+       - cd docs
+       - make apidocs
+       - make html
+       - cp -r _build/html ../public
+     artifacts:
+       paths:
+         - public
+     only:
+       - master
+
+We are using `gitlab pages
+<https://docs.gitlab.com/ee/user/project/pages/index.html>`_ to deploy
+our website. It should be available at
+``<username>.gitlab.io/<repo>``. If you would like to add a custom
+domain follow either my blog at `gitlab static site deployment
+<https://chrisostrouchov.com/posts/hugo_static_site_deployment/>`_ or
+look at the `gitlab cloudflare documentation
+<https://about.gitlab.com/2017/02/07/setting-up-gitlab-pages-with-cloudflare-certificates/>`_.
+
+Now you have your documentation completed!
