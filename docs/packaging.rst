@@ -153,4 +153,6 @@ CHANGELOG <https://keepachangelog.com/en/0.3.0/>`_. Their motto is
 
 
 At this point you have a simple python package setup! Obviously the
-readme, changelog, and license are all optional but HIGHLY recomended.
+readme, changelog, and license are all optional but HIGHLY
+recommended. Next we will share our package with the whole world
+through continuous deployment (:doc:`pypi`_).
