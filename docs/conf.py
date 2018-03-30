@@ -12,15 +12,14 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-import os
-import sys
-sys.path.insert(0, os.path.abspath('.'))
-sys.path.insert(0, os.path.abspath('../')) # readthedocs runs within docs directory
+# import os
+# import sys
+# sys.path.insert(0, os.path.abspath('.'))
 
 
 # -- Project information -----------------------------------------------------
 
-project = 'sshlog'
+project = 'Python Package Template'
 copyright = '2018, Chris Ostrouchov'
 author = 'Chris Ostrouchov'
 
@@ -77,7 +76,7 @@ pygments_style = 'sphinx'
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'sphinx_rtd_theme'
+html_theme = 'alabaster'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -104,7 +103,7 @@ html_static_path = ['_static']
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'sshlogdoc'
+htmlhelp_basename = 'PythonPackageTemplatedoc'
 
 
 # -- Options for LaTeX output ------------------------------------------------
@@ -131,7 +130,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'sshlog.tex', 'sshlog Documentation',
+    (master_doc, 'PythonPackageTemplate.tex', 'Python Package Template Documentation',
      'Chris Ostrouchov', 'manual'),
 ]
 
@@ -141,7 +140,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'sshlog', 'sshlog Documentation',
+    (master_doc, 'pythonpackagetemplate', 'Python Package Template Documentation',
      [author], 1)
 ]
 
@@ -152,13 +151,10 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'sshlog', 'sshlog Documentation',
-     author, 'sshlog', 'One line description of project.',
+    (master_doc, 'PythonPackageTemplate', 'Python Package Template Documentation',
+     author, 'PythonPackageTemplate', 'One line description of project.',
      'Miscellaneous'),
 ]
 
 
 # -- Extension configuration -------------------------------------------------
-# autodoc __init__ methods
-# https://stackoverflow.com/questions/5599254/how-to-use-sphinxs-autodoc-to-document-a-classs-init-self-method
-autoclass_content = 'both'

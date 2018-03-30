@@ -1,13 +1,13 @@
-sshlog package
-==============
+pypkgtemp package
+=================
 
 Submodules
 ----------
 
-sshlog.hello module
--------------------
+pypkgtemp.hello module
+----------------------
 
-.. automodule:: sshlog.hello
+.. automodule:: pypkgtemp.hello
     :members:
     :undoc-members:
     :show-inheritance:
@@ -16,7 +16,7 @@ sshlog.hello module
 Module contents
 ---------------
 
-.. automodule:: sshlog
+.. automodule:: pypkgtemp
     :members:
     :undoc-members:
     :show-inheritance:

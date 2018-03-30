@@ -12,20 +12,20 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 
 
 setup(
-    name='sshlog',
-    version='0.0.4',
-    description='A tool to analyze sshd logs',
+    name='pypkgtemp',
+    version='0.0.1',
+    description='A python package template',
     long_description=long_description,
     long_description_content_type="text/markdown",
     url='https://gitlab.com/costrouc/knoxpy-sqlite-pypi-readthedocs',
     author='Chris Ostrouchov',
-    author_email='chris.ostrouchov+sshlog@gmail.com',
+    author_email='chris.ostrouchov+pypkgtemp@gmail.com',
     classifiers=[
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3.6'
     ],
-    keywords='sqlite3 knoxpy ssh',
-    packages=find_packages(exclude=['docs', 'tests', 'presentation']),
-    setup_requires=['pytest-runner', 'setuptools>=38.6.0'],
+    keywords='python package template documentation testing continuous deployment',
+    packages=find_packages(exclude=['docs', 'tests']),
+    setup_requires=['pytest-runner', 'setuptools>=38.6.0'],  # >38.6.0 needed for markdown README.md
     tests_require=['pytest']
 )
