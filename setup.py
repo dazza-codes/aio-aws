@@ -27,5 +27,10 @@ setup(
     keywords='python package template documentation testing continuous deployment',
     packages=find_packages(exclude=['docs', 'tests']),
     setup_requires=['pytest-runner', 'setuptools>=38.6.0'],  # >38.6.0 needed for markdown README.md
-    tests_require=['pytest']
+    tests_require=['pytest'],
+    entry_points={
+        'console_scripts': [
+            'helloworld=pypkgtemp.__main__:main'
+        ]
+    }
 )
