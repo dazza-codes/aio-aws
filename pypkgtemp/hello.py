@@ -48,7 +48,7 @@ def fizzbuzz(n):
         n (int): number for fizzbuzz to count to
 
     Returns:
-       None: prints to
+       None: prints to stdout fizzbuzz
     """
     def _fizzbuzz(i):
         if i % 3 == 0 and i % 5 == 0:
