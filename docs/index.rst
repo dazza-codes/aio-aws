@@ -6,10 +6,28 @@
 Welcome to Python Package Template's documentation!
 ===================================================
 
+This is an opinionated attempt to document how I deploy a python
+application with documentation, testing, pypi, and continuous
+deployment. This project will be updated as I change my python
+development practices. Number one this is a learning experience.
+
+This project is a python package itself and full documentation is
+available on readthedocs. Each of the steps below includes a link to
+the section in the documentation.
+
+1. setup a bare python package with git repo (``setup.py``, ``README.md``, ``.gitignore``, ``<package>``)
+2. setup pypi deployment with git tags ``vX.X.X``
+3. setup testing on each commit with ``pytest``
+4. setup documentation with ``sphinx`` on readthedocs and self hosted
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
+   packaging
+   pypi
+   testing
+   documentation
 
 
 Indices and tables
