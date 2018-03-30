@@ -1,3 +1,4 @@
+=========
 Packaging
 =========
 
@@ -18,6 +19,19 @@ This guide was taken from several resources:
 
 Is anyone else troubled by the fact that so many links are necissary
 for simple python package development?!
+
+Overview of typical package
+
+  README.md
+  CHANGELOG.md
+  LICENSE.md
+  setup.py
+  <package>/
+      __init__.py
+
+--------
+setup.py
+--------
 
 The most important file is the ``setup.py`` file. All required and
 optional fields are given ``<required>`` and ``<optional>``
@@ -62,7 +76,8 @@ respectively.
 While `setuptools docs
 <https://setuptools.readthedocs.io/en/latest/setuptools.html>`_ detail
 each option. I still needed some of the keyworks in more plain
-english.
+english. This is not an exhaustive list so make sure to reference the
+setuptools docs.
 
 name
   the name of package on pypi and when listed in pip. This is not
@@ -108,3 +123,34 @@ packages
 
 setup_requires
   list of packages required for setup. Note that versioning uses `environment markers <https://www.python.org/dev/peps/pep-0508/#environment-markers>`_.
+
+
+----------
+LICENSE.md
+----------
+
+If you do not include a license it is by default copyrighted and
+unable to be used by others. This is why it is so important to give
+your work a license. A great resource for this is `choosealicense.com <https://choosealicense.com>`_.
+
+---------
+README.md
+---------
+
+A README is the first document someone sees when they visit your
+project make it an inviting document with an overview of everthing the
+programmer needs.
+
+------------
+CHANGELOG.md
+------------
+
+A changelog is something that I did not really adopt in my projects
+until I started forgeting what I had done in the past week. I git log
+is not designed for this! Some great advice can be found in `Keep a
+CHANGELOG <https://keepachangelog.com/en/0.3.0/>`_. Their motto is
+"Don’t let your friends dump git logs into CHANGELOGs™"
+
+
+At this point you have a simple python package setup! Obviously the
+readme, changelog, and license are all optional but HIGHLY recomended.

@@ -19,6 +19,7 @@ the section in the documentation.
 2. setup pypi deployment with git tags ``vX.X.X``
 3. setup testing on each commit with ``pytest``
 4. setup documentation with ``sphinx`` on readthedocs and self hosted
+5. setup command line interface with ``argparse``
 
 .. toctree::
    :maxdepth: 2
@@ -28,6 +29,7 @@ the section in the documentation.
    pypi
    testing
    documentation
+   cli
 
 
 Indices and tables
