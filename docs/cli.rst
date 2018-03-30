@@ -63,4 +63,5 @@ setup.py
 
 And there you have the simplest non trivial and scalable
 argparser. This demonstration shows how to create subcommands and take
-options with certain types.
+options with certain types and defaults. You can run the example via
+``<command> fizzbuzz -n 42`` or ``<command> fizzbuzz``.
