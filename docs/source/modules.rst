@@ -1,7 +1,7 @@
-sshlog
-======
+pypkgtemp
+=========
 
 .. toctree::
    :maxdepth: 4
 
-   sshlog
+   pypkgtemp

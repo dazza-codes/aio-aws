@@ -4,7 +4,7 @@
 # You can set these variables from the command line.
 SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
-SPHINXPROJ    = sshlog
+SPHINXPROJ    = PythonPackageTemplate
 SOURCEDIR     = .
 BUILDDIR      = _build
 
@@ -13,7 +13,7 @@ help:
 	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
 apidocs:
-	sphinx-apidoc -o source/ ../sshlog
+	sphinx-apidoc -o source/ ../pypkgtemp
 
 .PHONY: help Makefile
 

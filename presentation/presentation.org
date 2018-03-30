@@ -1,8 +1,0 @@
-* Notes
-   - [[https://github.com/pypa/sampleproject/blob/master/setup.py][pypi reference setup.py]]
-   - [[https://docs.pytest.org/en/latest/goodpractices.html][pytest integration]]
-   - [[https://dustingram.com/articles/2018/03/16/markdown-descriptions-on-pypi][pypi supports markdown]]
-   - [[https://read-the-docs.readthedocs.io/en/latest/getting_started.html][creating docs]]
-   - [[http://www.sphinx-doc.org/en/stable/invocation.html][sphinx-apidoc usage]]
-   - [[https://samnicholls.net/2016/06/15/how-to-sphinx-readthedocs/][idiots guide to creating sphinx readthedocs]]
-   - [[https://github.com/rtfd/readthedocs.org/issues/2581][making readthedocs python3.6 compatible]]
