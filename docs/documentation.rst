@@ -20,10 +20,12 @@ format and how to additionally deploy documentation on a static site
 without readthedocs.
 
 First you will install sphinx and create a docs folder in the root of
-your project. If you want to use the
+your project. If you want to use the readthedocs theme for the
+documentation you will need to install the `sphinx_rtd_theme
+<https://github.com/rtfd/sphinx_rtd_theme>`_.
 
-1. pip install sphinx
-2. mkdir docs
+1. ``pip install sphinx sphinx_rtd_theme``
+2. ``mkdir docs``
 
 Next you will want to setup a basic sphinx project. You will do this
 by running the command `sphinx-quickstart` within the ``docs`` folder.
@@ -46,7 +48,51 @@ docs/Makefile
 	sphinx-apidoc -o source/ ../<package>
 
 At this point you are ready to go! You can run ``make html`` within
-the docs folder and it will build the website in ``docs/_build/html``.
+the docs folder and it will build the website in
+``docs/_build/html``. If you wanted the readthedocs theme instead of the default you will need to modify ``docs/conf.py``.
+
+.. code-block:: python
+
+   ...
+   html_theme = 'sphinx_rtd_theme'
+   ...
+
+The default sphinx apidoc is tedious and I recommend using `sphinx
+napolean docstrings
+<http://www.sphinx-doc.org/en/stable/ext/napoleon.html>`_. Here is an
+example of simple function being documented in the google style. See
+the `google docstring format
+<https://google.github.io/styleguide/pyguide.html?showone=Comments#Comments>`_
+for further details.
+
+.. code-block:: python
+
+   def fizzbuzz(n):
+       """A super advanced fizzbuzz function
+
+       Write a program that prints the numbers from 1 to 100. But for
+       multiples of three print “Fizz” instead of the number and for the
+       multiples of five print “Buzz”. For numbers which are multiples of
+       both three and five print “FizzBuzz” Prints out fizz and buzz
+
+       Args:
+           n (int): number for fizzbuzz to count to
+
+       Returns:
+          None: prints to stdout fizzbuzz
+       """
+       def _fizzbuzz(i):
+           if i % 3 == 0 and i % 5 == 0:
+               return 'FizzBuzz'
+           elif i % 3 == 0:
+               return 'Fizz'
+           elif i % 5 == 0:
+               return 'Buzz'
+           else:
+               return str(i)
+       print("\n".join(_fizzbuzz(i+1) for i in range(n)))
+
+
 
 Okay so great we have the static files for the website but how do I
 deploy them?! There are two answers: self hosting and `readthedocs.org
