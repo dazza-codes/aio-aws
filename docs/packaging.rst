@@ -11,10 +11,10 @@ directory on their machine.
 
 This guide was taken from several resources:
 
- - `setup.py reference documentation <https://setuptools.readthedocs.io/en/latest/setuptools.html>`
- - `pypi sample project <https://github.com/pypa/sampleproject>`
- - `kennethreitz setup.py <https://github.com/kennethreitz/setup.py>`
- - `pypi suports markdown <https://dustingram.com/articles/2018/03/16/markdown-descriptions-on-pypi>`
+ - `setup.py reference documentation <https://setuptools.readthedocs.io/en/latest/setuptools.html>`_
+ - `pypi sample project <https://github.com/pypa/sampleproject>`_
+ - `kennethreitz setup.py <https://github.com/kennethreitz/setup.py>`_
+ - `pypi suports markdown <https://dustingram.com/articles/2018/03/16/markdown-descriptions-on-pypi>`_
 
 Is anyone else troubled by the fact that so many links are necissary
 for simple python package development?!
@@ -60,7 +60,7 @@ respectively.
     )
 
 While `setuptools docs
-<https://setuptools.readthedocs.io/en/latest/setuptools.html>` detail
+<https://setuptools.readthedocs.io/en/latest/setuptools.html>`_ detail
 each option. I still needed some of the keyworks in more plain
 english.
 
@@ -72,7 +72,7 @@ name
 
 version
   make sure that the version numbers when pushing to pypi are unique. Also best to
-  follow `semantic versioning <https://semver.org/>`.
+  follow `semantic versioning <https://semver.org/>`_.
 
 description
   keep it short and describe your package
@@ -93,10 +93,10 @@ author_email
   nobody should really use this address to contact you about the package
 
 license
-  need help choosing a license? use `choosealicense <https://choosealicense.com/>`
+  need help choosing a license? use `choosealicense <https://choosealicense.com/>`_
 
 classifiers
-  one day would be nice to know why they are important. list of available `tags <https://pypi.python.org/pypi?%3Aaction=list_classifiers>`.
+  one day would be nice to know why they are important. list of available `tags <https://pypi.python.org/pypi?%3Aaction=list_classifiers>`_.
 
 keywords
   will help with searching for package on pypi
@@ -107,4 +107,4 @@ packages
 
 
 setup_requires
-  list of packages required for setup. Note that versioning uses `environment markers <https://www.python.org/dev/peps/pep-0508/#environment-markers>`.
+  list of packages required for setup. Note that versioning uses `environment markers <https://www.python.org/dev/peps/pep-0508/#environment-markers>`_.
