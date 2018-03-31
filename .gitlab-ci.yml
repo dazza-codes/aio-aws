@@ -37,6 +37,7 @@ pages:
   stage: docs
   script:
     - pip install sphinx sphinx_rtd_theme
+    - pip install -e .
     - mkdir public
     - cd docs
     - make apidocs

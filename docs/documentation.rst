@@ -56,10 +56,26 @@ If you wanted the readthedocs theme instead of the default you will need to modi
    ...
 
 The default sphinx apidoc is tedious and I recommend using `sphinx
-napolean docstrings
-<http://www.sphinx-doc.org/en/stable/ext/napoleon.html>`_. Here is an
-example of simple function being documented in the google style. See
-the `google docstring format
+napoleon docstrings
+<http://www.sphinx-doc.org/en/stable/ext/napoleon.html>`_. In order to
+use napoleon the extension needs to be added.
+
+------------
+docs/conf.py
+------------
+
+.. code-block:: python
+
+   ...
+   extensions = [
+       ...
+       'sphinx.ext.napoleon'
+   ]
+   ...
+
+
+Here is an example of simple function being documented in the google
+style. See the `google docstring format
 <https://google.github.io/styleguide/pyguide.html?showone=Comments#Comments>`_
 for further details.
 
@@ -90,6 +106,30 @@ for further details.
                return str(i)
        print("\n".join(_fizzbuzz(i+1) for i in range(n)))
 
+
+If you want math support there is a mathjax extension. Just again
+modify ``conf.py``. If you want latex support when exporting to a pdf
+follow this `math sphinx documentation
+<http://www.sphinx-doc.org/en/stable/ext/math.html>`_.
+
+.. code-block:: python
+
+   ...
+   extensions = [
+       ...
+       'sphinx.ext.mathjax'
+   ]
+   ...
+
+Math can then simply be included in two ways
+
+  inline
+  :math:`\beta \gamma`
+
+  block
+  .. math::
+
+     \beta = \gamma
 
 At this point you are ready to go! You can run ``make html`` within
 the docs folder and it will build the website in
@@ -131,6 +171,8 @@ readthedocs configuration in your project you should use
      version: 3.6
      setup_py_install: true
 
+Scientific packages often have dependencies
+
 
 -------------------------
 static documentation site
@@ -161,6 +203,7 @@ static website building. Add the following to ``.gitlab-ci.yml``
      stage: docs
      script:
        - pip install sphinx sphinx_rtd_theme
+       - pip install -e .
        - mkdir public
        - cd docs
        - make apidocs
