@@ -38,6 +38,7 @@ deploy_conda:
   image: continuumio/miniconda3:latest
   stage: deploy
   script:
+    - conda install anaconda-client setuptools -y
     - export TOKEN=$ANACONDA_TOKEN
     - echo "======== Deploying Package to Conda ========="
     - python setup.py bdist_conda
