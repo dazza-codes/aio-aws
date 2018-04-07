@@ -2,6 +2,7 @@ variables:
     TWINE_USERNAME: SECURE
     TWINE_PASSWORD: SECURE
     TWINE_REPOSITORY_URL: https://test.pypi.org/legacy/
+    ANACONDA_USERNAME: SECURE
     ANACONDA_TOKEN: SECURE
 
 stages:
@@ -39,10 +40,9 @@ deploy_conda:
   stage: deploy
   script:
     - conda install anaconda-client setuptools conda-build -y
-    - export TOKEN=$ANACONDA_TOKEN
     - echo "======== Deploying Package to Conda ========="
     - python setup.py bdist_conda
-    - anaconda upload /opt/conda/conda-bld/linux-64/pypkgtemp*.tar.bz
+    - anaconda upload -u $ANACONDA_USERNAME -t $ANACONDA_TOKEN /opt/conda/conda-bld/linux-64/pypkgtemp*.tar.bz
     - echo "============================================"
   only:
     - /^v\d+\.\d+\.\d+([abc]\d*)?$/  # PEP-440 compliant version (tags)
