@@ -13,7 +13,7 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='pypkgtemp',
-    version='1.0.3',
+    version='1.0.4',
     description='A python package template',
     long_description=long_description,
     long_description_content_type="text/markdown",
