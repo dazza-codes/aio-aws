@@ -121,12 +121,19 @@ follow this `math sphinx documentation
    ]
    ...
 
-Math can then simply be included in two ways
+Math can then simply be included inline or in block format. Use the
+awesome latex `markup language
+<https://en.wikibooks.org/wiki/LaTeX/Mathematics>`_ to write
+equations.
 
-  inline
+::
+
+  as some inline text
+
   :math:`\beta \gamma`
 
-  block
+  or as a block math equation
+
   .. math::
 
      \beta = \gamma

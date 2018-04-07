@@ -2,6 +2,7 @@ variables:
     TWINE_USERNAME: SECURE
     TWINE_PASSWORD: SECURE
     TWINE_REPOSITORY_URL: https://test.pypi.org/legacy/
+    ANACONDA_TOKEN: SECURE
 
 stages:
   - test
@@ -18,7 +19,7 @@ test:
     - python setup.py test
     - echo "============================================"
 
-deploy:
+deploy_pypi:
   image: python:3.6
   stage: deploy
   script:
@@ -31,6 +32,20 @@ deploy:
     - echo "============================================"
   only:
     - /^v\d+\.\d+\.\d+([abc]\d*)?$/  # PEP-440 compliant version (tags)
+
+
+deploy_conda:
+  image: continuumio/miniconda3:latest
+  stage: deploy
+  script:
+    - export TOKEN=$ANACONDA_TOKEN
+    - echo "======== Deploying Package to Conda ========="
+    - python setup.py bdist_conda
+    - anaconda upload /opt/conda/conda-bld/linux-64/pypkgtemp*.tar.bz
+    - echo "============================================"
+  only:
+    - /^v\d+\.\d+\.\d+([abc]\d*)?$/  # PEP-440 compliant version (tags)
+
 
 pages:
   image: python:3.6

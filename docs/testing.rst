@@ -25,7 +25,7 @@ setup.py
 setup.cfg
 ---------
 
-.. code-block:: config
+::
 
    [aliases]
    test=pytest
