@@ -79,6 +79,9 @@ currently existing version of your project. This is a good thing since
 we should all do our best to follow `semantic versioning
 <https://semver.org/>`_.
 
+Once you would like to deploy to the main PyPi repository change
+``TWINE_REPOSITORY_URL`` to ``https://upload.pypi.org/legacy/``.
+
 So you now have a package that can be shared with the entire world!
 But you have no testing... the next section :doc:`testing` will show
 you how to include testing via ``pytest``.

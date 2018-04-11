@@ -16,7 +16,7 @@ test:
   script:
     - pip install .
     - pip list
-    - python setup.py test
+    - python setup.py test --addopts "--cov=pypkgtemp"
 
 deploy_pypi:
   image: python:3.6
