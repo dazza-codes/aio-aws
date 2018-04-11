@@ -73,7 +73,6 @@ Gitlab!
      ANACONDA_PASSWORD: SECURE
 
    stages:
-    - test
     - deploy
 
    deploy_conda:
