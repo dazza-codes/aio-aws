@@ -181,7 +181,21 @@ readthedocs configuration in your project you should use
      version: 3.6
      setup_py_install: true
 
-Scientific packages often have dependencies
+Scientific packages often have dependencies that require c extensions or cython. In order to use readthedocs that has c extension dependencies you will need to mock out all the dependencies in the ``conf.py``. This is documented in the `readthedocs FAQ <https://docs.readthedocs.io/en/latest/faq.html?highlight=setup.py%20install#i-get-import-errors-on-libraries-that-depend-on-c-modules>`_. One more reason I would recommend hosting the static site yourself.
+
+.. code-block:: python
+
+   import sys
+   from unittest.mock import MagicMock
+
+   class Mock(MagicMock):
+       @classmethod
+       def __getattr__(cls, name):
+           return MagicMock()
+
+   MOCK_MODULES = ['pygtk', 'gtk', 'gobject', 'argparse', 'numpy', 'pandas']
+   sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+
 
 
 -------------------------
@@ -195,7 +209,7 @@ limitations. For instance one issue I have had is that it does not
 generate docstrings from cextensions such as `cython
 <http://cython.org/>`_ code and cannot handle packages with c
 extensions. There are workarounds by `mocking the modules
-<https://docs.readthedocs.io/en/latest/faq.html#i-get-import-errors-on-libraries-that-depend-on-c-modules>`_. In
+<https://docs.readthedocs.io/en/latest/faq.html?highlight=setup.py%20install#i-get-import-errors-on-libraries-that-depend-on-c-modules>`_. In
 these cases we can use Gitlab CD/CI for deploying our own static site.
 
 Since we already have a pipeline for our project lets include the
