@@ -13,14 +13,17 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='pypkgtemp',
-    version='1.0.11',
+    version='1.0.12',
     description='A python package template',
     long_description=long_description,
     long_description_content_type="text/markdown",
     url='https://gitlab.com/costrouc/knoxpy-sqlite-pypi-readthedocs',
     author='Chris Ostrouchov',
     author_email='chris.ostrouchov+pypkgtemp@gmail.com',
+    license="MIT",
     classifiers=[
+        'Development Status :: 3 - Alpha',
+        'Natural Language :: English',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3.6'
     ],

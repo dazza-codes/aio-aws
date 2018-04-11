@@ -10,7 +10,7 @@
 </tr>
 <tr>
   <td>Package Status</td>
-  <td><img src="https://img.shields.io/pypi/status/pypkgtemps.svg" alt="status" /></td>
+  <td><img src="https://img.shields.io/pypi/status/pypkgtemp.svg" alt="status" /></td>
 </tr>
 <tr>
   <td>License</td>
