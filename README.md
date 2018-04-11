@@ -52,10 +52,12 @@ deployment. This project will be updated as I change my python
 development practices. Number one this is a learning experience.
 
  - documentation ([sphinx](http://www.sphinx-doc.org/en/stable/), selfhosted + [readthedocs](https://readthedocs.org/))
- - testing ([pytest](https://docs.pytest.org/en/latest/))
+ - testing ([pytest](https://docs.pytest.org/en/latest/)) and coverage ([pytest-cov](https://github.com/pytest-dev/pytest-cov))
  - deploy to pypi ([twine](https://github.com/pypa/twine))
+ - deploy to conda ([conda](https://github.com/conda/conda))
  - building a package (`setup.py`, `README.md`, `CHANGELOG.md`, `LICENSE.md`)
  - command line interface with argparse
+ - badges for testing, packages, and documentation
 
 ## Assumptions:
 

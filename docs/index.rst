@@ -21,6 +21,7 @@ the section in the documentation.
 4. setup testing on each commit with ``pytest``
 5. setup documentation with ``sphinx`` on readthedocs and self hosted
 6. setup command line interface with ``argparse``
+7. setup badges for README.md
 
 .. toctree::
    :maxdepth: 2
@@ -32,7 +33,7 @@ the section in the documentation.
    testing
    documentation
    cli
-
+   badges
 
 Indices and tables
 ==================
