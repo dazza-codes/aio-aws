@@ -42,6 +42,8 @@ code.
 docs/Makefile
 -------------
 
+Add to the makefile the following lines.
+
 .. code-block:: shell
 
    apidocs:
@@ -55,10 +57,11 @@ If you wanted the readthedocs theme instead of the default you will need to modi
    html_theme = 'sphinx_rtd_theme'
    ...
 
-The default sphinx apidoc is tedious and I recommend using `sphinx
-napoleon docstrings
-<http://www.sphinx-doc.org/en/stable/ext/napoleon.html>`_. In order to
-use napoleon the extension needs to be added.
+The default sphinx apidoc is tedious and verbose. I recommend using
+`sphinx napoleon docstrings
+<http://www.sphinx-doc.org/en/stable/ext/napoleon.html>`_ which has
+been standardized by google and numpy. In order to use napoleon the
+extension needs to be added.
 
 ------------
 docs/conf.py
@@ -185,11 +188,15 @@ Scientific packages often have dependencies
 static documentation site
 -------------------------
 
-Sometime it is nicer to just deploy the static website yourself. Read
-the docs is an awesome resource but it does have limitations. For
-instance one issue I have had is that it does not generate docstrings
-from cextensions such as `cython <http://cython.org/>`_ code. In these
-cases we can use Gitlab CD/CI for deploying our own static site.
+Sometimes it is nicer to just deploy the static website yourself. With
+this deployment we get much more flexibility on the resulting
+documentation. Read the docs is an awesome resource but it does have
+limitations. For instance one issue I have had is that it does not
+generate docstrings from cextensions such as `cython
+<http://cython.org/>`_ code and cannot handle packages with c
+extensions. There are workarounds by `mocking the modules
+<https://docs.readthedocs.io/en/latest/faq.html#i-get-import-errors-on-libraries-that-depend-on-c-modules>`_. In
+these cases we can use Gitlab CD/CI for deploying our own static site.
 
 Since we already have a pipeline for our project lets include the
 static website building. Add the following to ``.gitlab-ci.yml``
@@ -215,7 +222,7 @@ static website building. Add the following to ``.gitlab-ci.yml``
        - cd docs
        - make apidocs
        - make html
-       - cp -r _build/html ../public
+       - cp -r _build/html/* ../public
      artifacts:
        paths:
          - public
