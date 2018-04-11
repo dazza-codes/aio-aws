@@ -1,13 +1,42 @@
 # Python Package Template
 
-+-----+-----+
-| docs | ![readthedocs](https://img.shields.io/readthedocs/costrouc-python-package-template.svg) |
-+-----+-----+
-| tests | asdf |
-+-----+-----+
-| package | ![version](https://img.shields.io/pypi/v/pypkgtemp.svg) ![license](https://img.shields.io/pypi/l/pypkgtemp.svg) ![PyPI - Wheel](https://img.shields.io/pypi/wheel/pypkgtemp.svg) ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/pypkgtemp.svg) |
-+-----+-----+
-
+<table>
+<tr>
+  <td>Latest Release</td>
+  <td><img src="https://img.shields.io/pypi/v/pypkgtemp.svg" alt="latest release" /></td>
+</tr>
+  <td></td>
+  <td><img src="https://anaconda.org/costrouc/pypkgtemp/badges/version.svg" alt="latest release" /></td>
+</tr>
+<tr>
+  <td>Package Status</td>
+  <td><img src="https://img.shields.io/pypi/status/pypkgtemps.svg" alt="status" /></td>
+</tr>
+<tr>
+  <td>License</td>
+  <td><img src="https://img.shields.io/pypi/l/pypkgtemp.svg" alt="license" /></td>
+</tr>
+<tr>
+  <td>Build Status</td>
+  <td>
+    <a href="https://gitlab.com/costrouc/python-package-template/pipelines">
+    <img src="https://gitlab.com/costrouc/python-package-template/badges/master/pipeline.svg" alt="gitlab pipeline status" />
+    </a>
+  </td>
+</tr>
+<tr>
+  <td>Coverage</td>
+  <td><img src="https://gitlab.com/costrouc/python-package-template/badges/master/coverage.svg" alt="coverage" /></td>
+</tr>
+<tr>
+  <td>Conda</td>
+  <td>
+    <a href="https://gitlab.com/costrouc/python-package-template">
+    <img src="https://anaconda.org/costrouc/pypkgtemp/badges/downloads.svg" alt="conda-forge downloads" />
+    </a>
+  </td>
+</tr>
+</table>
 
 This is an opinionated attempt to document how I deploy a python
 application with documentation, testing, pypi, and continuous
