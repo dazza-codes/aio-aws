@@ -60,7 +60,6 @@ pages:
     - make apidocs
     - make html
     - cp -r _build/html/* ../public
-    - ls ../public
   artifacts:
     paths:
       - public
