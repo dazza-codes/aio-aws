@@ -32,7 +32,15 @@
   <td>Conda</td>
   <td>
     <a href="https://gitlab.com/costrouc/python-package-template">
-    <img src="https://anaconda.org/costrouc/pypkgtemp/badges/downloads.svg" alt="conda-forge downloads" />
+    <img src="https://anaconda.org/costrouc/pypkgtemp/badges/downloads.svg" alt="conda downloads" />
+    </a>
+  </td>
+</tr>
+<tr>
+  <td>Documentation</td>
+  <td>
+    <a href="https://costrouc-python-package-template.readthedocs.io/en/latest/">
+    <img src="https://media.readthedocs.org/static/projects/badges/passing.svg" alt="readthedocs documentation" />
     </a>
   </td>
 </tr>
