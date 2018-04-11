@@ -57,9 +57,6 @@ development practices. Number one this is a learning experience.
  - building a package (`setup.py`, `README.md`, `CHANGELOG.md`, `LICENSE.md`)
  - command line interface with argparse
 
-This project will never actually deploy a project to pypi instead the
-package will be deployed to the testing pypi package repository.
-
 ## Assumptions:
 
 Gitlab will be used for the continuous deployment. It is a great
