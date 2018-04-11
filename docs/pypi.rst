@@ -65,10 +65,8 @@ this is fixed soon.
        - pip install -U twine setuptools
        - pip list
        - python setup.py sdist bdist_wheel
-       - echo "======== Deploying Package to PyPi ========="
        - twine upload dist/*.tar.gz
        - twine upload dist/*.whl
-       - echo "============================================"
      only:
        - /^v\d+\.\d+\.\d+([abc]\d*)?$/  # PEP-440 compliant version (tags)
 
@@ -82,5 +80,5 @@ we should all do our best to follow `semantic versioning
 <https://semver.org/>`_.
 
 So you now have a package that can be shared with the entire world!
-But you have no testing... the next :doc:`testing` will show you how
-to include testing via ``pytest``.
+But you have no testing... the next section :doc:`testing` will show
+you how to include testing via ``pytest``.
