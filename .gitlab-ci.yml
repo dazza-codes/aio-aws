@@ -3,7 +3,7 @@ variables:
     TWINE_PASSWORD: SECURE
     TWINE_REPOSITORY_URL: https://test.pypi.org/legacy/
     ANACONDA_USERNAME: SECURE
-    ANACONDA_PASSWORD: SECURE
+    ANACONDA_TOKEN: SECURE
 
 stages:
   - test
@@ -14,11 +14,9 @@ test:
   image: python:3.6
   stage: test
   script:
-    - echo "============== Testing Package ============="
     - pip install .
     - pip list
     - python setup.py test
-    - echo "============================================"
 
 deploy_pypi:
   image: python:3.6
@@ -27,10 +25,8 @@ deploy_pypi:
     - pip install -U twine setuptools
     - pip list
     - python setup.py sdist bdist_wheel
-    - echo "======== Deploying Package to PyPi ========="
     - twine upload dist/*.tar.gz
     - twine upload dist/*.whl
-    - echo "============================================"
   only:
     - /^v\d+\.\d+\.\d+([abc]\d*)?$/  # PEP-440 compliant version (tags)
 
@@ -40,11 +36,8 @@ deploy_conda:
   stage: deploy
   script:
     - conda install anaconda-client setuptools conda-build -y
-    - anaconda login --user $ANACONDA_USERNAME --password $ANACONDA_PASSWORD
-    - echo "======== Deploying Package to Conda ========="
     - python setup.py bdist_conda
-    - anaconda upload /opt/conda/conda-bld/linux-64/pypkgtemp*.tar.bz2
-    - echo "============================================"
+    - anaconda -t $ANACONDA_TOKEN upload -u $ANACONDA_USERNAME /opt/conda/conda-bld/linux-64/pypkgtemp*.tar.bz2
   only:
     - /^v\d+\.\d+\.\d+([abc]\d*)?$/  # PEP-440 compliant version (tags)
 
