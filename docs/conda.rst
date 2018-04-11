@@ -32,16 +32,17 @@ Once you start the docker container you can do the following steps for
 package deployment to conda. These steps will be automated later with
 a Gitlab build script. In order to upload packages you will either
 need to login to your account via ``anaconda login`` or create an
-account token. I would recommend creating an account token so that you
-can revoke access at any time. To create an account token go to
-``settings->access`` on anaconda.org when you are logged in.
+account token will all account access. I would recommend creating an
+account token so that you can revoke access at any time. To create an
+account token go to ``settings->access`` on anaconda.org when you are
+logged in.
 
-1. `anaconda login --password $ANACONDA_PASSWORD --username $ANACONDA_USERNAME`
+1. `conda install anaconda-client setuptools conda-build -y`
 2. `python setup.py bdist_conda`
-3. `anaconda upload /opt/conda/conda-bld/linux-64/<package>-<version>-<pyversion>.tar.bz2`
+3. `anaconda -t $ANACONDA_TOKEN upload -u $ANACONDA_USERNAME /opt/conda/conda-bld/linux-64/<package>-<version>-<pyversion>.tar.bz2`
 
-The first step is straightforward and will login you into your
-continuum account via the terminal. Anaconda has it hidden in their
+The first step ensures that all packages are the right version and we
+have the command line anaconda tool. Anaconda has it hidden in their
 documentation that they have a convenient `build tool for python
 packages
 <https://conda.io/docs/user-guide/tasks/build-packages/build-without-recipe.html>`_
@@ -52,7 +53,9 @@ and check that each command created exits. After your package is built
 you can now upload to conda. If you are building within a docker
 container chances are that their is only one conda build so you can
 shorten the upload command to `anaconda upload
-/opt/conda/conda-bld/linux-64/<package>*.tar.bz2`. Otherwise you will have to chose the build that is provided at the end of the ``python setup.py bdist_conda`` output.
+/opt/conda/conda-bld/linux-64/<package>*.tar.bz2`. Otherwise you will
+have to chose the build that is provided at the end of the ``python
+setup.py bdist_conda`` output.
 
 From some of my initial tests I was surprised that many packages
 available on PyPi are not available on `conda` and thus made the
@@ -70,7 +73,7 @@ Gitlab!
      TWINE_PASSWORD: SECURE
      TWINE_REPOSITORY_URL: https://test.pypi.org/legacy/
      ANACONDA_USERNAME: SECURE
-     ANACONDA_PASSWORD: SECURE
+     ANACONDA_TOKEN: SECURE
 
    stages:
     - deploy
@@ -80,10 +83,7 @@ Gitlab!
      stage: deploy
      script:
        - conda install anaconda-client setuptools conda-build -y
-       - anaconda login --user $ANACONDA_USERNAME --password $ANACONDA_PASSWORD
-       - echo "======== Deploying Package to Conda ========="
        - python setup.py bdist_conda
-       - anaconda upload /opt/conda/conda-bld/linux-64/pypkgtemp*.tar.bz2
-       - echo "============================================"
+       - anaconda -t $ANACONDA_TOKEN upload -u $ANACONDA_USERNAME /opt/conda/conda-bld/linux-64/pypkgtemp*.tar.bz2
      only:
        - /^v\d+\.\d+\.\d+([abc]\d*)?$/  # PEP-440 compliant version (tags)
