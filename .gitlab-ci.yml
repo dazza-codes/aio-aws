@@ -1,7 +1,7 @@
 variables:
     TWINE_USERNAME: SECURE
     TWINE_PASSWORD: SECURE
-    TWINE_REPOSITORY_URL: https://pypi.org/legacy/
+    TWINE_REPOSITORY_URL: https://upload.pypi.org/legacy
     ANACONDA_USERNAME: SECURE
     ANACONDA_TOKEN: SECURE
 
