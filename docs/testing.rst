@@ -7,7 +7,9 @@ clear winner. I beleive this is due to ``pytest`` being the most
 pythonic framework for testing. PyTest gives a guide on `integrating
 it into your project
 <https://docs.pytest.org/en/latest/goodpractices.html>`_. The
-following will give a setup that is both simple and opinionated.
+following will give a setup that is both simple and
+opinionated. Another easy win we can get with pytest is code
+coverage. We will use the add-on package ``pytest-cov`` for this.
 
 --------
 setup.py
@@ -18,7 +20,7 @@ setup.py
    setup(
      ...
      setup_requires=['pytest-runner', ...],
-     tests_require=['pytest'],
+     tests_require=['pytest', 'pytest-cov'],
    )
 
 ---------
@@ -34,10 +36,12 @@ That is all you need to get ``pytest`` running! You can run all tests
 via the command ``python setup.py test`` or ``py.test``. Now that is
 all assuming you have tests. ``pytest`` by default will look for tests
 in the ``tests`` directory and runs all files with the name
-``test_<filename>.py``. Read the `pytest documentation
-<https://docs.pytest.org/en/latest/>`_ for more detailed documentation
-. For example create a file ``tests/test_example.py`` with
-the following code.
+``test_<filename>.py``. In order to get the additional coverage report
+with the tests you need to add some additional arguments ``python
+setup.py test --addopts "--cov=pypkgtemp"``.  Read the `pytest
+documentation <https://docs.pytest.org/en/latest/>`_ for more detailed
+documentation . For example create a file ``tests/test_example.py``
+with the following code.
 
 --------------------
 test/test_example.py
@@ -68,12 +72,13 @@ the :doc:`pypi`_ documentation.
      image: python:3.6
      stage: test
      script:
-       - echo "============== Testing Package ============="
        - pip install .
        - pip list
-       - python setup.py test
-       - echo "============================================"
+       - python setup.py test --addopts "--cov=<package-directory>"
 
 With these changes it will test every commit given to Gitlab and will
 only submit a new package if all tests pass! All of this has been
-automated for us.
+automated for us. In order to get the coverage report setup correctly
+you will need to tell gitlab the regular expression to use in order to
+parse the coverage report. For ``pytest-cov`` this is
+``^TOTAL\s+\d+\s+\d+\s+(\d+)\%\s*$``.
