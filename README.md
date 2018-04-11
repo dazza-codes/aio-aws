@@ -1,5 +1,14 @@
 # Python Package Template
 
++-----+-----+
+| docs | ![readthedocs](https://img.shields.io/readthedocs/costrouc-python-package-template.svg) |
++-----+-----+
+| tests | asdf |
++-----+-----+
+| package | ![version](https://img.shields.io/pypi/v/pypkgtemp.svg) ![license](https://img.shields.io/pypi/l/pypkgtemp.svg) ![PyPI - Wheel](https://img.shields.io/pypi/wheel/pypkgtemp.svg) ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/pypkgtemp.svg) |
++-----+-----+
+
+
 This is an opinionated attempt to document how I deploy a python
 application with documentation, testing, pypi, and continuous
 deployment. This project will be updated as I change my python
