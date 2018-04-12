@@ -5,8 +5,17 @@
   <td>Latest Release</td>
   <td><img src="https://img.shields.io/pypi/v/pypkgtemp.svg" alt="latest release" /></td>
 </tr>
+<tr>
   <td></td>
   <td><img src="https://anaconda.org/costrouc/pypkgtemp/badges/version.svg" alt="latest release" /></td>
+</tr>
+<tr>
+  <td></td>
+  <td>
+    <a href="https://hub.docker.com/r/costrouc/python-package-template/">
+    <img src="https://img.shields.io/badge/docker-latest-blue.svg" alt="latest release" />
+    </a>
+  </td>
 </tr>
 <tr>
   <td>Package Status</td>
