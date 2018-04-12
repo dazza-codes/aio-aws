@@ -64,6 +64,7 @@ development practices. Number one this is a learning experience.
  - testing ([pytest](https://docs.pytest.org/en/latest/)) and coverage ([pytest-cov](https://github.com/pytest-dev/pytest-cov))
  - deploy to pypi ([twine](https://github.com/pypa/twine))
  - deploy to conda ([conda](https://github.com/conda/conda))
+ - deploy docker container to ([dockerhub](https://hub.docker.com) and [gitlab container registry](https://about.gitlab.com/2016/05/23/gitlab-container-registry/))
  - building a package (`setup.py`, `README.md`, `CHANGELOG.md`, `LICENSE.md`)
  - command line interface with argparse
  - badges for testing, packages, and documentation
