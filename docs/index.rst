@@ -18,10 +18,11 @@ the section in the documentation.
 1. setup a bare python package with git repo (``setup.py``, ``README.md``, ``.gitignore``, ``<package>``)
 2. setup pypi deployment with git tags ``vX.X.X``
 3. setup conda deployment with git tags ``vX.X.X``
-4. setup testing on each commit with ``pytest``
-5. setup documentation with ``sphinx`` on readthedocs and self hosted
-6. setup command line interface with ``argparse``
-7. setup badges for README.md
+4. setup docker deployment with git tags ``vX.X.X``
+5. setup testing on each commit with ``pytest``
+6. setup documentation with ``sphinx`` on readthedocs and self hosted
+7. setup command line interface with ``argparse``
+8. setup badges for README.md
 
 .. toctree::
    :maxdepth: 2
@@ -30,6 +31,7 @@ the section in the documentation.
    packaging
    pypi
    conda
+   docker
    testing
    documentation
    cli
