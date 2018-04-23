@@ -74,3 +74,10 @@ They use a simple html table.
    </table>
 
 Looking at a ``README.md`` you can see the resulting table.
+
+Gitlab Badges
+-------------
+
+As of April 20th 2018, Gitlab supports badges that do not need to be
+in the ``README.md``. This is honestly much cleaner. In your project
+repository go to ``settings->badges`` and add each badge.
