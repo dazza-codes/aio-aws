@@ -24,7 +24,6 @@ deploy_pypi:
   stage: deploy
   script:
     - pip install -U twine setuptools
-    - pip list
     - python setup.py sdist bdist_wheel
     - twine upload dist/*.tar.gz
     - twine upload dist/*.whl
