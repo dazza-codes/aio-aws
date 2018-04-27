@@ -85,3 +85,30 @@ Once you would like to deploy to the main PyPi repository change
 So you now have a package that can be shared with the entire world!
 But you have no testing... the next section :doc:`testing` will show
 you how to include testing via ``pytest``.
+
+Further Information
+-------------------
+
+sdist
+^^^^^
+``sdist`` stands for source distribution and is the old python packaging
+format used since 2003. It does not have an official format. It
+basically takes files in the current directory and archives them for
+distribution. That this format is not good for shared libraries as in
+does not work. It is basic and cross platform in the sense that all c
+extensions must be compiled by the host OS. ``MANIFEST.in`` is an
+important file that determines which files are included. Further
+details on a source distribution can be `found here
+<https://docs.python.org/3.6/distutils/sourcedist.html#specifying-the-files-to-distribute>`_.
+
+wheels
+^^^^^^
+
+Wheels are truly a step up in python packaging. They are built by
+``python setup.py bdist_wheel``. It is `standardized
+<https://www.python.org/dev/peps/pep-0427/>`_ and can be a true
+packaging format. All packages are platform specific. So if you build
+a binary for linux it can only be shared with other linux computers.
+
+I will update further once I have packaged a shared library using
+wheels.
