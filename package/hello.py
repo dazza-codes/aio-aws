@@ -2,6 +2,7 @@ class HelloWorld:
     """ HelloWorld class will tell you hello!
 
     """
+
     def __init__(self, firstname, lastname):
         """ initialize HelloWorld class
 
@@ -21,7 +22,7 @@ class HelloWorld:
         Returns:
             str: special hello message to user
         """
-        return f'Hello {self.firstname} {self.lastname}'
+        return f"Hello {self.firstname} {self.lastname}"
 
     @staticmethod
     def helloworld(name):
@@ -33,7 +34,7 @@ class HelloWorld:
         Returns:
             str: special hello world message
         """
-        return f'Hello World {name}!'
+        return f"Hello World {name}!"
 
 
 def fizzbuzz(n):
@@ -50,13 +51,15 @@ def fizzbuzz(n):
     Returns:
        None: prints to stdout fizzbuzz
     """
+
     def _fizzbuzz(i):
         if i % 3 == 0 and i % 5 == 0:
-            return 'FizzBuzz'
+            return "FizzBuzz"
         elif i % 3 == 0:
-            return 'Fizz'
+            return "Fizz"
         elif i % 5 == 0:
-            return 'Buzz'
+            return "Buzz"
         else:
             return str(i)
-    print("\n".join(_fizzbuzz(i+1) for i in range(n)))
+
+    print("\n".join(_fizzbuzz(i + 1) for i in range(n)))

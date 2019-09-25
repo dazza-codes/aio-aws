@@ -1,82 +1,87 @@
-variables:
-    TWINE_USERNAME: SECURE
-    TWINE_PASSWORD: SECURE
-    TWINE_REPOSITORY_URL: https://upload.pypi.org/legacy/
-    ANACONDA_USERNAME: SECURE
-    ANACONDA_TOKEN: SECURE
-    DOCKER_PASSWORD: SECURE
-    DOCKER_USERNAME: SECURE
+# Match the python versions in:
+# - pyproject.toml
+
+image: python:3.6-stretch
+
+cache:
+  paths:
+    - .venv/
+
+before_script:
+  ## Install project dependencies
+  - curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py -o /tmp/get-poetry.py
+  - python /tmp/get-poetry.py
+  - source ${HOME}/.poetry/env
+  - poetry config settings.virtualenvs.in-project true
+  ## Install the latest project dependencies (ignore the lock file)
+  - rm -f poetry.lock
+  - poetry run pip install --upgrade pip
+  - poetry install -v --no-interaction
 
 stages:
-  - test
+  - code-quality
+  - code-test
   - deploy
-  - docs
 
-test:
-  image: python:3.6
-  stage: test
-  script:
-    - pip install .
-    - python setup.py test --addopts "--cov=pypkgtemp"
 
-deploy_pypi:
-  image: python:3.6
-  stage: deploy
-  script:
-    - pip install -U twine setuptools
-    - python setup.py sdist bdist_wheel
-    - twine upload dist/*.tar.gz
-    - twine upload dist/*.whl
+code_quality:
+  stage: code-quality
+  allow_failure: true
   only:
-    - /^v\d+\.\d+\.\d+([abc]\d*)?$/  # PEP-440 compliant version (tags)
-
-
-deploy_conda:
-  image: continuumio/miniconda3:latest
-  stage: deploy
+    refs:
+      - merge_requests
   script:
-    - conda install anaconda-client setuptools conda-build -y
-    - python setup.py bdist_conda
-    - anaconda -t $ANACONDA_TOKEN upload -u $ANACONDA_USERNAME /opt/conda/conda-bld/linux-64/pypkgtemp*.tar.bz2
+    - make lint
+    - make typehint
+
+code_test:
+  stage: code-test
   only:
-    - /^v\d+\.\d+\.\d+([abc]\d*)?$/  # PEP-440 compliant version (tags)
+    refs:
+      - master
+      - merge_requests
+    changes:
+      - package/**/*
+      - tests/**/*
+      - .gitlab-ci.yml
+      - Makefile
+      - pyproject.toml
+  script:
+    - make coverage
+    - make package-check
 
-
-deploy_docker:
-  image: docker:git
+package:
   stage: deploy
-  services:
-    - docker:dind
-  script:
-    - docker build -t python-package-template:$CI_COMMIT_TAG --build-arg VERSION=$CI_COMMIT_TAG .
-    # push to dockerhub
-    - docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
-    - docker tag python-package-template:$CI_COMMIT_TAG costrouc/python-package-template:$CI_COMMIT_TAG
-    - docker tag python-package-template:$CI_COMMIT_TAG costrouc/python-package-template:latest
-    - docker push costrouc/python-package-template:$CI_COMMIT_TAG
-    - docker push costrouc/python-package-template:latest
-    # push to gitlab registry
-    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN registry.gitlab.com
-    - docker tag python-package-template:$CI_COMMIT_TAG registry.gitlab.com/costrouc/python-package-template:$CI_COMMIT_TAG
-    - docker tag python-package-template:$CI_COMMIT_TAG registry.gitlab.com/costrouc/python-package-template:latest
-    - docker push registry.gitlab.com/costrouc/python-package-template:$CI_COMMIT_TAG
-    - docker push registry.gitlab.com/costrouc/python-package-template:latest
   only:
-    - /^v\d+\.\d+\.\d+([abc]\d*)?$/  # PEP-440 compliant version (tags)
-
-pages:
-  image: python:3.6
-  stage: docs
+    refs:
+      - master
   script:
-    - pip install sphinx sphinx_rtd_theme
-    - pip install -e .
-    - mkdir public
-    - cd docs
-    - make apidocs
-    - make html
-    - cp -r _build/html/* ../public
+    - make package-check
   artifacts:
     paths:
-      - public
-  only:
-    - master
+      - dist/
+
+#pages:
+#  allow_failure: true
+#  stage: deploy
+#  only:
+#    refs:
+#      - master
+#  script:
+#    - make docs
+#    - mv docs/_build/html/ public/
+#  artifacts:
+#    paths:
+#      - public
+
+
+#publish:
+#  stage: deploy
+#  only:
+#    refs:
+#      - master
+#  script:
+#    - make publish
+#  only:
+#    - tags
+

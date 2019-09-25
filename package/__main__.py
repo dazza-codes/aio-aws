@@ -14,15 +14,18 @@ def main():
 
 
 def add_subcommand_fizzbuzz(subparsers):
-    parser = subparsers.add_parser('fizzbuzz', help='do the fizzbuzz!')
+    parser = subparsers.add_parser("fizzbuzz", help="do the fizzbuzz!")
     parser.set_defaults(func=handle_subcommand_fizzbuzz)
-    parser.add_argument('-n', '--number', type=int, default=100, help='number for fizzbuzz to count to')
+    parser.add_argument(
+        "-n", "--number", type=int, default=100, help="number for fizzbuzz to count to"
+    )
 
 
 def handle_subcommand_fizzbuzz(args):
-    from pypkgtemp.hello import fizzbuzz
+    from package.hello import fizzbuzz
+
     fizzbuzz(args.number)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
