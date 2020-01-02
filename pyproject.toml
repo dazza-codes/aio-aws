@@ -1,15 +1,15 @@
 [tool.poetry]
-name = "python-package-template"
+name = "python-notes"
 version = "0.1.0"
-description = "Python Package Template"
+description = "Python Notes"
 authors = [
     "Darren Weber <darren.weber@gitlab.com>",
 ]
 license = "MIT"
 
 readme = 'README.md'  # Markdown files are supported
-repository = "https://gitlab.com/darren.weber/python_package_template.git"
-homepage = "https://gitlab.com/darren.weber/python_package_template"
+repository = "https://gitlab.com/darren.weber/python-notes.git"
+homepage = "https://gitlab.com/darren.weber/python-notes"
 
 keywords = [
     "Development Status :: 2 - Pre-Alpha",
@@ -19,22 +19,22 @@ keywords = [
     "Topic :: Utilities",
 ]
 
-include = ["package/**/*"]
+include = ["notes/**/*"]
 exclude = ["tests/**/*"]
 
 packages = [
-    {include = "package"}
+    {include = "notes"}
 ]
 
-[tool.poetry.scripts]
-hello = "package.__main__:main"
+# [tool.poetry.scripts]
+# hello = "notes.__main__:main"
 
 [tool.poetry.dependencies]
 python = "^3.6"  # see tox below too
 
 [tool.poetry.dev-dependencies]
 autopep8 = "*"
-black = {version = "^18.3-alpha.0",allows-prereleases = true}
+black = "^19.10b0"
 codecov = "*"
 flake8 = "*"
 flake8-type-annotations = "*"

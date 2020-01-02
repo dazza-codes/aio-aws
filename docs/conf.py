@@ -19,14 +19,14 @@
 
 # -- Project information -----------------------------------------------------
 
-project = "Python Package Template"
-copyright = "2018, Chris Ostrouchov"
-author = "Chris Ostrouchov"
+project = "Python Notes"
+copyright = "2020, Darren Weber"
+author = "Darren Weber"
 
 # The short X.Y version
-version = "1.0"
+version = "0.1"
 # The full version, including alpha/beta/rc tags
-release = "1.0.0"
+release = "0.1.0"
 
 
 # -- General configuration ---------------------------------------------------
@@ -100,7 +100,7 @@ html_static_path = ["_static"]
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = "PythonPackageTemplatedoc"
+htmlhelp_basename = "PythonNotesdoc"
 
 
 # -- Options for LaTeX output ------------------------------------------------
@@ -123,24 +123,14 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
-latex_documents = [
-    (
-        master_doc,
-        "PythonPackageTemplate.tex",
-        "Python Package Template Documentation",
-        "Chris Ostrouchov",
-        "manual",
-    )
-]
+latex_documents = [(master_doc, "PythonNotes.tex", "Python Notes", "Darren Weber", "manual")]
 
 
 # -- Options for manual page output ------------------------------------------
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [
-    (master_doc, "pythonpackagetemplate", "Python Package Template Documentation", [author], 1)
-]
+man_pages = [(master_doc, "pythonnotes", "Python Notes", [author], 1)]
 
 
 # -- Options for Texinfo output ----------------------------------------------
@@ -151,11 +141,11 @@ man_pages = [
 texinfo_documents = [
     (
         master_doc,
-        "PythonPackageTemplate",
-        "Python Package Template Documentation",
+        "PythonNotes",
+        "Python Notes",
         author,
-        "PythonPackageTemplate",
-        "One line description of project.",
+        "PythonNotes",
+        "Random notes about working with python.",
         "Miscellaneous",
     )
 ]

@@ -5,7 +5,7 @@ SHELL = /bin/bash
 .ONESHELL:
 .SUFFIXES:
 
-LIB = package
+LIB = notes
 
 clean:
 	@rm -rf build dist .eggs *.egg-info
@@ -38,7 +38,7 @@ format: clean
 init: poetry
 	# Install the latest project dependencies (ignore the lock file)
 	@source $(HOME)/.poetry/env
-	@rm poetry.lock
+	@rm -f poetry.lock
 	@poetry run pip install --upgrade pip
 	@poetry install -v --no-interaction
 
