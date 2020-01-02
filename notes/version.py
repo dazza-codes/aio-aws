@@ -1,3 +1,4 @@
+# pylint: disable=line-too-long
 # fmt: off
 """
 A version module managed by the invoke-release task
