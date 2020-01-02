@@ -12,7 +12,7 @@ before_script:
   - curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py -o /tmp/get-poetry.py
   - python /tmp/get-poetry.py
   - source ${HOME}/.poetry/env
-  - poetry config settings.virtualenvs.in-project true
+  - poetry config virtualenvs.in-project true
   ## Install the latest project dependencies (ignore the lock file)
   - rm -f poetry.lock
   - poetry run pip install --upgrade pip
@@ -48,7 +48,6 @@ code_test:
       - pyproject.toml
   script:
     - make coverage
-    - make package-check
 
 package:
   stage: deploy
@@ -61,19 +60,18 @@ package:
     paths:
       - dist/
 
-#pages:
-#  allow_failure: true
-#  stage: deploy
-#  only:
-#    refs:
-#      - master
-#  script:
-#    - make docs
-#    - mv docs/_build/html/ public/
-#  artifacts:
-#    paths:
-#      - public
-
+pages:
+ allow_failure: true
+ stage: deploy
+ only:
+   refs:
+     - master
+ script:
+   - make docs
+   - mv docs/_build/html/ public/
+ artifacts:
+   paths:
+     - public
 
 #publish:
 #  stage: deploy
@@ -84,4 +82,3 @@ package:
 #    - make publish
 #  only:
 #    - tags
-
