@@ -26,7 +26,10 @@ coverage:
 		--cov=$(LIB) tests
 
 docs: clean
-	@cd docs && rm -rf _build && poetry run make html
+	@cd docs
+	@rm -rf _build
+	@poetry run make html
+	@poetry run doc8
 	@echo -e "\033[95m\n\nBuild successful! View the docs homepage at docs/_build/html/index.html.\n\033[0m"
 
 flake8: clean
@@ -50,7 +53,7 @@ test: clean
 	@poetry run pytest -q -n 4 -r f --durations=10 --show-capture=no --forked --junitxml=report.xml tests
 
 typehint: clean
-	@poetry run mypy --follow-imports=skip $(LIB) tests
+	@poetry run mypy --follow-imports=skip $(LIB)
 
 package: clean
 	@poetry check
@@ -58,9 +61,6 @@ package: clean
 
 package-check: package
 	@poetry run twine check dist/*
-
-package-test: package-check
-	@poetry run tox
 
 publish: package-check
 	# derivative projects can enable this
@@ -71,4 +71,4 @@ poetry:
 		curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python
 	fi
 
-.PHONY: clean coverage docs flake8 format init lint test typehint package package-check package-test publish poetry
+.PHONY: clean coverage docs flake8 format init lint test typehint package package-check publish poetry
