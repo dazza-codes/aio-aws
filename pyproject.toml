@@ -7,7 +7,7 @@ authors = [
 ]
 license = "MIT"
 
-readme = 'README.md'  # Markdown files are supported
+readme = "README.md"  # Markdown files are supported
 repository = "https://gitlab.com/darren.weber/python-notes.git"
 homepage = "https://gitlab.com/darren.weber/python-notes"
 
@@ -30,7 +30,8 @@ packages = [
 # hello = "notes.__main__:main"
 
 [tool.poetry.dependencies]
-python = "^3.6"  # see tox below too
+python = "^3.6"
+click = "^7.0"
 
 [tool.poetry.dev-dependencies]
 autopep8 = "*"
@@ -63,5 +64,5 @@ twine = "*"
 line-length = 96
 
 [build-system]
-requires = ["poetry>=0.12"]
+requires = ["poetry>=1.0"]
 build-backend = "poetry.masonry.api"
