@@ -31,8 +31,7 @@ code_quality:
     refs:
       - merge_requests
   script:
-    - make lint
-    - make typehint
+    - make lint && make typehint
 
 code_test:
   stage: code-test
