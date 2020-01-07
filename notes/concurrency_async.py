@@ -1,5 +1,5 @@
 #! /usr/bin/env python3
-
+# pylint: disable=bad-continuation
 """
 Asyncio Code
 ------------
@@ -45,6 +45,7 @@ async def delay(task_id: int) -> float:
 
 
 async def create_futures(task_count: int) -> List[Future]:
+    """Create asyncio futures"""
     async_tasks = []
     for task_id in range(task_count):
         # each call to delay() returns a coroutine object
@@ -57,6 +58,7 @@ async def create_futures(task_count: int) -> List[Future]:
 
 
 async def create_tasks(task_count: int, async_loop: AbstractEventLoop) -> List[Task]:
+    """Create asyncio tasks"""
     async_tasks = []
     for task_id in range(task_count):
         # each call to delay() returns a coroutine object
@@ -91,12 +93,12 @@ async def run_tasks(
 
     if collection_method == "gather":
         LOGGER.warning("Waiting on tasks to gather results")
-        results = await asyncio.gather(*async_tasks)
+        _results = await asyncio.gather(*async_tasks)
 
     elif collection_method == "wait":
         LOGGER.warning("Waiting on tasks")
         # wait can also use a timeout parameter
-        completed, pending = await asyncio.wait(async_tasks)
+        _completed, _pending = await asyncio.wait(async_tasks)
         # pending tasks after a timeout can be cancelled
 
     elif collection_method == "as-complete":
@@ -112,7 +114,7 @@ async def run_tasks(
 
         LOGGER.warning("Waiting on cancelled tasks")
         try:
-            completed, pending = await asyncio.wait(async_tasks)
+            _completed, _pending = await asyncio.wait(async_tasks)
         except asyncio.CancelledError:
             LOGGER.error("Task cancelled")
 
@@ -140,6 +142,7 @@ COLLECTION_METHODS = ("gather", "wait", "as-complete", "cancelled")
     help="type of asyncio task collection",
 )
 def main(task_count, collection_method):
+    """Run simple asyncio example"""
 
     # get the event loop for the main thread
     loop = asyncio.get_event_loop()
@@ -179,4 +182,4 @@ def main(task_count, collection_method):
 
 if __name__ == "__main__":
 
-    main()
+    main()  # pylint: disable=no-value-for-parameter

@@ -25,6 +25,13 @@ Typing and testing asyncio code
     - https://github.com/pytest-dev/pytest-asyncio
     - https://medium.com/ideas-at-igenius/testing-asyncio-python-code-with-pytest-a2f3628f82bc
 
+Asyncio ecosystem libraries
+    - databases
+        - https://www.encode.io/databases/
+            - https://pypi.org/project/databases/
+            - https://github.com/magicstack/asyncpg
+            - https://magic.io/blog/asyncpg-1m-rows-from-postgres-to-python/
+
 Resources
     - https://asyncio.readthedocs.io/en/latest/index.html
     - https://realpython.com/async-io-python/
