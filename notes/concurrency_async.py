@@ -12,6 +12,7 @@ from asyncio import AbstractEventLoop
 from asyncio import Future
 from asyncio import Task
 from typing import List
+from typing import Tuple
 
 import click
 
@@ -23,6 +24,9 @@ MIN_PAUSE: int = 1
 
 #: Maximum task pause
 MAX_PAUSE: int = 10
+
+#: Shared global list
+PAUSES: List[Tuple[int, float]] = []
 
 
 async def delay(task_id: int) -> float:
@@ -37,6 +41,8 @@ async def delay(task_id: int) -> float:
     try:
         await asyncio.sleep(pause)
         LOGGER.warning("Task %d - done with sleep for %.2f", task_id, pause)
+        # try to access global shared state from coroutine
+        PAUSES.append((task_id, pause))
         return pause
 
     except asyncio.CancelledError:
@@ -120,6 +126,8 @@ async def run_tasks(
 
     else:
         LOGGER.error("Unknown collection method")
+
+    LOGGER.warning("Shared task data: %s", PAUSES)
 
     # Each task has accessor methods to retrieve the future result;
     # so it's sufficient to return the tasks here.
