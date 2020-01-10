@@ -1,7 +1,6 @@
-=======================
-Concurrency in Python 3
-=======================
 
+Concurrency
+===========
 
 General resources on concurrency
     - https://realpython.com/python-gil/
@@ -10,8 +9,8 @@ General resources on concurrency
         - http://www.dabeaz.com/talks.html
 
 
-Asyncio Examples
-================
+Asyncio
+-------
 
 Developing with asyncio in python 3.6
     - https://docs.python.org/3.6/library/asyncio.html
@@ -45,12 +44,11 @@ Resources
         - http://www.dabeaz.com/generators/
         - http://www.dabeaz.com/coroutines/
 
-Code for some simple examples is listed below.  You can run the examples
-if you clone this repo and setup the virtualenv for it.  It's similar
-to examples in https://pymotw.com/3/asyncio/index.html (although it
-was not derived directly from those examples).
 
-This example runs a small set of tasks:
+Examples
+********
+
+This example runs a small set of tasks (see the code below):
 
 .. code-block:: shell
 
