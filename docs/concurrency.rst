@@ -26,9 +26,12 @@ Typing and testing asyncio code
     - https://medium.com/ideas-at-igenius/testing-asyncio-python-code-with-pytest-a2f3628f82bc
 
 Asyncio ecosystem libraries
+    - AWS
+        - https://github.com/terrycain/aioboto3
+    - HTTP
+        - https://aiohttp.readthedocs.io/en/stable/
     - databases
         - https://www.encode.io/databases/
-            - https://pypi.org/project/databases/
             - https://github.com/magicstack/asyncpg
             - https://magic.io/blog/asyncpg-1m-rows-from-postgres-to-python/
 
