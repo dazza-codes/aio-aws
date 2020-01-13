@@ -58,6 +58,7 @@ pytest-xdist = "*"
 readme-renderer = { version = "*", extras = ["md"] }
 setuptools = "*"
 sphinx = "*"
+sphinx-autoapi = "*"
 sphinx_rtd_theme = "*"
 twine = "*"
 
