@@ -31,8 +31,9 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.6"
+aiobotocore = {extras = ["boto3"], version = "*"}
+databases = {extras = ["postgresql", "mysql", "sqlite"], version = "*"}
 click = "^7.0"
-databases = {extras = ["postgresql", "mysql", "sqlite"], version = "^0.2.6"}
 
 [tool.poetry.dev-dependencies]
 autopep8 = "*"
@@ -58,6 +59,7 @@ pytest-xdist = "*"
 readme-renderer = { version = "*", extras = ["md"] }
 setuptools = "*"
 sphinx = "*"
+sphinx-autoapi = "*"
 sphinx_rtd_theme = "*"
 twine = "*"
 
