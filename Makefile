@@ -39,8 +39,7 @@ format: clean
 	@poetry run black $(LIB) tests docs *.py
 
 init: poetry
-	# Install the latest project dependencies (ignore the lock file)
-	@source $(HOME)/.poetry/env
+	@source "$(HOME)/.poetry/env"
 	@rm -f poetry.lock
 	@poetry run pip install --upgrade pip
 	@poetry install -v --no-interaction
