@@ -15,6 +15,7 @@ The notes are developed in a gitlab project at:
     about
     concurrency
     asyncio
+    asyncio_executor
     asyncio_aws_s3
     asyncio_aws_lambda
     asyncio_databases
