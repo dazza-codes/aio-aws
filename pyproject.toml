@@ -32,8 +32,9 @@ packages = [
 [tool.poetry.dependencies]
 python = "^3.6"
 aiobotocore = {extras = ["boto3"], version = "*"}
-databases = {extras = ["postgresql", "mysql", "sqlite"], version = "*"}
 click = "^7.0"
+databases = {extras = ["postgresql", "mysql", "sqlite"], version = "*"}
+dataclasses = {version = "^0.6", python = "3.6"}
 
 [tool.poetry.dev-dependencies]
 autopep8 = "*"
