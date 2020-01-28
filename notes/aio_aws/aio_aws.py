@@ -16,29 +16,68 @@
 # limitations under the License.
 
 """
-Async Pauses
-------------
+Async AWS Settings
+------------------
 
-Convenience functions for asyncio.sleep with
-random.uniform pauses.
+.. seealso::
+    - https://aiobotocore.readthedocs.io/en/latest/
 """
 
 import asyncio
 import random
 
-from notes.logger import LOGGER
+import aiobotocore.client  # type: ignore
+import aiobotocore.config  # type: ignore
+import aiobotocore.session  # type: ignore
+import botocore.endpoint  # type: ignore
+import botocore.session  # type: ignore
 
-#: Minimum task pause, in seconds
+from notes.aio_aws.logger import LOGGER
+
+#: max_pool_connections for AWS clients (10 by default)
+MAX_POOL_CONNECTIONS = botocore.endpoint.MAX_POOL_CONNECTIONS
+
+#: AWS asyncio session config
+#: ..seealso:: https://github.com/boto/botocore/blob/develop/botocore/config.py
+AIO_AWS_CONFIG = aiobotocore.config.AioConfig(max_pool_connections=MAX_POOL_CONNECTIONS)
+
+#: AWS asyncio session
+AIO_AWS_SESSION = aiobotocore.get_session()
+AIO_AWS_SESSION.user_agent_name = "aio-aws"
+AIO_AWS_SESSION.set_default_client_config(AIO_AWS_CONFIG)
+
+#: a semaphore to limit requests to the max client connections
+CLIENT_SEMAPHORE = asyncio.Semaphore(MAX_POOL_CONNECTIONS)
+
+#: batch job startup pause (seconds)
+BATCH_STARTUP_PAUSE: float = 30
+
+#: Minimum task pause
 MIN_PAUSE: float = 5
 
-#: Maximum task pause, in seconds
-MAX_PAUSE: float = 10
+#: Maximum task pause
+MAX_PAUSE: float = 30
 
-#: Minimum jitter, in seconds
+#: Minimum API request jitter
 MIN_JITTER: float = 1
 
-#: Maximum jitter, in seconds
-MAX_JITTER: float = 5
+#: Maximum API request jitter
+MAX_JITTER: float = 10
+
+
+def aio_aws_session(
+    aio_aws_config: aiobotocore.config.AioConfig = AIO_AWS_CONFIG,
+) -> aiobotocore.session.AioSession:
+    """
+    Get an asyncio AWS session
+    :param aio_aws_config: an aiobotocore.config.AioConfig (default ``.AIO_AWS_CONFIG``)
+    :param loop: an asyncio.AbstractEventLoop (defaults to the asyncio default loop)
+    :return: aiobotocore.session.AioSession
+    """
+    session = aiobotocore.get_session()
+    session.user_agent_name = "aiobotocore"
+    session.set_default_client_config(aio_aws_config)
+    return session
 
 
 async def delay(
@@ -77,6 +116,14 @@ async def jitter(
     """
     jit = await delay(task_id, min_jitter, max_jitter)
     return jit
+
+
+def response_code(response):
+    return response.get("ResponseMetadata", {}).get("HTTPStatusCode")
+
+
+def response_success(response):
+    return response_code(response) == 200
 
 
 if __name__ == "__main__":
