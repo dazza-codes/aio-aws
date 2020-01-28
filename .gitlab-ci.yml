@@ -8,24 +8,23 @@ cache:
     - .venv/
 
 before_script:
+  ## mock AWS credentials with no content
+  - test -f ~/.aws/credentials && echo "" > ~/.aws/credentials
   ## Install project dependencies
   - curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py -o /tmp/get-poetry.py
   - python /tmp/get-poetry.py
   - source ${HOME}/.poetry/env
   - poetry config virtualenvs.in-project true
-  ## Install the latest project dependencies (ignore the lock file)
-  - rm -f poetry.lock
   - poetry run pip install --upgrade pip
   - poetry install -v --no-interaction
+  - pip freeze
 
 stages:
-  - code-quality
   - code-test
   - deploy
 
-
 code_quality:
-  stage: code-quality
+  stage: code-test
   allow_failure: true
   only:
     refs:

@@ -1,5 +1,20 @@
 #! /usr/bin/env python3
 # pylint: disable=bad-continuation
+
+# Copyright 2020 Darren Weber
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """
 Asyncio Code
 ------------
@@ -45,10 +60,7 @@ def delay_task(task_id: str, async_loop: AbstractEventLoop = None) -> Task:
 
 async def create_futures(task_count: int) -> List[Future]:
     """Create asyncio futures"""
-    return [
-        delay_future(str(task_id))
-        for task_id in range(task_count)
-    ]
+    return [delay_future(str(task_id)) for task_id in range(task_count)]
 
 
 def create_tasks(task_count: int, async_loop: AbstractEventLoop = None) -> List[Task]:
@@ -57,10 +69,7 @@ def create_tasks(task_count: int, async_loop: AbstractEventLoop = None) -> List[
         async_loop = asyncio.get_event_loop()
     # Each task has accessor methods to retrieve the future result;
     # so it's sufficient to return the tasks here.
-    return [
-        delay_task(str(task_id), async_loop)
-        for task_id in range(task_count)
-    ]
+    return [delay_task(str(task_id), async_loop) for task_id in range(task_count)]
 
 
 async def run_tasks(async_tasks: List[Task], collection_method: str = "gather") -> List[Task]:
