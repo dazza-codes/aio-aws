@@ -49,7 +49,7 @@ lint: clean
 	@poetry run pylint $(LIB)
 
 test: clean
-	@poetry run pytest -q -n 4 -r f --durations=10 --show-capture=no --forked --junitxml=report.xml tests
+	@poetry run pytest -q --durations=10 --show-capture=no --junitxml=report.xml tests
 
 typehint: clean
 	@poetry run mypy --follow-imports=skip $(LIB)

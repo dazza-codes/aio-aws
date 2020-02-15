@@ -11,6 +11,7 @@ import time
 from asyncio import AbstractEventLoop
 from asyncio import Future
 from asyncio import Task
+from typing import Coroutine
 from typing import List
 from typing import Tuple
 
@@ -50,6 +51,26 @@ async def delay(task_id: int) -> float:
         raise
 
 
+def delay_future(task_id: int) -> Future:
+    """Create asyncio future"""
+    # each call to delay() returns a coroutine object
+    coro = delay(task_id)
+    # coroutine objects can be wrapped in an async future;
+    # the event loop creates the task, but does not start it until
+    # this creation coroutine is awaited (run by event loop).
+    return asyncio.ensure_future(coro)
+
+
+def delay_task(task_id: int, async_loop: AbstractEventLoop) -> Task:
+    """Create asyncio task"""
+    # each call to delay() returns a coroutine object
+    coro = delay(task_id)
+    # coroutine objects can be wrapped in an async task (future);
+    # the event loop creates the task, but does not start it until
+    # this creation coroutine is awaited (run by event loop).
+    return async_loop.create_task(coro)
+
+
 async def create_futures(task_count: int) -> List[Future]:
     """Create asyncio futures"""
     async_tasks = []
@@ -63,40 +84,29 @@ async def create_futures(task_count: int) -> List[Future]:
     return async_tasks
 
 
-async def create_tasks(task_count: int, async_loop: AbstractEventLoop) -> List[Task]:
+def create_tasks(task_count: int, async_loop: AbstractEventLoop) -> List[Task]:
     """Create asyncio tasks"""
     async_tasks = []
     for task_id in range(task_count):
-        # each call to delay() returns a coroutine object
-        coro = delay(task_id)
-        # coroutine objects can be wrapped in an async task (future);
-        # the event loop creates the task, but does not start it until
-        # this creation coroutine is awaited (run by event loop).
-        async_task = async_loop.create_task(coro)
+        async_task = delay_task(task_id, async_loop)
         async_tasks.append(async_task)
     # Each task has accessor methods to retrieve the future result;
     # so it's sufficient to return the tasks here.
     return async_tasks
 
 
-async def run_tasks(
-    task_count: int, async_loop: AbstractEventLoop, collection_method: str = "gather"
-) -> List[Task]:
+async def run_tasks(async_tasks: List[Task], collection_method: str = "gather") -> List[Task]:
     """
     Run a collection of asyncio tasks and return the collection
     of completed tasks.
 
-    :param task_count: the number of asyncio tasks to run
-    :param async_loop: an asyncio event loop
+    :param async_tasks: a list of asyncio tasks
     :param collection_method: an option for asyncio execution
     :return: a list of asyncio task futures (they should be all done)
 
     .. seealso::
         - https://pymotw.com/3/asyncio/control.html
     """
-    LOGGER.warning("Creating tasks")
-    async_tasks = await create_tasks(task_count, async_loop)
-
     if collection_method == "gather":
         LOGGER.warning("Waiting on tasks to gather results")
         _results = await asyncio.gather(*async_tasks)
@@ -153,13 +163,16 @@ def main(task_count, collection_method):
     """Run simple asyncio example"""
 
     # get the event loop for the main thread
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
     loop.set_debug(enabled=True)
 
     try:
         # Run a small set of simple asyncio tasks that pause up to 10 sec
         start = time.perf_counter()
-        tasks = loop.run_until_complete(run_tasks(task_count, loop, collection_method))
+        LOGGER.warning("Creating tasks")
+        tasks = create_tasks(task_count, loop)
+
+        loop.run_until_complete(run_tasks(tasks, collection_method))
         end = time.perf_counter() - start
         print(f"{len(tasks):d} async tasks finished in {end:0.2f} seconds.")
 
