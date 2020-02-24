@@ -3,7 +3,7 @@
 
 This is a random collection of notes about working with python.
 The notes are published as gitlab pages at:
-- https://darren.weber.gitlab.io/python-notes
+- http://dazza-codes.gitlab.io/python-notes
 
 # Getting Started
 
@@ -22,7 +22,7 @@ The following setup assumes that
       both the project itself and development dependencies
 
 ```shell
-git clone https://gitlab.com/darren.weber/python-notes
+git clone https://gitlab.com/dazza-codes/python-notes
 cd python-notes
 conda create -n python-notes python=3.6
 conda activate python-notes
