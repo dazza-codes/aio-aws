@@ -3,13 +3,13 @@ name = "python-notes"
 version = "0.1.0"
 description = "Python Notes"
 authors = [
-    "Darren Weber <darren.weber@gitlab.com>",
+    "Darren Weber <dazza-codes@gitlab.com>",
 ]
 license = "MIT"
 
 readme = "README.md"  # Markdown files are supported
-repository = "https://gitlab.com/darren.weber/python-notes.git"
-homepage = "https://gitlab.com/darren.weber/python-notes"
+repository = "https://gitlab.com/dazza-codes/python-notes.git"
+homepage = "https://gitlab.com/dazza-codes/python-notes"
 
 keywords = [
     "Development Status :: 2 - Pre-Alpha",
