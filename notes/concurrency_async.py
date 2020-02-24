@@ -6,52 +6,22 @@ Asyncio Code
 """
 import asyncio
 import logging
-import random
 import time
 from asyncio import AbstractEventLoop
 from asyncio import Future
 from asyncio import Task
-from typing import Coroutine
 from typing import List
-from typing import Tuple
 
 import click
+
+from notes import async_pause
+from notes.async_pause import delay
 
 LOGGER = logging.getLogger("concurrency_asyncio")
 LOGGER.setLevel(logging.INFO)
 
-#: Minimum task pause
-MIN_PAUSE: int = 1
 
-#: Maximum task pause
-MAX_PAUSE: int = 10
-
-#: Shared global list
-PAUSES: List[Tuple[int, float]] = []
-
-
-async def delay(task_id: int) -> float:
-    """
-    Await a random pause between :py:const:`MIN_PAUSE` and :py:const:`MAX_PAUSE`
-
-    :param task_id: the ID for the asyncio.Task awaiting this pause
-    :return: random interval for pause
-    """
-    pause = random.uniform(MIN_PAUSE, MAX_PAUSE)
-    LOGGER.warning("Task %d - await a sleep for %.2f", task_id, pause)
-    try:
-        await asyncio.sleep(pause)
-        LOGGER.warning("Task %d - done with sleep for %.2f", task_id, pause)
-        # try to access global shared state from coroutine
-        PAUSES.append((task_id, pause))
-        return pause
-
-    except asyncio.CancelledError:
-        LOGGER.error("Task %d - cancelled", task_id)
-        raise
-
-
-def delay_future(task_id: int) -> Future:
+def delay_future(task_id: str) -> Future:
     """Create asyncio future"""
     # each call to delay() returns a coroutine object
     coro = delay(task_id)
@@ -61,8 +31,10 @@ def delay_future(task_id: int) -> Future:
     return asyncio.ensure_future(coro)
 
 
-def delay_task(task_id: int, async_loop: AbstractEventLoop) -> Task:
+def delay_task(task_id: str, async_loop: AbstractEventLoop = None) -> Task:
     """Create asyncio task"""
+    if async_loop is None:
+        async_loop = asyncio.get_event_loop()
     # each call to delay() returns a coroutine object
     coro = delay(task_id)
     # coroutine objects can be wrapped in an async task (future);
@@ -73,26 +45,22 @@ def delay_task(task_id: int, async_loop: AbstractEventLoop) -> Task:
 
 async def create_futures(task_count: int) -> List[Future]:
     """Create asyncio futures"""
-    async_tasks = []
-    for task_id in range(task_count):
-        # each call to delay() returns a coroutine object
-        coro = delay(task_id)
-        # coroutine objects can be wrapped in an async future;
-        # the task is not started yet.
-        async_task = asyncio.ensure_future(coro)
-        async_tasks.append(async_task)
-    return async_tasks
+    return [
+        delay_future(str(task_id))
+        for task_id in range(task_count)
+    ]
 
 
-def create_tasks(task_count: int, async_loop: AbstractEventLoop) -> List[Task]:
+def create_tasks(task_count: int, async_loop: AbstractEventLoop = None) -> List[Task]:
     """Create asyncio tasks"""
-    async_tasks = []
-    for task_id in range(task_count):
-        async_task = delay_task(task_id, async_loop)
-        async_tasks.append(async_task)
+    if async_loop is None:
+        async_loop = asyncio.get_event_loop()
     # Each task has accessor methods to retrieve the future result;
     # so it's sufficient to return the tasks here.
-    return async_tasks
+    return [
+        delay_task(str(task_id), async_loop)
+        for task_id in range(task_count)
+    ]
 
 
 async def run_tasks(async_tasks: List[Task], collection_method: str = "gather") -> List[Task]:
@@ -137,8 +105,6 @@ async def run_tasks(async_tasks: List[Task], collection_method: str = "gather") 
     else:
         LOGGER.error("Unknown collection method")
 
-    LOGGER.warning("Shared task data: %s", PAUSES)
-
     # Each task has accessor methods to retrieve the future result;
     # so it's sufficient to return the tasks here.
     LOGGER.warning("Returning tasks")
@@ -165,6 +131,7 @@ def main(task_count, collection_method):
     # get the event loop for the main thread
     loop = asyncio.new_event_loop()
     loop.set_debug(enabled=True)
+    async_pause.LOGGER.setLevel("DEBUG")
 
     try:
         # Run a small set of simple asyncio tasks that pause up to 10 sec
