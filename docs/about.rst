@@ -2,7 +2,7 @@
 About
 =====
 
-See https://gitlab.com/darren.weber/python-notes
+See https://gitlab.com/dazza-codes/python-notes
 
 Code for some examples can be run by cloning
 that repo and following the instructions to get started.
@@ -21,7 +21,7 @@ The following setup assumes that
 
 .. code-block:: shell
 
-    git clone https://gitlab.com/darren.weber/python-notes
+    git clone https://gitlab.com/dazza-codes/python-notes
     cd python-notes
     conda create -n python-notes python=3.6
     conda activate python-notes

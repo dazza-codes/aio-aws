@@ -5,7 +5,7 @@ Python Notes
 This is a random collection of notes about working with python.
 The notes are developed in a gitlab project at:
 
-- https://gitlab.com/darren.weber/python-notes
+- https://gitlab.com/dazza-codes/python-notes
 
 
 .. toctree::
