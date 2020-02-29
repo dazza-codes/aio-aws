@@ -14,7 +14,7 @@
 # limitations under the License.
 
 """
-Notes logger
+AioAWS logger
 """
 
 import logging
@@ -31,6 +31,6 @@ LOG_FORMAT = (
 LOG_FORMATTER = logging.Formatter(LOG_FORMAT, "%Y-%m-%dT%H:%M:%S")
 handler = logging.StreamHandler(sys.stdout)
 handler.formatter = LOG_FORMATTER
-LOGGER = logging.getLogger("notes")
+LOGGER = logging.getLogger("aio-aws")
 LOGGER.addHandler(handler)
 LOGGER.setLevel(LOG_LEVEL)
