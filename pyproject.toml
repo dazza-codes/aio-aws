@@ -33,7 +33,7 @@ packages = [
 python = "^3.6"
 dataclasses = {version = "*", python = "^3.6.0"}
 
-aiobotocore = {extras = ["awscli", "boto3"], version = "^0.12.0"}
+aiobotocore = {extras = ["awscli", "boto3"], version = "^0.11.1"}
 aioredis = "^1.3.1"
 click = "^7.0"
 databases = {extras = ["postgresql", "mysql", "sqlite"], version = "*"}
@@ -49,7 +49,7 @@ flake8-type-annotations = "*"
 ipdb = "*"
 invoke-release = "*"
 m2r = "*"
-moto = {extras = ["server"], version = "^1.3.14" }
+moto = {extras = ["server"], version = "*" }
 mypy = "*"
 pylint = "*"
 pytest = "*"
