@@ -81,7 +81,7 @@ def aws_batch_sleep1_job(aio_aws_batch_infrastructure: AioAwsBatchInfrastructure
         job_name="sleep-1-job",
         job_definition=aio_aws_batch_infrastructure.job_definition_arn,
         job_queue=aio_aws_batch_infrastructure.job_queue_arn,
-        command=["/bin/bash", "-c", "echo Hello1 && sleep 0.2 && echo Hello2"],
+        command=["/bin/sh", "-c", "echo Hello && sleep 0.2 && echo Bye"],
     )
 
 
@@ -98,7 +98,7 @@ def aws_batch_sleep5_job(aio_aws_batch_infrastructure: AioAwsBatchInfrastructure
         job_name="sleep-5-job",
         job_definition=aio_aws_batch_infrastructure.job_definition_arn,
         job_queue=aio_aws_batch_infrastructure.job_queue_arn,
-        command=["/bin/bash", "-c", "echo Hello1 && sleep 5 && echo Hello2"],
+        command=["/bin/sh", "-c", "echo Hello && sleep 5 && echo Bye"],
     )
 
 

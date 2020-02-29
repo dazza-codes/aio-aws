@@ -8,8 +8,12 @@ cache:
     - .venv/
 
 before_script:
+  ## moto-server requires docker
+  - docker info
   ## mock AWS credentials with no content
-  - test -f ~/.aws/credentials && echo "" > ~/.aws/credentials
+  - test -f ~/.aws/credentials && rm ~/.aws/credentials
+  - export AWS_SECRET_ACCESS_KEY=dummy_AWS_SECRET_ACCESS_KEY
+  - export AWS_ACCESS_KEY_ID=dummy_AWS_ACCESS_KEY_ID
   ## Install project dependencies
   - curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py -o /tmp/get-poetry.py
   - python /tmp/get-poetry.py
@@ -17,7 +21,7 @@ before_script:
   - poetry config virtualenvs.in-project true
   - poetry run pip install --upgrade pip
   - poetry install -v --no-interaction
-  - pip freeze
+  - pip freeze -v
 
 stages:
   - code-test
