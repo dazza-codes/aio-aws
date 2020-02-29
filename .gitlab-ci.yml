@@ -1,23 +1,72 @@
 # Match the python versions in:
 # - pyproject.toml
 
-image: python:3.6-stretch
+# https://github.com/docker-library/docker/blob/master/19.03/Dockerfile
+# based on alpine:3.11
+image: docker:19.03.6
+# image: python:3.6-stretch
+
+variables:
+  # Specify to Docker where to create the certificates, Docker will
+  # create them automatically on boot, and will create
+  # `/certs/client` that will be shared between the service and job
+  # container, thanks to volume mount from config.toml
+  DOCKER_TLS_CERTDIR: "/certs"
+
+services:
+  - docker:19.03.6-dind
 
 cache:
   paths:
     - .venv/
 
 before_script:
+  ## aio-aws tests require moto-server which requires docker to run batch jobs
+  - docker info
+  # NOTE: docker run does not exit!  It hangs the build at this point.
+  #- docker run alpine:latest /bin/sh -c 'echo Hello Alpine'
+  ##
   ## mock AWS credentials with no content
-  - test -f ~/.aws/credentials && echo "" > ~/.aws/credentials
+  - test -f ~/.aws/credentials && rm ~/.aws/credentials
+  - export AWS_SECRET_ACCESS_KEY=dummy_AWS_SECRET_ACCESS_KEY
+  - export AWS_ACCESS_KEY_ID=dummy_AWS_ACCESS_KEY_ID
+  ##
+  ## Install build dependencies and glibc for Miniconda3 (alpine doesn't use glibc)
+  - apk add --update --no-cache bash ca-certificates curl git glib libstdc++ make sed wget
+  - ls -al ./*
+  - cp alpine/sgerrand.rsa.pub /etc/apk/keys/sgerrand.rsa.pub
+  - apk add ./alpine/glibc-2.30-r0.apk
+  - apk add ./alpine/glibc-bin-2.30-r0.apk
+  - apk add --allow-untrusted ./alpine/glibc-i18n-2.30-r0.apk
+  - export LANG=en_US.UTF-8
+  - /usr/glibc-compat/bin/localedef -i en_US -f UTF-8 en_US.UTF-8
+  - /usr/glibc-compat/sbin/ldconfig /lib /usr/glibc/usr/lib
+  - echo "export LANG=$LANG" > /etc/profile.d/locale.sh
+  ##
+  ## Install Miniconda3 to install python 3.6
+  - export PYTHONDONTWRITEBYTECODE=1
+  - export CONDA_DIR=/opt/conda
+  - mkdir -p ${CONDA_DIR}
+  - chmod a+rwx /opt/conda
+  - curl -L "https://repo.anaconda.com/miniconda/Miniconda3-4.7.12.1-Linux-x86_64.sh" -o miniconda3.sh
+  - /bin/bash miniconda3.sh -f -b -p "$CONDA_DIR"
+  - source /opt/conda/etc/profile.d/conda.sh
+  - conda init
+  - mkdir -p /etc/profile.d
+  - ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh
+  - echo "source /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc
+  - conda create -n py36 python=3.6
+  - conda activate py36
+  ##
   ## Install project dependencies
   - curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py -o /tmp/get-poetry.py
+  - conda activate py36
   - python /tmp/get-poetry.py
   - source ${HOME}/.poetry/env
   - poetry config virtualenvs.in-project true
   - poetry run pip install --upgrade pip
   - poetry install -v --no-interaction
-  - pip freeze
+  - pip freeze -v
 
 stages:
   - code-test
