@@ -1,4 +1,5 @@
 # Project artifacts
+aws_batch_jobs.json
 example.db
 .vscode/
 

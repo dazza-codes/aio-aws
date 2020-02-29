@@ -16,6 +16,10 @@ thanks Mathew!  It has trivial changes for pep8 and black formatting.
 """
 
 
+# TODO: all of this might not work as expected without using aiobotocore
+#       - revise all of this to use aiobotocore
+
+
 import asyncio
 from json import dumps
 from os.path import join
