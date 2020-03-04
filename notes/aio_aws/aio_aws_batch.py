@@ -19,6 +19,65 @@
 Async AWS Batch
 ---------------
 
+In testing this, it's able to run and monitor 100s of jobs from a laptop with modest
+CPU/RAM resources.  It can recover from a crash by using a db-state, without re-running
+the same jobs (by jobName).  It should be able to scale to run 1000s of jobs.
+
+To run the example, the `notes.aio_aws.aio_aws_batch` module has a `main` that will run and
+manage about 5 live batch jobs (very small `sleep` jobs that don't cost much to run).  The
+job state is persisted to `aws_batch_jobs.json` and if it runs successfully, it will not
+run the jobs again; the [TinyDB](https://tinydb.readthedocs.io/en/latest/intro.html) is
+used to recover job state by `jobName`.
+
+```
+# setup the python virtualenv
+# check the main details and modify for a preferred batch queue/CE and AWS region
+
+$ ./notes/aio_aws/aio_aws_batch.py
+
+Test async batch jobs
+
+# wait a few minutes and watch the status messages
+# it submits and monitors the jobs until they complete
+# job status is saved and updated in `aws_batch_jobs.json`
+# when it's done, run it again and see that nothing is re-submitted
+
+$ ./notes/aio_aws/aio_aws_batch.py
+```
+
+If the job monitoring is halted for some reason (like `CNT-C`), it can recover from
+the db-state, e.g.
+```text
+$ ./notes/aio_aws/aio_aws_batch.py
+
+Test async batch jobs
+[INFO]  2020-03-05T14:51:53.372Z  aio-aws:<module>:485  AWS Batch job (test-sleep-job-0000) recovered from db
+[INFO]  2020-03-05T14:51:53.373Z  aio-aws:<module>:485  AWS Batch job (test-sleep-job-0001) recovered from db
+[INFO]  2020-03-05T14:51:53.373Z  aio-aws:<module>:485  AWS Batch job (test-sleep-job-0002) recovered from db
+[INFO]  2020-03-05T14:51:53.374Z  aio-aws:<module>:485  AWS Batch job (test-sleep-job-0003) recovered from db
+[INFO]  2020-03-05T14:51:53.374Z  aio-aws:<module>:485  AWS Batch job (test-sleep-job-0004) recovered from db
+[INFO]  2020-03-05T14:51:53.690Z  aio-aws:aio_batch_job_waiter:375  AWS Batch job (846d54d4-c3c3-4a3b-9101-646d78d3bbfb) status: RUNNABLE
+[INFO]  2020-03-05T14:51:53.692Z  aio-aws:aio_batch_job_waiter:375  AWS Batch job (dfce3461-9eab-4f5b-846c-6f223d593f6f) status: RUNNABLE
+[INFO]  2020-03-05T14:51:53.693Z  aio-aws:aio_batch_job_waiter:375  AWS Batch job (637e6b27-8d4d-4f45-b988-c00775461616) status: RUNNABLE
+[INFO]  2020-03-05T14:51:53.701Z  aio-aws:aio_batch_job_waiter:375  AWS Batch job (d9ac27c9-e7d3-49cd-8f53-c84a9b4c1750) status: RUNNABLE
+[INFO]  2020-03-05T14:51:53.732Z  aio-aws:aio_batch_job_waiter:375  AWS Batch job (7ebfe7c4-44a4-40d6-9eab-3708e334689d) status: RUNNABLE
+```
+
+The batch data is a [TinyDB](https://tinydb.readthedocs.io/en/latest/intro.html) json file, e.g.
+```
+$ python
+>>> import json
+>>> with open('aws_batch_jobs.json') as job_file:
+...     batch_data = json.load(job_file)
+...
+>>> len(batch_data['aws-batch-jobs'])
+5
+```
+
+For the demo to run quickly, most of the module settings are fit for fast jobs.  For
+much longer running jobs, there are functions that only submit jobs or check jobs and
+the settings should be changed for monitoring jobs to only check every 10 or 20 minutes.
+
 .. seealso::
     - https://aiobotocore.readthedocs.io/en/latest/
     - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/batch.html
@@ -52,8 +111,8 @@ from notes.aio_aws.logger import LOGGER
 
 from tinydb import TinyDB, Query
 
-TinyDB.DEFAULT_TABLE = 'aws-batch-jobs'
-TinyDB.DEFAULT_TABLE_KWARGS = {'cache_size': 0}
+TinyDB.DEFAULT_TABLE = "aws-batch-jobs"
+TinyDB.DEFAULT_TABLE_KWARGS = {"cache_size": 0}
 AWS_BATCH_DB_FILE = "aws_batch_jobs.json"
 AWS_BATCH_DB = TinyDB(AWS_BATCH_DB_FILE)
 
@@ -103,7 +162,7 @@ class AWSBatchJob:
     job_name: str
     job_definition: str
     job_queue: str
-    command: List[str]
+    command: List[str] = None
     depends_on: List[Dict] = None
     container_overrides: Dict = None
     job_id: Optional[str] = None
@@ -127,7 +186,8 @@ class AWSBatchJob:
         if self.container_overrides is None:
             self.container_overrides = {}
 
-        self.container_overrides.update({"command": self.command})
+        if self.command:
+            self.container_overrides.update({"command": self.command})
 
     @property
     def params(self):
@@ -245,7 +305,6 @@ async def aio_batch_job_submit(
         while tries < 10:
             tries += 1
             try:
-                await jitter("batch-job-submit", MIN_JITTER, MAX_JITTER)  # API throttle
                 params = job.params
                 LOGGER.info("AWS Batch job params: %s", params)
                 response = await client.submit_job(**params)
@@ -289,7 +348,6 @@ async def aio_batch_job_status(
         while tries < 10:
             tries += 1
             try:
-                await jitter("batch-job-status", MIN_JITTER, MAX_JITTER)  # API throttle
                 return await client.describe_jobs(jobs=jobs)
             except botocore.exceptions.ClientError as err:
                 error = err.response.get("Error", {})
@@ -325,7 +383,6 @@ async def aio_batch_job_terminate(
         while tries < 10:
             tries += 1
             try:
-                await jitter("batch-job-terminate", MIN_JITTER, MAX_JITTER)  # API throttle
                 LOGGER.info("AWS Batch job to terminate: %s, %s", job_id, reason)
                 response = await client.terminate_job(jobId=job_id, reason=reason)
                 LOGGER.info("AWS Batch job response: %s", response)
@@ -440,6 +497,8 @@ async def aio_batch_job_manager(
                 if re.match(r"Host EC2.*terminated", reason):
                     LOGGER.warning("AWS Batch job (%s) SPOT failure, run retry.", job.job_id)
                     job.reset()
+                    async with DB_SEMAPHORE:
+                        AWSBatchDB.save(job)  # TODO: use async-db
                     continue
             except KeyError:
                 pass
@@ -462,11 +521,10 @@ if __name__ == "__main__":
 
             # TODO: check if batch-CE exists or create it
             # TODO: check if batch-queue exists or create it
-
-            # TODO: use async database calls to update status
-            #       - test db-recovery from crashes
-            #       - consider ways to decouple job-submission from job-monitoring
-            #       - use async-db for state-machine management
+            # TODO: use async-db for state-machine management
+            #       - maybe aioredis with both jobName and jobId keys
+            #       - jobName key would just have a list of jobId values
+            # TODO: get job logs
 
             print()
             print("Test async batch jobs")
@@ -483,7 +541,7 @@ if __name__ == "__main__":
                     job_name = f"test-sleep-job-{i:04d}"
                     jobs_saved = AWSBatchDB.find_by_job_name(job_name)
                     if jobs_saved:
-                        job_data = jobs_saved[0]
+                        job_data = jobs_saved[0]  # TODO: find latest jobId?
                         batch_job = AWSBatchJob(**job_data)
                         LOGGER.info("AWS Batch job (%s) recovered from db", batch_job.job_name)
                         if batch_job.job_id and batch_job.status == "SUCCEEDED":
@@ -496,14 +554,14 @@ if __name__ == "__main__":
                             LOGGER.info(batch_job.job_description)
                             continue
                     else:
+                        # use 'container_overrides' dict for more options
                         batch_job = AWSBatchJob(
                             job_name=job_name,
                             job_definition="batch-dev",
                             job_queue="batch-dev",
                             command=["/bin/bash", "-c", "sleep 1 && echo slept1"],
                         )
-                    # # TODO: add batch_job to async-db (NoSQL-db)
-                    # #       - create job-managers only for jobs that need to be run
+
                     batch_task = loop.create_task(aio_batch_job_manager(batch_job, aio_client))
                     # # batch_task.add_done_callback(print_result)  # use callbacks
                     batch_tasks.append(batch_task)

@@ -26,14 +26,14 @@ import aioredis  # type: ignore
 
 
 async def run_aio_redis():
-    redis = await aioredis.create_redis_pool('redis://localhost')
+    redis = await aioredis.create_redis_pool("redis://localhost")
 
-    await redis.set('key', 'string-value')
-    bin_value = await redis.get('key')
-    assert bin_value == b'string-value'
+    await redis.set("key", "string-value")
+    bin_value = await redis.get("key")
+    assert bin_value == b"string-value"
 
-    str_value = await redis.get('key', encoding='utf-8')
-    assert str_value == 'string-value'
+    str_value = await redis.get("key", encoding="utf-8")
+    assert str_value == "string-value"
     print(str_value)
 
     redis.close()

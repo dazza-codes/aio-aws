@@ -1,4 +1,3 @@
-
 # Copyright 2020 Darren Weber
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,8 +18,7 @@ Test Asyncio AWS Batch
 This test suite uses a large suite of moto mocks for the AWS batch
 infrastructure. These infrastructure mocks are derived from the moto test
 suite for testing the batch client. The test infrastructure should be used
-according to the moto license. That license container_overrides any global license
-applied to my notes project.
+according to the moto license (Apache-2.0).
 
 .. seealso::
 
