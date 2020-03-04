@@ -41,11 +41,6 @@ MAX_POOL_CONNECTIONS = botocore.endpoint.MAX_POOL_CONNECTIONS
 #: ..seealso:: https://github.com/boto/botocore/blob/develop/botocore/config.py
 AIO_AWS_CONFIG = aiobotocore.config.AioConfig(max_pool_connections=MAX_POOL_CONNECTIONS)
 
-#: AWS asyncio session
-AIO_AWS_SESSION = aiobotocore.get_session()
-AIO_AWS_SESSION.user_agent_name = "aio-aws"
-AIO_AWS_SESSION.set_default_client_config(AIO_AWS_CONFIG)
-
 #: a semaphore to limit requests to the max client connections
 CLIENT_SEMAPHORE = asyncio.Semaphore(MAX_POOL_CONNECTIONS)
 
@@ -71,13 +66,22 @@ def aio_aws_session(
     """
     Get an asyncio AWS session
     :param aio_aws_config: an aiobotocore.config.AioConfig (default ``.AIO_AWS_CONFIG``)
-    :param loop: an asyncio.AbstractEventLoop (defaults to the asyncio default loop)
     :return: aiobotocore.session.AioSession
     """
     session = aiobotocore.get_session()
-    session.user_agent_name = "aiobotocore"
+    session.user_agent_name = "aio-aws"
     session.set_default_client_config(aio_aws_config)
     return session
+
+
+#: A default aio-aws session
+AIO_AWS_SESSION = aio_aws_session()
+
+# AIO_AWS_SESSION.full_config
+# AIO_AWS_SESSION.get_config_variable('region')
+# AIO_AWS_SESSION.get_scoped_config() is the same as:
+#     configs = AIO_AWS_SESSION.full_config
+#     configs['profiles'][AIO_AWS_SESSION.profile]
 
 
 async def delay(
@@ -123,7 +127,8 @@ def response_code(response):
 
 
 def response_success(response):
-    return response_code(response) == 200
+    code = response_code(response)
+    return code in [200, 204]
 
 
 if __name__ == "__main__":
