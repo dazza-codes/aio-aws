@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 from typing import List
 
 import aiobotocore
@@ -89,7 +90,7 @@ async def aio_s3_bucket(aio_s3_uri, aio_aws_s3_client) -> str:
     head = await aio_aws_s3_client.head_bucket(Bucket=s3_parts.bucket)
     assert response_success(head)
 
-    yield s3_parts.bucket
+    return s3_parts.bucket
 
 
 @pytest.fixture
@@ -103,7 +104,7 @@ async def aio_s3_buckets(aio_s3_bucket_name, aio_aws_s3_client) -> List[str]:
         assert response_success(head)
         bucket_names.append(bucket_name)
 
-    yield bucket_names
+    return bucket_names
 
 
 @pytest.fixture
@@ -122,7 +123,7 @@ async def aio_s3_object_uri(
     resp = await aio_aws_s3_client.head_object(Bucket=s3_parts.bucket, Key=s3_parts.key)
     assert response_success(resp)
 
-    yield aio_s3_uri
+    return aio_s3_uri
 
 
 def test_s3_parts(aio_s3_uri):
@@ -153,82 +154,50 @@ async def test_aio_s3_list_buckets(aio_aws_s3_client, aio_s3_buckets):
 
 
 @pytest.mark.asyncio
-async def test_aio_s3_bucket_head(
-    aio_s3_bucket, aio_aws_s3_client, aio_aws_session, mocker
-):
+async def test_aio_s3_bucket_head(aio_s3_bucket, aio_aws_s3_client):
     resp = await aio_aws_s3_client.head_bucket(Bucket=aio_s3_bucket)
     assert response_success(resp)
 
-    # ensure the session returns the mock s3 client
-    mocker.patch.object(
-        aiobotocore.session.AioClientCreator, "create_client", return_value=aio_aws_s3_client
-    )
-    head = await aio_s3_bucket_head(aio_s3_bucket, session=aio_aws_session)
+    head = await aio_s3_bucket_head(aio_s3_bucket, s3_client=aio_aws_s3_client)
     assert response_success(head)
     assert resp == head
 
 
 @pytest.mark.asyncio
-async def test_aio_s3_bucket_access(
-    aio_s3_bucket, aio_aws_s3_client, aio_aws_session, mocker
-):
-    # ensure the session returns the mock s3 client
-    mocker.patch.object(
-        aiobotocore.session.AioClientCreator, "create_client", return_value=aio_aws_s3_client
-    )
-    bucket_name, access = await aio_s3_bucket_access(aio_s3_bucket, session=aio_aws_session)
+async def test_aio_s3_bucket_access(aio_s3_bucket, aio_aws_s3_client):
+    bucket_name, access = await aio_s3_bucket_access(aio_s3_bucket, s3_client=aio_aws_s3_client)
     assert bucket_name == aio_s3_bucket
     assert access is True
 
 
 @pytest.mark.asyncio
-async def test_aio_s3_bucket_access_with_missing_bucket(
-    aio_s3_bucket, aio_aws_s3_client, aio_aws_session, mocker
-):
-    # ensure the session returns the mock s3 client
-    mocker.patch.object(
-        aiobotocore.session.AioClientCreator, "create_client", return_value=aio_aws_s3_client
-    )
+async def test_aio_s3_bucket_access_with_missing_bucket(aio_s3_bucket, aio_aws_s3_client):
     bucket = "missing_bucket"
-    bucket_name, access = await aio_s3_bucket_access(bucket, session=aio_aws_session)
+    bucket_name, access = await aio_s3_bucket_access(bucket, s3_client=aio_aws_s3_client)
     assert bucket_name == bucket
     assert access is False
 
 
 @pytest.mark.asyncio
-async def test_aio_s3_buckets_list(
-    aio_s3_buckets, aio_aws_s3_client, aio_aws_session, mocker
-):
-    # ensure the session returns the mock s3 client
-    mocker.patch.object(
-        aiobotocore.session.AioClientCreator, "create_client", return_value=aio_aws_s3_client
-    )
-    resp = await aio_s3_buckets_list(session=aio_aws_session)
+async def test_aio_s3_buckets_list(aio_s3_buckets, aio_aws_s3_client):
+    resp = await aio_s3_buckets_list(s3_client=aio_aws_s3_client)
     assert response_success(resp)
     buckets = [bucket["Name"] for bucket in resp["Buckets"]]
     assert buckets == aio_s3_buckets
 
 
-@pytest.mark.skip("RuntimeError: Session is closed - why?")
+@pytest.mark.skip("Problems with test loop vs. code loop for some reason - why?")
 @pytest.mark.asyncio
-async def test_aio_s3_buckets_access(
-    aio_s3_buckets, aio_aws_s3_client, aio_aws_session, mocker
-):
-    # ensure the session returns the mock s3 client
-    mocker.patch.object(
-        aiobotocore.session.AioClientCreator, "create_client", return_value=aio_aws_s3_client
-    )
-    result = await aio_s3_buckets_access(session=aio_aws_session)
+async def test_aio_s3_buckets_access(aio_s3_buckets, aio_aws_s3_client):
+    result = await aio_s3_buckets_access(aio_s3_buckets, s3_client=aio_aws_s3_client)
     assert result
     for bucket in aio_s3_buckets:
         assert result[bucket] is True
-    # RuntimeError: Session is closed - why?
-    assert aio_aws_session  # keep it alive
 
 
 @pytest.mark.asyncio
 async def test_aio_s3_object_head(
-    aio_s3_uri, aio_s3_bucket, aio_s3_object_text, aio_aws_s3_client, aio_aws_session, mocker
+    aio_s3_uri, aio_s3_bucket, aio_s3_object_text, aio_aws_s3_client
 ):
     s3_parts = S3Parts.parse_s3_uri(aio_s3_uri)
     resp = await aio_aws_s3_client.put_object(
@@ -241,26 +210,16 @@ async def test_aio_s3_object_head(
     resp = await aio_aws_s3_client.head_object(Bucket=s3_parts.bucket, Key=s3_parts.key)
     assert response_success(resp)
 
-    # ensure the session returns the mock s3 client
-    mocker.patch.object(
-        aiobotocore.session.AioClientCreator, "create_client", return_value=aio_aws_s3_client
-    )
-    head = await aio_s3_object_head(aio_s3_uri, session=aio_aws_session)
+    head = await aio_s3_object_head(aio_s3_uri, s3_client=aio_aws_s3_client)
     assert response_success(head)
     assert resp == head
 
 
 @pytest.mark.asyncio
-async def test_aio_s3_object_head_for_missing_object(
-    aio_s3_bucket, aio_aws_s3_client, aio_aws_session, mocker
-):
-    # ensure the session returns the mock s3 client
-    mocker.patch.object(
-        aiobotocore.session.AioClientCreator, "create_client", return_value=aio_aws_s3_client
-    )
+async def test_aio_s3_object_head_for_missing_object(aio_s3_bucket, aio_aws_s3_client):
     with pytest.raises(botocore.exceptions.ClientError) as err:
         s3_uri = f"s3://{aio_s3_bucket}/missing_key"
-        await aio_s3_object_head(s3_uri, session=aio_aws_session)
+        await aio_s3_object_head(s3_uri, s3_client=aio_aws_s3_client)
 
     msg = err.value.args[0]
     assert "HeadObject operation" in msg
