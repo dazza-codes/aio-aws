@@ -1,4 +1,3 @@
-
 # Copyright 2020 Darren Weber
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,11 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import List
 
 import pytest
 
 from notes.aio_aws.aio_aws import response_success
-from notes.aio_aws.aio_aws_s3 import run_aws_s3_seq_buckets
+from notes.aio_aws.aio_aws_s3 import aws_s3_buckets_access
 
 
 @pytest.fixture
@@ -33,22 +33,28 @@ def s3_bucket(s3_bucket_name, aws_s3_client) -> str:
     return s3_bucket_name
 
 
-def test_aws_sync_bucket_access(aws_s3_client, s3_bucket):
-    bucket_access = run_aws_s3_seq_buckets(aws_s3_client)
-    assert isinstance(bucket_access, dict)
-    assert bucket_access == {"moto_bucket": True}
+@pytest.fixture
+def s3_buckets(s3_bucket_name, aws_s3_client) -> List[str]:
+    bucket_names = []
+    for i in range(20):
+        bucket_name = f"{s3_bucket_name}_{i:02d}"
+        resp = aws_s3_client.create_bucket(Bucket=bucket_name)
+        assert response_success(resp)
+        head = aws_s3_client.head_bucket(Bucket=bucket_name)
+        assert response_success(head)
+        bucket_names.append(bucket_name)
+    return bucket_names
 
 
-@pytest.mark.skip
-@pytest.mark.s3_live
-def test_aws_sync_live_bucket_access():
-    bucket_access = run_aws_s3_seq_buckets()
-    assert isinstance(bucket_access, dict)
-    assert bucket_access
-
-
-def test_aws_bucket_access(aws_s3_client, s3_bucket):
+def test_s3_list_buckets(aws_s3_client, s3_buckets):
     resp = aws_s3_client.list_buckets()
     assert response_success(resp)
     bucket_names = [b["Name"] for b in resp["Buckets"]]
-    assert bucket_names == [s3_bucket]
+    assert bucket_names == s3_buckets
+
+
+def test_s3_buckets_access(aws_s3_client, s3_buckets):
+    buckets = aws_s3_buckets_access(aws_s3_client)
+    assert isinstance(buckets, dict)
+    for bucket in buckets:
+        assert buckets[bucket] is True

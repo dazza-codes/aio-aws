@@ -1,7 +1,10 @@
 # Match the python versions in:
 # - pyproject.toml
 
+# https://github.com/dazza-codes/docker-python
 # https://hub.docker.com/r/dazzacodes/docker-python
+# provides a base image using docker:19.03 with python 3.6;
+# the docker:19.03 image is based on alpine:3.11
 image: dazzacodes/docker-python:3.6
 
 services:
@@ -35,9 +38,12 @@ before_script:
   - export AWS_SECRET_ACCESS_KEY=dummy_AWS_SECRET_ACCESS_KEY
   - export AWS_ACCESS_KEY_ID=dummy_AWS_ACCESS_KEY_ID
   ##
-  ## Install build dependencies - do NOT add python3 here
-  - apk add --update --no-cache bash ca-certificates curl sed wget
-  - apk add --update --no-cache gcc git glib libstdc++ linux-headers make musl-dev postgresql-dev postgresql-libs
+  ## Install build dependencies - do NOT add python3 here - compare with
+  ## https://github.com/dazza-codes/docker-python/blob/master/Dockerfile-docker.template
+  - apk add --update --no-cache curl git glib libstdc++ make sed
+  ##
+  ## Install database dependencies
+  - apk add --update --no-cache musl-dev postgresql-dev postgresql-libs
   ##
   ## Install project dependencies
   - curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py -o /tmp/get-poetry.py
