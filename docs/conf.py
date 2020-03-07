@@ -24,7 +24,7 @@ copyright = "2020, Darren Weber"
 author = "Darren Weber"
 
 # The short X.Y version
-version = "0.1"
+version = "0.1.0"
 # The full version, including alpha/beta/rc tags
 release = "0.1.0"
 
@@ -78,7 +78,18 @@ master_doc = "index"
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = "sphinx"
+# >>> from pygments.styles import STYLE_MAP
+# >>> sorted(STYLE_MAP.keys())
+# ['abap', 'algol', 'algol_nu', 'arduino', 'autumn', 'borland', 'bw', 'colorful',
+# 'default', 'emacs', 'friendly', 'fruity', 'igor', 'inkpot', 'lovelace', 'manni',
+# 'monokai', 'murphy', 'native', 'paraiso-dark', 'paraiso-light', 'pastie', 'perldoc',
+# 'rainbow_dash', 'rrt', 'sas', 'solarized-dark', 'solarized-light',
+# 'stata', 'stata-dark', 'stata-light', 'tango', 'trac', 'vim', 'vs', 'xcode']
+#
+# short-list and last one wins:
+pygments_style = "solarized-light"
+pygments_style = "stata-light"
+pygments_style = "tango"  # pref
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -86,7 +97,8 @@ pygments_style = "sphinx"
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = "nature"
+# html_theme = "nature"
+html_theme = "sphinx_rtd_theme"
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
