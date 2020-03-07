@@ -88,7 +88,6 @@ import botocore.exceptions  # type: ignore
 import botocore.session  # type: ignore
 from dataclasses import dataclass
 
-from notes.aio_aws.aio_aws import AIO_AWS_SESSION
 from notes.aio_aws.aio_aws import aio_aws_session
 from notes.aio_aws.aio_aws import CLIENT_SEMAPHORE
 from notes.aio_aws.aio_aws import jitter
@@ -139,7 +138,7 @@ def handle_head_error_code(
     return None
 
 
-def aws_s3_buckets_access(s3_client: botocore.client.BaseClient = None,) -> Dict[str, bool]:
+def aws_s3_buckets_access(s3_client: botocore.client.BaseClient) -> Dict[str, bool]:
     """
     Sequential, synchronous approach to list all s3 buckets
     and issue a HEAD request to check if access is allowed.
@@ -171,58 +170,57 @@ def aws_s3_buckets_access(s3_client: botocore.client.BaseClient = None,) -> Dict
 
 async def aio_s3_bucket_head(
     bucket_name: str,
-    session: aiobotocore.session.AioSession = AIO_AWS_SESSION,
+    s3_client: aiobotocore.client.AioBaseClient,
     sem: asyncio.Semaphore = CLIENT_SEMAPHORE,
 ) -> Dict:
     """
     Asynchronous coroutine to issue a HEAD request for s3 bucket.
 
     :param bucket_name: an s3 bucket name
-    :param session: an aiobotocore session object
+    :param s3_client: an aiobotocore.client.AioBaseClient for s3
     :param sem: an asyncio.Semaphore to limit the number of active client connections
     :return: a response to a HEAD request
     :raises: botocore.exceptions.ClientError
     """
     async with sem:
-        async with session.create_client("s3") as s3_client:
-            tries = 0
-            while tries < 10:
-                tries += 1
+        tries = 0
+        while tries < 10:
+            tries += 1
 
-                try:
-                    LOGGER.debug("AWS S3 bucket poke: %s", bucket_name)
-                    response = await s3_client.head_bucket(Bucket=bucket_name)
-                    LOGGER.debug("AWS S3 bucket poke: %s", response)
-                    return response
+            try:
+                LOGGER.debug("AWS S3 bucket poke: %s", bucket_name)
+                response = await s3_client.head_bucket(Bucket=bucket_name)
+                LOGGER.debug("AWS S3 bucket poke: %s", response)
+                return response
 
-                except botocore.exceptions.ClientError as err:
-                    LOGGER.debug("AWS S3 bucket poke error: %s", err.response)
-                    err_code = err.response.get("Error", {}).get("Code")
-                    if err_code == "TooManyRequestsException":
-                        if tries < 10:
-                            await jitter("s3-bucket-poke", MIN_JITTER, MAX_JITTER)
-                        continue  # allow it to retry, if possible
-                    else:
-                        raise
-            else:
-                raise RuntimeError("AWS S3 bucket poke exceeded retries")
+            except botocore.exceptions.ClientError as err:
+                LOGGER.debug("AWS S3 bucket poke error: %s", err.response)
+                err_code = err.response.get("Error", {}).get("Code")
+                if err_code == "TooManyRequestsException":
+                    if tries < 10:
+                        await jitter("s3-bucket-poke", MIN_JITTER, MAX_JITTER)
+                    continue  # allow it to retry, if possible
+                else:
+                    raise
+        else:
+            raise RuntimeError("AWS S3 bucket poke exceeded retries")
 
 
 async def aio_s3_bucket_access(
     bucket_name: str,
-    session: aiobotocore.session.AioSession = AIO_AWS_SESSION,
+    s3_client: aiobotocore.client.AioBaseClient,
     sem: asyncio.Semaphore = CLIENT_SEMAPHORE,
 ) -> Tuple[str, bool]:
     """
     Asynchronous coroutine to issue a HEAD request to check if s3 bucket access is allowed.
 
     :param bucket_name: an s3 bucket name
-    :param session: an aiobotocore session object
+    :param s3_client: an aiobotocore.client.AioBaseClient for s3
     :param sem: an asyncio.Semaphore to limit the number of active client connections
     :return: a tuple of (bucket_name: str, access: bool)
     """
     try:
-        head = await aio_s3_bucket_head(bucket_name, session, sem)
+        head = await aio_s3_bucket_head(bucket_name, s3_client, sem)
 
         if response_success(head):
             return bucket_name, True
@@ -237,44 +235,42 @@ async def aio_s3_bucket_access(
 
 
 async def aio_s3_buckets_list(
-    session: aiobotocore.session.AioSession = AIO_AWS_SESSION,
-    sem: asyncio.Semaphore = CLIENT_SEMAPHORE,
+    s3_client: aiobotocore.client.AioBaseClient, sem: asyncio.Semaphore = CLIENT_SEMAPHORE,
 ) -> Dict:
     """
     Asynchronous coroutine to list all buckets.
 
-    :param session: an aiobotocore session object
+    :param s3_client: an aiobotocore.client.AioBaseClient for s3
     :param sem: an asyncio.Semaphore to limit the number of active client connections
     :return: a response to a ListBuckets request
     """
     async with sem:
-        async with session.create_client("s3") as s3_client:
-            tries = 0
-            while tries < 10:
-                tries += 1
+        tries = 0
+        while tries < 10:
+            tries += 1
 
-                try:
-                    LOGGER.debug("AWS S3 buckets list")
-                    response = await s3_client.list_buckets()
-                    LOGGER.debug("AWS S3 buckets list: %s", response)
-                    return response
+            try:
+                LOGGER.debug("AWS S3 buckets list")
+                response = await s3_client.list_buckets()
+                LOGGER.debug("AWS S3 buckets list: %s", response)
+                return response
 
-                except botocore.exceptions.ClientError as err:
-                    LOGGER.debug("AWS S3 buckets list error: %s", err.response)
-                    err_code = err.response.get("Error", {}).get("Code")
-                    if err_code == "TooManyRequestsException":
-                        if tries < 10:
-                            await jitter("s3-buckets-list", MIN_JITTER, MAX_JITTER)
-                        continue  # allow it to retry, if possible
-                    else:
-                        raise
-            else:
-                raise RuntimeError("AWS S3 buckets list exceeded retries")
+            except botocore.exceptions.ClientError as err:
+                LOGGER.debug("AWS S3 buckets list error: %s", err.response)
+                err_code = err.response.get("Error", {}).get("Code")
+                if err_code == "TooManyRequestsException":
+                    if tries < 10:
+                        await jitter("s3-buckets-list", MIN_JITTER, MAX_JITTER)
+                    continue  # allow it to retry, if possible
+                else:
+                    raise
+        else:
+            raise RuntimeError("AWS S3 buckets list exceeded retries")
 
 
 async def aio_s3_buckets_access(
-    buckets: List[str] = None,
-    session: aiobotocore.session.AioSession = AIO_AWS_SESSION,
+    buckets: List[str],
+    s3_client: aiobotocore.client.AioBaseClient,
     sem: asyncio.Semaphore = CLIENT_SEMAPHORE,
 ) -> Dict[str, bool]:
     """
@@ -283,99 +279,76 @@ async def aio_s3_buckets_access(
 
     :param buckets: a list of bucket names to check; the default is
                     to issue a request for all buckets in the session region
-    :param session: an aiobotocore session object
+    :param s3_client: an aiobotocore.client.AioBaseClient for s3
     :param sem: an asyncio.Semaphore to limit the number of active client connections
     :return: dict of {bucket_name: str, access: bool}
     """
+    access_coroutines = [aio_s3_bucket_access(bucket, s3_client, sem) for bucket in buckets]
+    results = await asyncio.gather(*access_coroutines)
 
-    if buckets is None:
-        response = await aio_s3_buckets_list(session, sem)
-        if not response_success(response):
-            LOGGER.error("AWS S3 buckets list failure")
-            return {}
-        buckets = [bucket["Name"] for bucket in response["Buckets"]]
+    bucket_access = {}
+    for result in results:
+        bucket, access = result
+        bucket_access[bucket] = access
 
-    loop = asyncio.get_event_loop()
-    bucket_tasks = []
-    for bucket_name in buckets:
-        bucket_task = loop.create_task(aio_s3_bucket_access(bucket_name, session, sem))
-        bucket_tasks.append(bucket_task)
-
-    await asyncio.gather(*bucket_tasks)
-
-    access_buckets = {}
-    for bucket_task in bucket_tasks:
-        try:
-            bucket_task.exception()
-        except (asyncio.CancelledError, asyncio.InvalidStateError) as err:
-            print(err)
-            continue
-
-        if bucket_task.done():
-            name, access = bucket_task.result()
-            access_buckets[name] = access
-
-    return access_buckets
+    return bucket_access
 
 
 async def aio_s3_object_head(
     s3_uri: str,
-    session: aiobotocore.session.AioSession = AIO_AWS_SESSION,
+    s3_client: aiobotocore.client.AioBaseClient,
     sem: asyncio.Semaphore = CLIENT_SEMAPHORE,
 ) -> Dict:
     """
     Asynchronous coroutine to issue a HEAD request for s3 object.
 
     :param s3_uri: an s3 URI
-    :param session: an aiobotocore session object
+    :param s3_client: an aiobotocore.client.AioBaseClient for s3
     :param sem: an asyncio.Semaphore to limit the number of active client connections
     :return: a response to a HEAD request
     :raises: botocore.exceptions.ClientError
     """
     s3_parts = S3Parts.parse_s3_uri(s3_uri)
     async with sem:
-        async with session.create_client("s3") as s3_client:
-            tries = 0
-            while tries < 10:
-                tries += 1
+        tries = 0
+        while tries < 10:
+            tries += 1
 
-                try:
-                    LOGGER.debug("AWS S3 URI poke: %s", s3_uri)
-                    response = await s3_client.head_object(
-                        Bucket=s3_parts.bucket, Key=s3_parts.key
-                    )
-                    LOGGER.debug("AWS S3 URI poke: %s", response)
-                    return response
+            try:
+                LOGGER.debug("AWS S3 URI poke: %s", s3_uri)
+                response = await s3_client.head_object(Bucket=s3_parts.bucket, Key=s3_parts.key)
+                LOGGER.debug("AWS S3 URI poke: %s", response)
+                return response
 
-                except botocore.exceptions.ClientError as err:
-                    LOGGER.debug("AWS S3 URI poke error: %s", err.response)
-                    err_code = err.response.get("Error", {}).get("Code")
-                    if err_code == "TooManyRequestsException":
-                        if tries < 10:
-                            await jitter("s3-poke", MIN_JITTER, MAX_JITTER)
-                        continue  # allow it to retry, if possible
-                    else:
-                        raise
-            else:
-                raise RuntimeError("AWS S3 poke exceeded retries")
+            except botocore.exceptions.ClientError as err:
+                LOGGER.debug("AWS S3 URI poke error: %s", err.response)
+                err_code = err.response.get("Error", {}).get("Code")
+                if err_code == "TooManyRequestsException":
+                    if tries < 10:
+                        await jitter("s3-poke", MIN_JITTER, MAX_JITTER)
+                    continue  # allow it to retry, if possible
+                else:
+                    raise
+        else:
+            raise RuntimeError("AWS S3 poke exceeded retries")
 
 
 async def aio_s3_object_access(
     s3_uri: str,
-    session: aiobotocore.session.AioSession = AIO_AWS_SESSION,
+    s3_client: aiobotocore.client.AioBaseClient,
     sem: asyncio.Semaphore = CLIENT_SEMAPHORE,
 ) -> Tuple[str, bool]:
     """
     Asynchronous coroutine to issue a HEAD request to check if s3 object access is allowed.
 
     :param s3_uri: an s3 URI
-    :param session: an aiobotocore session object
+    :param s3_client: an aiobotocore.client.AioBaseClient for s3
     :param sem: an asyncio.Semaphore to limit the number of active client connections
     :return: a tuple of (s3_uri: str, access: bool)
     """
     try:
 
-        head = await aio_s3_object_head(s3_uri, session, sem)
+        head = await aio_s3_object_head(s3_uri, s3_client, sem)
 
         if response_success(head):
             return s3_uri, True
@@ -392,7 +365,7 @@ async def aio_s3_object_access(
 async def aio_s3_objects_list(
     bucket_name: str,
     bucket_prefix: str,
-    session: aiobotocore.session.AioSession = AIO_AWS_SESSION,
+    s3_client: aiobotocore.client.AioBaseClient,
     sem: asyncio.Semaphore = CLIENT_SEMAPHORE,
 ) -> List[Dict]:
     """
@@ -400,7 +373,8 @@ async def aio_s3_objects_list(
 
     :param bucket_name: param passed to s3_client.list_objects_v2 'Bucket'
     :param bucket_prefix: param passed to s3_client.list_objects_v2 'Prefix'
-    :param session: an aiobotocore session object
+    :param s3_client: an aiobotocore.client.AioBaseClient for s3
+    :param sem: an asyncio.Semaphore to limit the number of active client connections
     :return: dict of {bucket_name: str, access: bool}
 
     .. seealso:
@@ -408,65 +382,64 @@ async def aio_s3_objects_list(
     """
 
     async with sem:
-        async with session.create_client("s3") as s3_client:
-            tries = 0
-            while tries < 10:
-                tries += 1
+        tries = 0
+        while tries < 10:
+            tries += 1
 
-                try:
-                    LOGGER.debug(
-                        "AWS S3 list objects, get first page: %s/%s", bucket_name, bucket_prefix
-                    )
+            try:
+                LOGGER.debug(
+                    "AWS S3 list objects, get first page: %s/%s", bucket_name, bucket_prefix
+                )
 
-                    response = await s3_client.list_objects_v2(
-                        Bucket=bucket_name, Prefix=bucket_prefix
-                    )
-                    LOGGER.debug("AWS S3 list objects OK? %s", response_success(response))
+                response = await s3_client.list_objects_v2(
+                    Bucket=bucket_name, Prefix=bucket_prefix
+                )
+                LOGGER.debug("AWS S3 list objects OK? %s", response_success(response))
 
-                    s3_objects = []
-                    while True:
-                        if response_success(response):
-                            s3_objects += response["Contents"]
+                s3_objects = []
+                while True:
+                    if response_success(response):
+                        s3_objects += response["Contents"]
 
-                            if response["IsTruncated"]:
-                                LOGGER.debug(
-                                    "AWS S3 list objects, get next page: %s/%s",
-                                    bucket_name,
-                                    bucket_prefix,
-                                )
-                                next_token = response["NextContinuationToken"]
-                                response = await s3_client.list_objects_v2(
-                                    Bucket=bucket_name,
-                                    Prefix=bucket_prefix,
-                                    ContinuationToken=next_token,
-                                )
-                                LOGGER.debug(
-                                    "AWS S3 list objects OK? %s", response_success(response),
-                                )
-                                continue
-                            else:
-                                break
+                        if response["IsTruncated"]:
+                            LOGGER.debug(
+                                "AWS S3 list objects, get next page: %s/%s",
+                                bucket_name,
+                                bucket_prefix,
+                            )
+                            next_token = response["NextContinuationToken"]
+                            response = await s3_client.list_objects_v2(
+                                Bucket=bucket_name,
+                                Prefix=bucket_prefix,
+                                ContinuationToken=next_token,
+                            )
+                            LOGGER.debug(
+                                "AWS S3 list objects OK? %s", response_success(response),
+                            )
+                            continue
                         else:
                             break
-
-                    return s3_objects
-
-                except botocore.exceptions.ClientError as err:
-                    LOGGER.debug("AWS S3 list objects error: %s", err.response)
-                    err_code = err.response.get("Error", {}).get("Code")
-                    if err_code == "TooManyRequestsException":
-                        if tries < 10:
-                            await jitter("s3-list-objects", MIN_JITTER, MAX_JITTER)
-                        continue  # allow it to retry, if possible
                     else:
-                        raise
-            else:
-                raise RuntimeError("AWS S3 list objects exceeded retries")
+                        break
+
+                return s3_objects
+
+            except botocore.exceptions.ClientError as err:
+                LOGGER.debug("AWS S3 list objects error: %s", err.response)
+                err_code = err.response.get("Error", {}).get("Code")
+                if err_code == "TooManyRequestsException":
+                    if tries < 10:
+                        await jitter("s3-list-objects", MIN_JITTER, MAX_JITTER)
+                    continue  # allow it to retry, if possible
+                else:
+                    raise
+        else:
+            raise RuntimeError("AWS S3 list objects exceeded retries")
 
 
 async def aio_s3_objects_access(
     s3_uris: List[str],
-    session: aiobotocore.session.AioSession = AIO_AWS_SESSION,
+    s3_client: aiobotocore.client.AioBaseClient,
     sem: asyncio.Semaphore = CLIENT_SEMAPHORE,
 ) -> Dict[str, bool]:
     """
@@ -474,32 +447,19 @@ async def aio_s3_objects_access(
     s3 objects to check if each s3_object allows access.
 
     :param s3_uris: a list of s3 uris in the form 's3://bucket-name/key'
-    :param session: an aiobotocore session object
+    :param s3_client: an aiobotocore.client.AioBaseClient for s3
     :param sem: an asyncio.Semaphore to limit the number of active client connections
     :return: dict of {s3_uri: str, access: bool}
     """
+    access_coroutines = [aio_s3_object_access(s3_uri, s3_client, sem) for s3_uri in s3_uris]
+    results = await asyncio.gather(*access_coroutines)
 
-    s3_object_tasks = []
-    loop = asyncio.get_event_loop()
-    for s3_uri in s3_uris:
-        object_task = loop.create_task(aio_s3_object_access(s3_uri, session, sem))
-        s3_object_tasks.append(object_task)
+    object_access = {}
+    for result in results:
+        s3_uri, access = result
+        object_access[s3_uri] = access
 
-    await asyncio.gather(*s3_object_tasks)
-
-    access_objects = {}
-    for s3_object_task in s3_object_tasks:
-        try:
-            s3_object_task.exception()
-        except (asyncio.CancelledError, asyncio.InvalidStateError) as err:
-            print(err)
-            continue
-
-        if s3_object_task.done():
-            name, access = s3_object_task.result()
-            access_objects[name] = access
-
-    return access_objects
+    return object_access
 
 
 if __name__ == "__main__":
@@ -519,22 +479,24 @@ if __name__ == "__main__":
     noaa_goes_bucket = "noaa-goes16"
     noaa_prefix = "ABI-L2-ADPC/2019"  # use a prior year for stable results
 
-    loop = asyncio.get_event_loop()
+    main_loop = asyncio.get_event_loop()
+
+    # Use a single client with a larger connection pool.
+    # Manage closing the client only after everything is done.
+    # Passing a client to functions makes unit tests easier.
+    MAX_CONNECTIONS = 20
+    aio_semaphore = asyncio.Semaphore(MAX_CONNECTIONS)
+    aio_config = aiobotocore.config.AioConfig(max_pool_connections=MAX_CONNECTIONS)
+    aio_session = aio_aws_session(aio_config)
+    aio_client = aio_session.create_client("s3")
 
     try:
-
-        # The system seems to be more efficient when limiting
-        # the client connection pool for each client to 1 connection,
-        # and using a higher number of clients (via semaphore)
-        aio_config = aiobotocore.config.AioConfig(max_pool_connections=1)
-        client_session = aio_aws_session(aio_config)
-        client_semaphore = asyncio.Semaphore(60)
 
         print()
         print("aio-aws check an s3 object that exists")
         s3_uri = f"s3://{noaa_goes_bucket}/index.html"
-        head_response = loop.run_until_complete(
-            aio_s3_object_head(s3_uri, session=client_session, sem=client_semaphore)
+        head_response = main_loop.run_until_complete(
+            aio_s3_object_head(s3_uri, s3_client=aio_client, sem=aio_semaphore)
         )
         print(f"GET HEAD {s3_uri} -> {head_response}\n")
 
@@ -542,8 +504,8 @@ if __name__ == "__main__":
         print("aio-aws check an s3 object that is missing; it raises.")
         try:
             s3_uri = f"s3://{noaa_goes_bucket}/missing.html"
-            loop.run_until_complete(
-                aio_s3_object_head(s3_uri, session=client_session, sem=client_semaphore)
+            main_loop.run_until_complete(
+                aio_s3_object_head(s3_uri, s3_client=aio_client, sem=aio_semaphore)
             )
         except botocore.exceptions.ClientError as err:
             err_code = err.response.get("Error", {}).get("Code")
@@ -557,22 +519,26 @@ if __name__ == "__main__":
         print()
         print("aio-aws find all buckets that allow access.")
         start = time.perf_counter()
-        aio_buckets = loop.run_until_complete(
-            aio_s3_buckets_access(session=client_session, sem=client_semaphore)
+        buckets_response = main_loop.run_until_complete(
+            aio_s3_buckets_list(s3_client=aio_client, sem=aio_semaphore)
+        )
+        s3_buckets = [bucket["Name"] for bucket in buckets_response["Buckets"]]
+        aio_bucket_access = main_loop.run_until_complete(
+            aio_s3_buckets_access(s3_buckets, s3_client=aio_client, sem=aio_semaphore)
         )
         end = time.perf_counter() - start
-        summary_accessible_buckets(aio_buckets)
+        summary_accessible_buckets(aio_bucket_access)
         print(f"finished in {end:0.2f} seconds.\n")
 
         print()
         print("aio-aws collection of all objects in a bucket-prefix.")
         start = time.perf_counter()
-        aio_s3_objects = loop.run_until_complete(
+        aio_s3_objects = main_loop.run_until_complete(
             aio_s3_objects_list(
                 bucket_name=noaa_goes_bucket,
                 bucket_prefix=noaa_prefix,
-                session=client_session,
-                sem=client_semaphore,
+                s3_client=aio_client,
+                sem=aio_semaphore,
             )
         )
         aio_s3_uris = [f"s3://{noaa_goes_bucket}/{obj['Key']}" for obj in aio_s3_objects]
@@ -585,30 +551,30 @@ if __name__ == "__main__":
         print()
         print("aio-aws checks for access to all objects in a bucket-prefix.")
         start = time.perf_counter()
-        aio_s3_access = loop.run_until_complete(
-            aio_s3_objects_access(
-                s3_uris=aio_s3_uris, session=client_session, sem=client_semaphore
-            )
+        aio_s3_access = main_loop.run_until_complete(
+            aio_s3_objects_access(s3_uris=aio_s3_uris, s3_client=aio_client, sem=aio_semaphore)
         )
         print(f"checked access to {len(aio_s3_access)} s3 objects")
         end = time.perf_counter() - start
         print(f"finished in {end:0.2f} seconds.\n")
 
     finally:
-        loop.stop()
-        loop.close()
+        main_loop.run_until_complete(aio_client.close())
+        main_loop.stop()
+        main_loop.close()
 
-    run_seq = False
+    run_seq = True
     if run_seq:
         print()
         print("aws-sequential find all buckets that allow access.")
         start = time.perf_counter()
-        session = botocore.session.get_session()
-        s3_client = session.create_client("s3")
-        s3_buckets = aws_s3_buckets_access(s3_client)
+        boto_session = botocore.session.get_session()
+        boto_client = boto_session.create_client("s3")
+        boto_bucket_access = aws_s3_buckets_access(boto_client)
         end = time.perf_counter() - start
-        summary_accessible_buckets(s3_buckets)
+        summary_accessible_buckets(boto_bucket_access)
         print(f"finished in {end:0.2f} seconds.\n")
+        assert boto_bucket_access == aio_bucket_access
 
         print()
         print("aws-sequential collection for all objects in a bucket-prefix")

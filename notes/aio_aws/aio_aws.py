@@ -24,6 +24,7 @@ Async AWS Settings
 """
 
 import asyncio
+import logging
 import random
 
 import aiobotocore.client  # type: ignore
@@ -70,6 +71,7 @@ def aio_aws_session(
     """
     session = aiobotocore.get_session()
     session.user_agent_name = "aio-aws"
+    # session.set_stream_logger("aio-aws")  # for debugging
     session.set_default_client_config(aio_aws_config)
     return session
 
@@ -82,6 +84,38 @@ AIO_AWS_SESSION = aio_aws_session()
 # AIO_AWS_SESSION.get_scoped_config() is the same as:
 #     configs = AIO_AWS_SESSION.full_config
 #     configs['profiles'][AIO_AWS_SESSION.profile]
+
+# TODO: consider ways to auto-wrap client services?
+#       - explore function decorators for:
+#         - using a client semaphore
+#         - to handle client exceptions for too-many-requests
+# AIO_AWS_SESSION.get_available_services()  # iterate on these
+# model = AIO_AWS_SESSION.get_service_model('batch')
+# model.operation_names  # like 'DescribeJobs'
+# op = model.operation_model('DescribeJobs')
+# >>> op.input_shape
+# <StructureShape(DescribeJobsRequest)>
+# >>> op.output_shape
+# <StructureShape(DescribeJobsResponse)>
+# >>> op.input_shape.members
+# OrderedDict([('jobs', <ListShape(StringList)>)])
+# >>> op.input_shape.required_members
+# ['jobs']
+
+
+async def aio_client(
+    service_name: str, aio_aws_config: aiobotocore.config.AioConfig = AIO_AWS_CONFIG, **kwargs
+):
+    """
+    Get an asyncio AWS client with an option to provide a client-specific config and
+    additional kwargs as passed through to `aio_aws_session().create_client()`.
+
+    :param service_name: an AWS service for a client, like "s3", try
+            :py:meth:`AIO_AWS_SESSION.get_available_services()`
+    :param aio_aws_config: an aiobotocore.config.AioConfig (default ``.AIO_AWS_CONFIG``)
+    :return: aiobotocore.client.AioBaseClient
+    """
+    return aio_aws_session().create_client(service_name, config=aio_aws_config, **kwargs)
 
 
 async def delay(
