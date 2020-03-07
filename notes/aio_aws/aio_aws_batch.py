@@ -16,72 +16,131 @@
 # limitations under the License.
 
 """
-Async AWS Batch
----------------
+AioAWS Batch
+============
 
 In testing this, it's able to run and monitor 100s of jobs from a laptop with modest
 CPU/RAM resources.  It can recover from a crash by using a db-state, without re-running
 the same jobs (by jobName).  It should be able to scale to run 1000s of jobs.
 
-To run the example, the `notes.aio_aws.aio_aws_batch` module has a `main` that will run and
-manage about 5 live batch jobs (very small `sleep` jobs that don't cost much to run).  The
-job state is persisted to `aws_batch_jobs.json` and if it runs successfully, it will not
+To run the example, the ``notes.aio_aws.aio_aws_batch`` module has a ``main`` that will run and
+manage about 5 live batch jobs (very small ``sleep`` jobs that don't cost much to run).  The
+job state is persisted to ``aws_batch_jobs.json`` and if it runs successfully, it will not
 run the jobs again; the [TinyDB](https://tinydb.readthedocs.io/en/latest/intro.html) is
-used to recover job state by `jobName`.
+used to recover job state by ``jobName``.
 
-```
-# setup the python virtualenv
-# check the main details and modify for a preferred batch queue/CE and AWS region
+.. code-block::shell
 
-$ ./notes/aio_aws/aio_aws_batch.py
+    # setup the python virtualenv
+    # check the main details and modify for a preferred batch queue/CE and AWS region
 
-Test async batch jobs
+    $ ./notes/aio_aws/aio_aws_batch.py
 
-# wait a few minutes and watch the status messages
-# it submits and monitors the jobs until they complete
-# job status is saved and updated in `aws_batch_jobs.json`
-# when it's done, run it again and see that nothing is re-submitted
+    Test async batch jobs
 
-$ ./notes/aio_aws/aio_aws_batch.py
-```
+    # wait a few minutes and watch the status messages
+    # it submits and monitors the jobs until they complete
+    # job status is saved and updated in `aws_batch_jobs.json`
+    # when it's done, run it again and see that nothing is re-submitted
 
-If the job monitoring is halted for some reason (like `CNT-C`), it can recover from
+    $ ./notes/aio_aws/aio_aws_batch.py
+
+If the job monitoring is halted for some reason (like ``CNT-C``), it can recover from
 the db-state, e.g.
-```text
-$ ./notes/aio_aws/aio_aws_batch.py
 
-Test async batch jobs
-[INFO]  2020-03-05T14:51:53.372Z  aio-aws:<module>:485  AWS Batch job (test-sleep-job-0000) recovered from db
-[INFO]  2020-03-05T14:51:53.373Z  aio-aws:<module>:485  AWS Batch job (test-sleep-job-0001) recovered from db
-[INFO]  2020-03-05T14:51:53.373Z  aio-aws:<module>:485  AWS Batch job (test-sleep-job-0002) recovered from db
-[INFO]  2020-03-05T14:51:53.374Z  aio-aws:<module>:485  AWS Batch job (test-sleep-job-0003) recovered from db
-[INFO]  2020-03-05T14:51:53.374Z  aio-aws:<module>:485  AWS Batch job (test-sleep-job-0004) recovered from db
-[INFO]  2020-03-05T14:51:53.690Z  aio-aws:aio_batch_job_waiter:375  AWS Batch job (846d54d4-c3c3-4a3b-9101-646d78d3bbfb) status: RUNNABLE
-[INFO]  2020-03-05T14:51:53.692Z  aio-aws:aio_batch_job_waiter:375  AWS Batch job (dfce3461-9eab-4f5b-846c-6f223d593f6f) status: RUNNABLE
-[INFO]  2020-03-05T14:51:53.693Z  aio-aws:aio_batch_job_waiter:375  AWS Batch job (637e6b27-8d4d-4f45-b988-c00775461616) status: RUNNABLE
-[INFO]  2020-03-05T14:51:53.701Z  aio-aws:aio_batch_job_waiter:375  AWS Batch job (d9ac27c9-e7d3-49cd-8f53-c84a9b4c1750) status: RUNNABLE
-[INFO]  2020-03-05T14:51:53.732Z  aio-aws:aio_batch_job_waiter:375  AWS Batch job (7ebfe7c4-44a4-40d6-9eab-3708e334689d) status: RUNNABLE
-```
+.. code-block::shell
+
+    $ ./notes/aio_aws/aio_aws_batch.py
+
+    Test async batch jobs
+    [INFO]  2020-03-05T14:51:53.372Z  aio-aws:<module>:485  AWS Batch job (test-sleep-job-0000) recovered from db
+    [INFO]  2020-03-05T14:51:53.373Z  aio-aws:<module>:485  AWS Batch job (test-sleep-job-0001) recovered from db
+    [INFO]  2020-03-05T14:51:53.373Z  aio-aws:<module>:485  AWS Batch job (test-sleep-job-0002) recovered from db
+    [INFO]  2020-03-05T14:51:53.374Z  aio-aws:<module>:485  AWS Batch job (test-sleep-job-0003) recovered from db
+    [INFO]  2020-03-05T14:51:53.374Z  aio-aws:<module>:485  AWS Batch job (test-sleep-job-0004) recovered from db
+    [INFO]  2020-03-05T14:51:53.690Z  aio-aws:aio_batch_job_waiter:375  AWS Batch job (846d54d4-c3c3-4a3b-9101-646d78d3bbfb) status: RUNNABLE
+    [INFO]  2020-03-05T14:51:53.692Z  aio-aws:aio_batch_job_waiter:375  AWS Batch job (dfce3461-9eab-4f5b-846c-6f223d593f6f) status: RUNNABLE
+    [INFO]  2020-03-05T14:51:53.693Z  aio-aws:aio_batch_job_waiter:375  AWS Batch job (637e6b27-8d4d-4f45-b988-c00775461616) status: RUNNABLE
+    [INFO]  2020-03-05T14:51:53.701Z  aio-aws:aio_batch_job_waiter:375  AWS Batch job (d9ac27c9-e7d3-49cd-8f53-c84a9b4c1750) status: RUNNABLE
+    [INFO]  2020-03-05T14:51:53.732Z  aio-aws:aio_batch_job_waiter:375  AWS Batch job (7ebfe7c4-44a4-40d6-9eab-3708e334689d) status: RUNNABLE
 
 The batch data is a [TinyDB](https://tinydb.readthedocs.io/en/latest/intro.html) json file, e.g.
-```
-$ python
->>> import json
->>> with open('aws_batch_jobs.json') as job_file:
-...     batch_data = json.load(job_file)
-...
->>> len(batch_data['aws-batch-jobs'])
-5
-```
+
+.. code-block::shell
+
+    $ python
+    >>> import json
+    >>> with open('aws_batch_jobs.json') as job_file:
+    ...     batch_data = json.load(job_file)
+    ...
+    >>> len(batch_data['aws-batch-jobs'])
+    5
 
 For the demo to run quickly, most of the module settings are fit for fast jobs.  For
 much longer running jobs, there are functions that only submit jobs or check jobs and
 the settings should be changed for monitoring jobs to only check every 10 or 20 minutes.
 
-.. seealso::
-    - https://aiobotocore.readthedocs.io/en/latest/
-    - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/batch.html
-    - https://www.mathewmarcus.com/blog/asynchronous-aws-api-requests-with-asyncio.html
+Getting Started
+***************
+
+.. code-block::
+
+    aws_region = "us-west-2"
+
+    # For the `aws_region`:
+    #       - create a `batch-dev` compute environment
+    #       - create a `batch-dev` batch queue
+    #       - create a `batch-dev` job definition using alpine:latest
+
+    loop = asyncio.get_event_loop()
+
+    try:
+        print()
+        print("Test async batch jobs")
+        aio_client = AIO_AWS_SESSION.create_client("batch", region_name=aws_region)
+        try:
+
+            batch_tasks = []
+            for i in range(5):
+                job_name = f"test-sleep-job-{i:04d}"
+                jobs_saved = AWSBatchDB.find_by_job_name(job_name)
+                if jobs_saved:
+                    job_data = jobs_saved[0]  # should be only one job-by-name
+                    batch_job = AWSBatchJob(**job_data)
+                    LOGGER.info("AWS Batch job (%s) recovered from db", batch_job.job_name)
+                    if batch_job.job_id and batch_job.status == "SUCCEEDED":
+                        LOGGER.info(
+                            "AWS Batch job (%s:%s) status: %s",
+                            batch_job.job_name,
+                            batch_job.job_id,
+                            batch_job.status,
+                        )
+                        continue
+                else:
+                    # use 'container_overrides' dict for more options
+                    batch_job = AWSBatchJob(
+                        job_name=job_name,
+                        job_definition="batch-dev",
+                        job_queue="batch-dev",
+                        command=["/bin/sh", "-c", "sleep 1 && echo slept1"],
+                    )
+
+                batch_task = loop.create_task(aio_batch_job_manager(batch_job, aio_client))
+                batch_tasks.append(batch_task)
+
+            async def handle_as_completed(tasks):
+                for task in asyncio.as_completed(tasks):
+                    task_result = await task
+                    print(task_result)
+
+            loop.run_until_complete(handle_as_completed(batch_tasks))
+
+        finally:
+            loop.run_until_complete(aio_client.close())
+    finally:
+        loop.stop()
+        loop.close()
+
 """
 
 import asyncio
@@ -191,6 +250,7 @@ class AWSBatchJob:
 
     @property
     def params(self):
+        """AWS Batch parameters for job submission"""
         return {
             "jobName": self.job_name,
             "jobQueue": self.job_queue,
@@ -201,6 +261,7 @@ class AWSBatchJob:
 
     @property
     def db_data(self):
+        """AWS Batch job data for state machine persistence"""
         return {
             "job_id": self.job_id,
             "job_name": self.job_name,

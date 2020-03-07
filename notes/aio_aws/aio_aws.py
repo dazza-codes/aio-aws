@@ -16,15 +16,59 @@
 # limitations under the License.
 
 """
-Async AWS Settings
-------------------
+AioAWS Settings
+---------------
+
+It's recommended to use a single session and a single client with a useful connection pool.
+Although there are context manager patterns, it's also possible to manage closing the client
+after everything is done.  For example:
+
+.. code-block::
+
+    import asyncio
+    import aiobotocore.config
+
+    MAX_CONNECTIONS = 20
+    aio_semaphore = asyncio.Semaphore(MAX_CONNECTIONS)
+    aio_config = aiobotocore.config.AioConfig(max_pool_connections=MAX_CONNECTIONS)
+    aio_session = aio_aws_session(aio_config)
+    aio_client = aio_session.create_client("s3")
+
+    main_loop = asyncio.get_event_loop()
+
+    try:
+        # https://registry.opendata.aws/noaa-goes/
+        noaa_goes_bucket = "noaa-goes16"
+        noaa_prefix = "ABI-L2-ADPC/2019"  # use a prior year for stable results
+
+        print("aio-aws collection of all objects in a bucket-prefix.")
+        start = time.perf_counter()
+        aio_s3_objects = main_loop.run_until_complete(
+            aio_s3_objects_list(
+                bucket_name=noaa_goes_bucket,
+                bucket_prefix=noaa_prefix,
+                s3_client=aio_client,
+                sem=aio_semaphore,
+            )
+        )
+        aio_s3_uris = [f"s3://{noaa_goes_bucket}/{obj['Key']}" for obj in aio_s3_objects]
+        print(f"found {len(aio_s3_uris)} s3 objects")
+        end = time.perf_counter() - start
+        print(f"finished in {end:0.2f} seconds.")
+
+    finally:
+        main_loop.run_until_complete(aio_client.close())
+        main_loop.stop()
+        main_loop.close()
 
 .. seealso::
     - https://aiobotocore.readthedocs.io/en/latest/
+    - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/batch.html
+    - https://www.mathewmarcus.com/blog/asynchronous-aws-api-requests-with-asyncio.html
+
 """
 
 import asyncio
-import logging
 import random
 
 import aiobotocore.client  # type: ignore
@@ -66,6 +110,7 @@ def aio_aws_session(
 ) -> aiobotocore.session.AioSession:
     """
     Get an asyncio AWS session
+
     :param aio_aws_config: an aiobotocore.config.AioConfig (default ``.AIO_AWS_CONFIG``)
     :return: aiobotocore.session.AioSession
     """
