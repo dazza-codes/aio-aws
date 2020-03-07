@@ -19,14 +19,25 @@
 AioAWS Settings
 ---------------
 
-It's recommended to use a single session and a single client with a useful connection pool.
+Using asyncio for AWS services requires the `aiobotocore`_ library, which wraps a
+release of `botocore`_ to patch it with features for async coroutines using
+`asyncio`_ and `aiohttp`_.  To avoid issuing too many concurrent requests (DOS attack),
+the async approach should use a client connection limiter, based on ``asyncio.Semaphore()``.
+It's recommended to use a single session and a single client with a connection pool.
 Although there are context manager patterns, it's also possible to manage closing the client
-after everything is done.  For example:
+after everything is done.
+
+For example:
 
 .. code-block::
 
+    # python 3.6
+
     import asyncio
     import aiobotocore.config
+    import time
+
+    from notes.aio_aws.aio_aws_s3 import aio_s3_objects_list
 
     MAX_CONNECTIONS = 20
     aio_semaphore = asyncio.Semaphore(MAX_CONNECTIONS)
@@ -66,6 +77,10 @@ after everything is done.  For example:
     - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/batch.html
     - https://www.mathewmarcus.com/blog/asynchronous-aws-api-requests-with-asyncio.html
 
+.. _aiobotocore: https://aiobotocore.readthedocs.io/en/latest/
+.. _aiohttp: https://aiohttp.readthedocs.io/en/latest/
+.. _asyncio: https://docs.python.org/3/library/asyncio.html
+.. _botocore: https://botocore.amazonaws.com/v1/documentation/api/latest/index.html
 """
 
 import asyncio
@@ -82,8 +97,8 @@ from notes.aio_aws.logger import LOGGER
 #: max_pool_connections for AWS clients (10 by default)
 MAX_POOL_CONNECTIONS = botocore.endpoint.MAX_POOL_CONNECTIONS
 
-#: AWS asyncio session config
-#: ..seealso:: https://github.com/boto/botocore/blob/develop/botocore/config.py
+#: AWS asyncio session config;
+#: see https://github.com/boto/botocore/blob/develop/botocore/config.py
 AIO_AWS_CONFIG = aiobotocore.config.AioConfig(max_pool_connections=MAX_POOL_CONNECTIONS)
 
 #: a semaphore to limit requests to the max client connections
@@ -111,7 +126,8 @@ def aio_aws_session(
     """
     Get an asyncio AWS session
 
-    :param aio_aws_config: an aiobotocore.config.AioConfig (default ``.AIO_AWS_CONFIG``)
+    :param aio_aws_config: an aiobotocore.config.AioConfig
+            (default :py:const:`AIO_AWS_CONFIG`)
     :return: aiobotocore.session.AioSession
     """
     session = aiobotocore.get_session()
@@ -152,12 +168,14 @@ async def aio_client(
     service_name: str, aio_aws_config: aiobotocore.config.AioConfig = AIO_AWS_CONFIG, **kwargs
 ):
     """
-    Get an asyncio AWS client with an option to provide a client-specific config and
-    additional kwargs as passed through to `aio_aws_session().create_client()`.
+    Get an asyncio AWS client with an option to provide a client-specific config; this is a
+    thin wrapper on ``aio_aws_session().create_client()`` and the additional
+    kwargs as passed through to ``aio_aws_session().create_client(**kwargs)``.
 
     :param service_name: an AWS service for a client, like "s3", try
             :py:meth:`AIO_AWS_SESSION.get_available_services()`
-    :param aio_aws_config: an aiobotocore.config.AioConfig (default ``.AIO_AWS_CONFIG``)
+    :param aio_aws_config: an aiobotocore.config.AioConfig
+            (default :py:const:`AIO_AWS_CONFIG`)
     :return: aiobotocore.client.AioBaseClient
     """
     return aio_aws_session().create_client(service_name, config=aio_aws_config, **kwargs)

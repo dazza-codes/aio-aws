@@ -26,10 +26,10 @@ the same jobs (by jobName).  It should be able to scale to run 1000s of jobs.
 To run the example, the ``notes.aio_aws.aio_aws_batch`` module has a ``main`` that will run and
 manage about 5 live batch jobs (very small ``sleep`` jobs that don't cost much to run).  The
 job state is persisted to ``aws_batch_jobs.json`` and if it runs successfully, it will not
-run the jobs again; the [TinyDB](https://tinydb.readthedocs.io/en/latest/intro.html) is
-used to recover job state by ``jobName``.
+run the jobs again; the `TinyDB`_ is used to recover job state by ``jobName``.  (This demo
+assumes that some simple AWS Batch infrastructure exists already.)
 
-.. code-block::shell
+.. code-block::
 
     # setup the python virtualenv
     # check the main details and modify for a preferred batch queue/CE and AWS region
@@ -48,7 +48,7 @@ used to recover job state by ``jobName``.
 If the job monitoring is halted for some reason (like ``CNT-C``), it can recover from
 the db-state, e.g.
 
-.. code-block::shell
+.. code-block::
 
     $ ./notes/aio_aws/aio_aws_batch.py
 
@@ -64,11 +64,10 @@ the db-state, e.g.
     [INFO]  2020-03-05T14:51:53.701Z  aio-aws:aio_batch_job_waiter:375  AWS Batch job (d9ac27c9-e7d3-49cd-8f53-c84a9b4c1750) status: RUNNABLE
     [INFO]  2020-03-05T14:51:53.732Z  aio-aws:aio_batch_job_waiter:375  AWS Batch job (7ebfe7c4-44a4-40d6-9eab-3708e334689d) status: RUNNABLE
 
-The batch data is a [TinyDB](https://tinydb.readthedocs.io/en/latest/intro.html) json file, e.g.
+The batch data is a `TinyDB`_ json file, e.g.
 
-.. code-block::shell
+.. code-block::
 
-    $ python
     >>> import json
     >>> with open('aws_batch_jobs.json') as job_file:
     ...     batch_data = json.load(job_file)
@@ -80,10 +79,47 @@ For the demo to run quickly, most of the module settings are fit for fast jobs. 
 much longer running jobs, there are functions that only submit jobs or check jobs and
 the settings should be changed for monitoring jobs to only check every 10 or 20 minutes.
 
+Monitoring Jobs
+***************
+
+The :py:func:`notes.aio_aws.aio_aws_batch.aio_batch_job_manager` can submit a job, wait
+for it to complete and retry if it fails on a SPOT termination. It saves the job status
+using the :py:class:`notes.aio_aws.aio_aws_batch import AWSBatchDB`.  The job manager
+uses :py:func:`notes.aio_aws.aio_aws_batch.aio_batch_job_waiter`, which uses these settings
+to control the async-wait between polling the job status:
+
+- :py:const:`notes.aio_aws.aio_aws.BATCH_STARTUP_PAUSE`
+- :py:const:`notes.aio_aws.aio_aws.MAX_PAUSE`
+- :py:const:`notes.aio_aws.aio_aws.MIN_PAUSE`
+
+These settings control how often job descriptions are polled.  These requests for job status
+are also limited by the client connection pool and the client semaphore used by the job
+manager.  Since AWS Batch has API limits on the number of requests for job status, it's best
+to use a client connection pool and semaphore of about 10 connections.  Any failures to poll
+for a job status will be retried a few times (using some random jitter on retry rates).
+
 Getting Started
 ***************
 
+The example above uses code similar to the following.
+Using asyncio for AWS services requires the `aiobotocore`_ library, which wraps a
+release of `botocore`_ to patch it with features for async coroutines using
+`asyncio`_ and `aiohttp`_.  To avoid issuing too many concurrent requests (DOS attack),
+the async approach should use a client connection limiter, based on ``asyncio.Semaphore()``.
+It's recommended to use a single session and a single client with a connection pool.
+Although there are context manager patterns, it's also possible to manage closing the client
+after everything is done.
+
 .. code-block::
+
+    # python 3.6
+
+    import asyncio
+
+    from notes.aio_aws import AIO_AWS_SESSION
+    from notes.aio_aws.aio_aws_batch import AWSBatchDB
+    from notes.aio_aws.aio_aws_batch import AWSBatchJob
+    from notes.aio_aws.aio_aws_batch import aio_batch_job_manager
 
     aws_region = "us-west-2"
 
@@ -92,55 +128,65 @@ Getting Started
     #       - create a `batch-dev` batch queue
     #       - create a `batch-dev` job definition using alpine:latest
 
-    loop = asyncio.get_event_loop()
+    main_loop = asyncio.get_event_loop()
+
+    print()
+    print("Test async batch jobs")
+    aio_client = AIO_AWS_SESSION.create_client("batch", region_name=aws_region)
 
     try:
-        print()
-        print("Test async batch jobs")
-        aio_client = AIO_AWS_SESSION.create_client("batch", region_name=aws_region)
-        try:
-
-            batch_tasks = []
-            for i in range(5):
-                job_name = f"test-sleep-job-{i:04d}"
-                jobs_saved = AWSBatchDB.find_by_job_name(job_name)
-                if jobs_saved:
-                    job_data = jobs_saved[0]  # should be only one job-by-name
-                    batch_job = AWSBatchJob(**job_data)
-                    LOGGER.info("AWS Batch job (%s) recovered from db", batch_job.job_name)
-                    if batch_job.job_id and batch_job.status == "SUCCEEDED":
-                        LOGGER.info(
-                            "AWS Batch job (%s:%s) status: %s",
-                            batch_job.job_name,
-                            batch_job.job_id,
-                            batch_job.status,
-                        )
-                        continue
-                else:
-                    # use 'container_overrides' dict for more options
-                    batch_job = AWSBatchJob(
-                        job_name=job_name,
-                        job_definition="batch-dev",
-                        job_queue="batch-dev",
-                        command=["/bin/sh", "-c", "sleep 1 && echo slept1"],
+        batch_tasks = []
+        for i in range(5):
+            job_name = f"test-sleep-job-{i:04d}"
+            jobs_saved = AWSBatchDB.find_by_job_name(job_name)
+            if jobs_saved:
+                job_data = jobs_saved[0]  # should be only one job-by-name
+                batch_job = AWSBatchJob(**job_data)
+                LOGGER.info("AWS Batch job (%s) recovered from db", batch_job.job_name)
+                if batch_job.job_id and batch_job.status == "SUCCEEDED":
+                    LOGGER.info(
+                        "AWS Batch job (%s:%s) status: %s",
+                        batch_job.job_name,
+                        batch_job.job_id,
+                        batch_job.status,
                     )
+                    continue
+            else:
+                # use 'container_overrides' dict for more options
+                batch_job = AWSBatchJob(
+                    job_name=job_name,
+                    job_definition="batch-dev",
+                    job_queue="batch-dev",
+                    command=["/bin/sh", "-c", "sleep 1 && echo slept1"],
+                )
 
-                batch_task = loop.create_task(aio_batch_job_manager(batch_job, aio_client))
-                batch_tasks.append(batch_task)
+            batch_task = main_loop.create_task(aio_batch_job_manager(batch_job, aio_client))
+            batch_tasks.append(batch_task)
 
-            async def handle_as_completed(tasks):
-                for task in asyncio.as_completed(tasks):
-                    task_result = await task
-                    print(task_result)
+        async def handle_as_completed(tasks):
+            for task in asyncio.as_completed(tasks):
+                task_result = await task
+                print(task_result)
 
-            loop.run_until_complete(handle_as_completed(batch_tasks))
+        main_loop.run_until_complete(handle_as_completed(batch_tasks))
 
-        finally:
-            loop.run_until_complete(aio_client.close())
     finally:
-        loop.stop()
-        loop.close()
+        main_loop.run_until_complete(aio_client.close())
+        main_loop.stop()
+        main_loop.close()
 
+
+.. seealso::
+    - https://aiobotocore.readthedocs.io/en/latest/
+    - https://botocore.amazonaws.com/v1/documentation/api/latest/index.html
+    - https://pawelmhm.github.io/asyncio/python/aiohttp/2016/04/22/asyncio-aiohttp.html
+    - https://docs.python.org/3/library/asyncio.html
+
+.. _aiobotocore: https://aiobotocore.readthedocs.io/en/latest/
+.. _aiohttp: https://aiohttp.readthedocs.io/en/latest/
+.. _asyncio: https://docs.python.org/3/library/asyncio.html
+.. _botocore: https://botocore.amazonaws.com/v1/documentation/api/latest/index.html
+.. _TinyDB: https://tinydb.readthedocs.io/en/latest/intro.html
 """
 
 import asyncio
@@ -335,7 +381,7 @@ class AWSBatchDB:
 
 def parse_job_description(job_id: str, jobs: Dict) -> Optional[Dict]:
     """
-    Extract a job description for ``job_id` from ``jobs``
+    Extract a job description for ``job_id`` from ``jobs``
     :param job_id: an AWS Batch ``jobId``
     :param jobs: a response to AWS Batch job descriptions
     :return: a job description for ``job_id``
@@ -620,7 +666,7 @@ if __name__ == "__main__":
                             job_name=job_name,
                             job_definition="batch-dev",
                             job_queue="batch-dev",
-                            command=["/bin/bash", "-c", "sleep 1 && echo slept1"],
+                            command=["/bin/sh", "-c", "echo Hello && sleep 1 && echo Bye"],
                         )
 
                     batch_task = loop.create_task(aio_batch_job_manager(batch_job, aio_client))
