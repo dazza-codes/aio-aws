@@ -16,10 +16,11 @@ The notes are developed in a gitlab project at:
     concurrency
     asyncio
     asyncio_executor
-    asyncio_aws_s3
-    asyncio_aws_lambda
     asyncio_databases
+    aio_aws
 
+    code_quality
+    linux
 
 Indices and tables
 ==================
