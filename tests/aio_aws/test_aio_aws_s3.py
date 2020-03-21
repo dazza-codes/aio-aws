@@ -11,10 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import asyncio
+
 from typing import List
 
 import aiobotocore
+import aiobotocore.config
 import botocore.exceptions
 import pytest
 
@@ -24,7 +25,6 @@ from notes.aio_aws.aio_aws_s3 import aio_s3_bucket_head
 from notes.aio_aws.aio_aws_s3 import aio_s3_buckets_access
 from notes.aio_aws.aio_aws_s3 import aio_s3_buckets_list
 from notes.aio_aws.aio_aws_s3 import aio_s3_object_head
-from notes.aio_aws.aio_aws_s3 import handle_head_error_code
 from notes.aio_aws.aio_aws_s3 import S3Parts
 
 
@@ -224,3 +224,26 @@ async def test_aio_s3_object_head_for_missing_object(aio_s3_bucket, aio_aws_s3_c
     msg = err.value.args[0]
     assert "HeadObject operation" in msg
     assert "404" in msg
+
+
+@pytest.mark.skip("https://github.com/aio-libs/aiobotocore/issues/781")
+@pytest.mark.asyncio
+async def test_aio_s3_bucket_head_too_many_requests():
+
+    session = aiobotocore.get_session()
+    aioconfig = aiobotocore.config.AioConfig(max_pool_connections=1)
+    session.set_default_client_config(aioconfig)
+    session.set_credentials("fake_AWS_ACCESS_KEY_ID", "fake_AWS_SECRET_ACCESS_KEY")
+
+    async with session.create_client("s3") as client:
+
+        # TODO: HOW TO ADD HTTP STUBBER HERE, similar to:
+        #   https://botocore.amazonaws.com/v1/documentation/api/latest/reference/stubber.html
+
+        with pytest.raises(botocore.exceptions.ClientError) as err:
+            await client.head_bucket(Bucket="missing-bucket")
+
+        msg = err.value.args[0]
+        assert "HeadBucket operation" in msg
+        assert "403" in msg
+        assert "Forbidden" in msg
