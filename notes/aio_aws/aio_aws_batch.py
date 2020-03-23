@@ -252,6 +252,24 @@ AWS_BATCH_DB_FILE = "aws_batch_jobs.json"
 
 
 @dataclass
+class AWSBatchJobDescription:
+    jobName: str = None
+    jobId: str = None
+    jobQueue: str = None
+    status: str = None
+    attempts: List[Dict] = None
+    statusReason: str = None
+    createdAt: int = None
+    startedAt: int = None
+    stoppedAt: int = None
+    dependsOn: List[str] = None
+    jobDefinition: str = None
+    parameters: Dict = None
+    container: Dict = None
+    timeout: Dict = None
+
+
+@dataclass
 class AWSBatchJob:
     """
     AWS Batch job
@@ -286,8 +304,8 @@ class AWSBatchJob:
     ]
 
     job_name: str
-    job_definition: str
     job_queue: str
+    job_definition: str
     command: List[str] = None
     depends_on: List[Dict] = None
     container_overrides: Dict = None
@@ -334,12 +352,13 @@ class AWSBatchJob:
             "job_name": self.job_name,
             "job_queue": self.job_queue,
             "job_definition": self.job_definition,
-            "job_description": self.job_description,
             "job_submission": self.job_submission,
+            "job_description": self.job_description,
             "container_overrides": self.container_overrides,
             "command": self.command,
             "depends_on": self.depends_on,
             "status": self.status,
+            "job_tries": self.job_tries,
             "num_tries": self.num_tries,
             "max_tries": self.max_tries,
         }
@@ -350,6 +369,42 @@ class AWSBatchJob:
         self.job_description = None
         self.job_submission = None
         self.status = None
+
+    @property
+    def created(self) -> Optional[int]:
+        if self.job_description:
+            return self.job_description["createdAt"]
+
+    @property
+    def started(self) -> Optional[int]:
+        if self.job_description:
+            return self.job_description["startedAt"]
+
+    @property
+    def stopped(self) -> Optional[int]:
+        if self.job_description:
+            return self.job_description["stoppedAt"]
+
+    @property
+    def elapsed(self) -> Optional[int]:
+        created = self.created
+        stopped = self.stopped
+        if stopped and created:
+            return stopped - created
+
+    @property
+    def runtime(self) -> Optional[int]:
+        started = self.started
+        stopped = self.stopped
+        if started and stopped:
+            return stopped - started
+
+    @property
+    def spinup(self) -> Optional[int]:
+        created = self.created
+        started = self.started
+        if started and created:
+            return started - created
 
 
 @dataclass
@@ -432,6 +487,62 @@ class AWSBatchDB:
             return self.jobs_db.upsert(job.db_data, job_query.job_id == job.job_id)
         else:
             LOGGER.error("FAIL to save job without job_id")
+
+    def find_jobs_to_run(self) -> List[AWSBatchJob]:
+        """
+        Find all jobs that have not SUCCEEDED.  Note that any jobs handled
+        by the job-manager will not re-run if they have a job.job_id, those
+        jobs will be monitored until complete.
+        """
+        jobs = [AWSBatchJob(**job_doc) for job_doc in self.jobs_db.all()]
+        jobs_outstanding = []
+        for job in jobs:
+            LOGGER.info(
+                "AWS Batch job (%s:%s) has db status: %s", job.job_name, job.job_id, job.status,
+            )
+            if job.job_id and job.status == "SUCCEEDED":
+                LOGGER.debug(job.job_description)
+                continue
+
+            jobs_outstanding.append(job)
+
+        return jobs_outstanding
+
+
+def jobs_to_run(jobs: List[AWSBatchJob], jobs_db: AWSBatchDB,) -> List[AWSBatchJob]:
+    """
+    Filter all jobs that have not SUCCEEDED.  Note that any jobs handled
+    by the job-manager will not re-run if they have a job.job_id, those
+    jobs will be monitored until complete.
+    """
+    jobs_outstanding = []
+    for job in jobs:
+        jobs_saved = jobs_db.find_by_job_name(job.job_name)
+        if jobs_saved:
+            # TODO: find latest jobId?  -  use job.job_tries
+            # TODO: compare saved job with input job?
+            job_data = jobs_saved[0]
+            job_state = AWSBatchJob(**job_data)
+            LOGGER.info(
+                "AWS Batch job (%s:%s) has db status: %s",
+                job_state.job_name,
+                job_state.job_id,
+                job_state.status,
+            )
+            if job_state.job_id and job_state.status == "SUCCEEDED":
+                LOGGER.debug(job_state.job_description)
+                continue
+
+        # if the job is not saved, don't save it here as a side-effect;
+        # that should be reserved for some kind of db-cache/db-sync
+
+        if job.job_id and job.status == "SUCCEEDED":
+            LOGGER.debug(job.job_description)
+            continue
+
+        jobs_outstanding.append(job)
+
+    return jobs_outstanding
 
 
 @dataclass
@@ -656,7 +767,13 @@ async def aio_batch_job_manager(
     config: AWSBatchConfig = AWS_BATCH_CONFIG,
 ) -> Optional[Dict]:
     """
-    Asynchronous coroutine to manage a batch job
+    Asynchronous coroutine to manage a batch job.
+
+    Note that any job with a job.job_id will not re-run, those
+    jobs will be monitored until complete.  To re-run a job that
+    has already run, first call the job.reset() method to clear
+    any previous job state.  (Any previous attempts are recorded
+    in job.job_tries and in the job.job_description.)
 
     :param job: a batch job spec
     :param jobs_db: an AWSBatchDB
@@ -707,13 +824,38 @@ async def aio_batch_job_manager(
         LOGGER.warning("AWS Batch job (%s:%s) retries exceeded.", job.job_name, job.job_id)
 
 
+def aio_batch_run_jobs(
+    jobs: List[AWSBatchJob],
+    jobs_db: AWSBatchDB,
+    client: aiobotocore.client.AioBaseClient,
+    config: AWSBatchConfig,
+):
+    loop = asyncio.get_event_loop()
+    try:
+        batch_tasks = [
+            loop.create_task(
+                aio_batch_job_manager(job=job, jobs_db=jobs_db, client=client, config=config,)
+            )
+            for job in jobs
+        ]
+
+        async def handle_as_completed(tasks):
+            for task in asyncio.as_completed(tasks):
+                task_result = await task
+                LOGGER.debug(task_result)
+
+        loop.run_until_complete(handle_as_completed(batch_tasks))
+    finally:
+        loop.run_until_complete(client.close())
+        loop.stop()
+        loop.close()
+
+
 def main(
     jobs_db: AWSBatchDB,
     client: aiobotocore.client.AioBaseClient,
     config: AWSBatchConfig = AWS_BATCH_CONFIG,
 ):
-
-    LOGGER.info("Using jobs-db file: %s", jobs_db.jobs_db_file)
 
     loop = asyncio.get_event_loop()
 
@@ -778,18 +920,37 @@ def main(
 
 if __name__ == "__main__":
 
-    # pylint: disable=C0103
-    aws_region = "us-west-2"
-
-    aio_client = AIO_AWS_SESSION.create_client("batch", region_name=aws_region)
-
-    batch_jobs_db = AWSBatchDB("/tmp/aws_batch_jobs.json")
-
-    # for polling frequency of 10-30 seconds, with 30-60 second job starts
-    aio_batch_config = AWSBatchConfig(min_pause=10, max_pause=30, start_pause=30,)
-
     print()
     print("Test async batch jobs")
-    main(
-        jobs_db=batch_jobs_db, client=aio_client, config=aio_batch_config,
-    )
+
+    batch_jobs = []
+    for i in range(2):
+        job_name = f"test-sleep-job-{i:04d}"
+        # use 'container_overrides' dict for more options
+        batch_job = AWSBatchJob(
+            job_name=job_name,
+            job_definition="batch-dev",
+            job_queue="batch-dev",
+            command=["/bin/sh", "-c", "echo Hello && sleep 1 && echo Bye"],
+        )
+        batch_jobs.append(batch_job)
+
+    # pylint: disable=C0103
+    batch_jobs_db = AWSBatchDB("/tmp/aws_batch_jobs.json")
+    LOGGER.info("Using jobs-db file: %s", batch_jobs_db.jobs_db_file)
+
+    batch_jobs = jobs_to_run(jobs=batch_jobs, jobs_db=batch_jobs_db)
+
+    if batch_jobs:
+        aws_region = "us-west-2"
+        aio_batch_client = AIO_AWS_SESSION.create_client("batch", region_name=aws_region)
+
+        # for polling frequency of 10-30 seconds, with 30-60 second job starts
+        aio_batch_config = AWSBatchConfig(min_pause=10, max_pause=30, start_pause=30,)
+
+        aio_batch_run_jobs(
+            jobs=batch_jobs,
+            jobs_db=batch_jobs_db,
+            client=aio_batch_client,
+            config=aio_batch_config,
+        )
