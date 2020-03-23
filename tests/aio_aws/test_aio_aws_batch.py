@@ -33,6 +33,7 @@ import pytest
 
 from notes.aio_aws import aio_aws_batch
 from notes.aio_aws.aio_aws import response_success
+from notes.aio_aws.aio_aws_batch import aio_batch_job_logs
 from notes.aio_aws.aio_aws_batch import aio_batch_job_manager
 from notes.aio_aws.aio_aws_batch import aio_batch_job_status
 from notes.aio_aws.aio_aws_batch import aio_batch_job_submit
@@ -342,3 +343,19 @@ async def test_async_batch_job_db(
     batch_job = AWSBatchJob(**job_data)
     assert batch_job.db_data == job_data
     assert batch_job.db_data == job.db_data
+
+
+@pytest.mark.asyncio
+async def test_async_batch_job_logs(
+    aws_batch_sleep1_job, aio_aws_batch_client, aio_aws_logs_client, test_jobs_db, batch_config
+):
+    job = aws_batch_sleep1_job
+    job_desc = await aio_batch_job_manager(
+        job, jobs_db=test_jobs_db, client=aio_aws_batch_client, config=batch_config
+    )
+    assert job.status == job_desc["status"]
+    assert job.status == "SUCCEEDED"
+
+    response = await aio_batch_job_logs(job, client=aio_aws_logs_client, config=batch_config)
+    assert response_success(response)
+    assert response['events']
