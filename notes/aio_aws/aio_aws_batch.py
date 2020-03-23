@@ -658,6 +658,75 @@ async def aio_batch_job_status(
             raise RuntimeError("AWS Batch job description exceeded retries")
 
 
+async def aio_batch_job_logs(
+    job: AWSBatchJob,
+    client: aiobotocore.client.AioBaseClient,
+    config: AWSBatchConfig = AWS_BATCH_CONFIG,
+) -> Optional[Dict]:
+    """
+    Asynchronous coroutine to get logs for a batch job log stream.
+
+    :param job: an AWSBatchJob that has been submitted
+    :param client: an aiobotocore client for AWS CloudWatchLogs
+    :param config: settings for task pauses between retries
+    :return: a get_log_events response (or consolidation of them)
+    :raises: botocore.exceptions.ClientError
+    
+    .. seealso::
+        https://botocore.amazonaws.com/v1/documentation/api/latest/reference/services/logs.html
+    """
+    if not job.job_description:
+        LOGGER.warning("AWS Batch job has no description, cannot fetch logs")
+        return
+
+    log_stream_name = job.job_description.get("container", {}).get("logStreamName")
+    if not log_stream_name:
+        LOGGER.warning("AWS Batch job has no container:logStreamName")
+        return
+
+    async with config.sem:
+        tries = 0
+        while tries < config.retries:
+            tries += 1
+            try:
+                response = await client.get_log_events(
+                    logGroupName='/aws/batch/job',
+                    logStreamName=log_stream_name,
+                    # startTime=123,
+                    # endTime=123,
+                    # nextToken='string',
+                    # limit=123,
+                    startFromHead=True
+                )
+
+                # TODO: handle pagination
+                return response
+
+                # {
+                #     'events': [
+                #         {
+                #             'timestamp': 123,
+                #             'message': 'string',
+                #             'ingestionTime': 123
+                #         },
+                #     ],
+                #     'nextForwardToken': 'string',
+                #     'nextBackwardToken': 'string'
+                # }
+
+            except botocore.exceptions.ClientError as err:
+                error = err.response.get("Error", {})
+                if error.get("Code") == "TooManyRequestsException":
+                    if tries < config.retries:
+                        # add an extra random sleep period to avoid API throttle
+                        await jitter("batch-job-logs", config.min_jitter, config.max_jitter)
+                    continue  # allow it to retry, if possible
+                else:
+                    raise
+        else:
+            raise RuntimeError("AWS Batch job logs exceeded retries")
+
+
 async def aio_batch_job_terminate(
     job_id: str,
     reason: str,
