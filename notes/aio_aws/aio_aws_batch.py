@@ -106,14 +106,18 @@ test suite uses much faster polling on mock batch jobs to speed up the unit test
     config = AWSBatchConfig(
         start_pause=0.4, min_pause=0.8, max_pause=1.0, min_jitter=0.1, max_jitter=0.2,
     )
-    # then pass this config to the job-manager, see below
 
 
 Getting Started
 ***************
 
-The example above uses code similar to the following.
-Using asyncio for AWS services requires the `aiobotocore`_ library, which wraps a
+The example above uses code similar to the following.  The following code appears
+to work like regular synchronous code; behind the scenes, it wraps asyncio coroutines
+and event loops.
+
+To fully understand it, look at the module code directly.  For custom solutions, use
+an event loop and some of the coroutines available.  Note that using
+asyncio for AWS services requires the `aiobotocore`_ library, which wraps a
 release of `botocore`_ to patch it with features for async coroutines using
 `asyncio`_ and `aiohttp`_.  To avoid issuing too many concurrent requests (DOS attack),
 the async approach should use a client connection limiter, based on ``asyncio.Semaphore()``.
@@ -131,7 +135,8 @@ after everything is done.
     from notes.aio_aws.aio_aws_batch import AWSBatchConfig
     from notes.aio_aws.aio_aws_batch import AWSBatchDB
     from notes.aio_aws.aio_aws_batch import AWSBatchJob
-    from notes.aio_aws.aio_aws_batch import aio_batch_job_manager
+    from notes.aio_aws.aio_aws_batch import jobs_to_run
+    from notes.aio_aws.aio_aws_batch import aio_batch_run_jobs
 
     aws_region = "us-west-2"
 
@@ -140,67 +145,40 @@ after everything is done.
     #       - create a `batch-dev` batch queue
     #       - create a `batch-dev` job definition using alpine:latest
 
-    main_loop = asyncio.get_event_loop()
+    logs_command = "for a in `seq 1 10000`; do echo Hello $a; done"
 
-    print()
-    print("Test async batch jobs")
-    aio_batch_client = AIO_AWS_SESSION.create_client("batch", region_name=aws_region)
+    # Create a list of AWSBatchJob objects, which are simple wrappers
+    # on AWS Batch job data.  These objects are simple, by design, to
+    # allow them to be used in either synchronous or asynchronous code.
+    batch_jobs = []
+    for i in range(2):
+        job_name = f"test-logs-job-{i:04d}"
+        # use 'container_overrides' dict for more options
+        batch_job = AWSBatchJob(
+            job_name=job_name,
+            job_definition="batch-dev",
+            job_queue="batch-dev",
+            command=["/bin/sh", "-c", logs_command],
+        )
+        batch_jobs.append(batch_job)
 
-    # for polling frequency of 5-10 minutes, with 10 minute job starts
-    aio_batch_config = AWSBatchConfig(
-        min_pause=5 * 60,
-        max_pause=10 * 60,
-        start_pause=10 * 60,
+    # The AWSBatchDB wraps TinyDB data stores; it can be
+    # used in either synchronous or asynchronous code.
+    batch_jobs_db = AWSBatchDB(
+        jobs_db_file="/tmp/aio_batch_jobs.json",
+        logs_db_file="/tmp/aio_batch_logs.json",
     )
 
-    batch_jobs_db = AWSBatchDB(jobs_db_file="/tmp/aws_batch_jobs_db.json")
+    batch_jobs = jobs_to_run(jobs=batch_jobs, jobs_db=batch_jobs_db)
+    if batch_jobs:
+        # for polling frequency of 10-30 seconds, with 30-60 second job starts
+        aio_config = AWSBatchConfig(
+            aws_region=aws_region, min_pause=10, max_pause=30, start_pause=30,
+        )
 
-    try:
-        batch_tasks = []
-        for i in range(2):
-            job_name = f"test-sleep-job-{i:04d}"
-            jobs_saved = batch_jobs_db.find_by_job_name(job_name)
-            if jobs_saved:
-                job_data = jobs_saved[0]  # should be only one job-by-name
-                batch_job = AWSBatchJob(**job_data)
-                LOGGER.info(
-                    "AWS Batch job (%s:%s) recovered from db, status: %s",
-                    batch_job.job_name,
-                    batch_job.job_id,
-                    batch_job.status,
-                )
-                if batch_job.job_id and batch_job.status == "SUCCEEDED":
-                    continue
-            else:
-                # use 'container_overrides' dict for more options
-                batch_job = AWSBatchJob(
-                    job_name=job_name,
-                    job_definition="batch-dev",
-                    job_queue="batch-dev",
-                    command=["/bin/sh", "-c", "echo Hello && sleep 1 && echo Bye"],
-                )
-
-            batch_task = main_loop.create_task(
-                aio_batch_job_manager(
-                    batch_job,
-                    jobs_db=batch_jobs_db,
-                    client=aio_batch_client,
-                    config=aio_batch_config
-                )
-            )
-            batch_tasks.append(batch_task)
-
-        async def handle_as_completed(tasks):
-            for task in asyncio.as_completed(tasks):
-                task_result = await task
-                print(task_result)
-
-        main_loop.run_until_complete(handle_as_completed(batch_tasks))
-
-    finally:
-        main_loop.run_until_complete(aio_client.close())
-        main_loop.stop()
-        main_loop.close()
+        aio_batch_run_jobs(
+            jobs=batch_jobs, jobs_db=batch_jobs_db, config=aio_config,
+        )
 
 
 .. seealso::
@@ -239,16 +217,6 @@ from notes.aio_aws.aio_aws import MIN_JITTER
 from notes.aio_aws.aio_aws import MIN_PAUSE
 from notes.aio_aws.aio_aws import response_success
 from notes.aio_aws.logger import LOGGER
-
-tinydb.TinyDB.DEFAULT_TABLE = "aws-batch-jobs"
-tinydb.TinyDB.DEFAULT_TABLE_KWARGS = {"cache_size": 0}
-AWS_BATCH_DB_FILE = "aws_batch_jobs.json"
-# AWS_BATCH_DB = tinydb.TinyDB(AWS_BATCH_DB_FILE)
-
-# for reference:
-# from tinydb.storages import MemoryStorage
-# tinydb.TinyDB.DEFAULT_STORAGE = MemoryStorage
-# db = tinydb.TinyDB(storage=MemoryStorage)
 
 
 @dataclass
@@ -316,6 +284,7 @@ class AWSBatchJob:
     max_tries: int = 4
     job_submission: Optional[Dict] = None
     job_description: Optional[Dict] = None
+    logs: Optional[List[Dict]] = None
 
     def __post_init__(self):
 
@@ -345,8 +314,9 @@ class AWSBatchJob:
         }
 
     @property
-    def db_data(self):
+    def db_data(self) -> Dict:
         """AWS Batch job data for state machine persistence"""
+        # The job.logs are NOT included here, by design.
         return {
             "job_id": self.job_id,
             "job_name": self.job_name,
@@ -363,12 +333,21 @@ class AWSBatchJob:
             "max_tries": self.max_tries,
         }
 
+    @property
+    def db_logs_data(self) -> Optional[Dict]:
+        """AWS Batch job with logs persistence"""
+        if self.logs:
+            data = self.db_data
+            data["logs"] = self.logs
+            return data
+
     def reset(self):
         """Clear the job_id and all related job data"""
         self.job_id = None
         self.job_description = None
         self.job_submission = None
         self.status = None
+        self.logs = None
 
     @property
     def created(self) -> Optional[int]:
@@ -410,19 +389,37 @@ class AWSBatchJob:
 @dataclass
 class AWSBatchDB:
     """
-    AWS Batch job database
+    AWS Batch job databases
+
+    The jobs and logs are kept in separate DBs so
+    that performance on the jobs_db is not compromised
+    by too much data from job logs.  This makes it possible
+    to use the jobs_db without capturing logs as well.
 
     .. seealso:: https://tinydb.readthedocs.io/en/latest/
     """
 
     #: a file used for :py:class::`TinyDB(jobs_db_file)`
-    jobs_db_file: str = AWS_BATCH_DB_FILE
+    jobs_db_file: str = "/tmp/aws_batch_jobs.json"
 
-    #: a semaphore to limit requests to the jobs_db
+    #: a file used for :py:class::`TinyDB(logs_db_file)`
+    logs_db_file: str = "/tmp/aws_batch_logs.json"
+
+    #: a semaphore to limit requests to the db
     DB_SEMAPHORE = asyncio.Semaphore(1)
 
     def __post_init__(self):
+
+        tinydb.TinyDB.DEFAULT_TABLE = "aws-batch-jobs"
+        tinydb.TinyDB.DEFAULT_TABLE_KWARGS = {"cache_size": 0}
+
+        # the jobs and logs are kept in separate DBs so
+        # that performance on the jobs_db is not compromised
+        # by too much data from job logs.
         self.jobs_db = tinydb.TinyDB(self.jobs_db_file)
+        self.logs_db = tinydb.TinyDB(self.logs_db_file)
+        LOGGER.info("Using batch-jobs-db file: %s", self.jobs_db_file)
+        LOGGER.info("Using batch-logs-db file: %s", self.logs_db_file)
 
     def find_by_job_id(self, job_id: str) -> Optional[tinydb.database.Document]:
         """
@@ -447,6 +444,21 @@ class AWSBatchDB:
         if job_name:
             job_query = tinydb.Query()
             return self.jobs_db.search(job_query.job_name == job_name)
+
+    def find_latest_job_name(self, job_name: str) -> AWSBatchJob:
+        """
+        Find the latest job matching the jobName,
+        based on the "createdAt" time stamp.
+
+        :param job_name: a batch jobName
+        :return: the latest job record available
+        """
+        jobs_saved = self.find_by_job_name(job_name)
+        if jobs_saved:
+            db_jobs = [AWSBatchJob(**job_doc) for job_doc in jobs_saved]
+            db_jobs = sorted(db_jobs, key=lambda j: j.created)
+            db_job = db_jobs[-1]
+            return db_job
 
     def remove_by_job_id(self, job_id: str) -> Optional[tinydb.database.Document]:
         """
@@ -475,7 +487,7 @@ class AWSBatchDB:
                 self.jobs_db.remove(doc_ids=docs)
             return jobs_found
 
-    def save(self, job: AWSBatchJob) -> List[int]:
+    def save_job(self, job: AWSBatchJob) -> List[int]:
         """
         Insert or update a job (if it has a job_id)
 
@@ -486,7 +498,35 @@ class AWSBatchDB:
             job_query = tinydb.Query()
             return self.jobs_db.upsert(job.db_data, job_query.job_id == job.job_id)
         else:
-            LOGGER.error("FAIL to save job without job_id")
+            LOGGER.error("FAIL to save_job without job_id")
+
+    def find_job_logs(self, job_id: str) -> Optional[tinydb.database.Document]:
+        """
+        Find job logs by job_id
+
+        :param job_id: str
+        :return: a tinydb.database.Document with job logs
+        """
+        if job_id:
+            log_query = tinydb.Query()
+            db_result = self.logs_db.get(log_query.job_id == job_id)
+            if db_result:
+                return db_result
+        else:
+            LOGGER.error("FAIL to find_job_logs without job_id")
+
+    def save_job_logs(self, job: AWSBatchJob) -> List[int]:
+        """
+        Insert or update job logs (if the job has a job_id)
+
+        :param job: an AWSBatchJob
+        :return: a List[tinydb.database.Document.doc_id]
+        """
+        if job.job_id:
+            log_query = tinydb.Query()
+            return self.logs_db.upsert(job.db_logs_data, log_query.job_id == job.job_id)
+        else:
+            LOGGER.error("FAIL to save_job_logs without job_id")
 
     def find_jobs_to_run(self) -> List[AWSBatchJob]:
         """
@@ -511,34 +551,49 @@ class AWSBatchDB:
 
 def jobs_to_run(jobs: List[AWSBatchJob], jobs_db: AWSBatchDB,) -> List[AWSBatchJob]:
     """
-    Filter all jobs that have not SUCCEEDED.  Note that any jobs handled
-    by the job-manager will not re-run if they have a job.job_id, those
-    jobs will be monitored until complete.
+    Use the job.job_name to find any jobs_db records and check the job status
+    on the latest submission of any job matching the job-name.  For any job that
+    has a matching job-name in the jobs_db, check whether the job has already run and
+    SUCCEEDED.  Any jobs that have already run and SUCCEEDED are not returned.
+
+    Return all jobs that have not run yet or have not SUCCEEDED.  Note that any
+    jobs subsequently input to the job-manager will not re-run if they already
+    have a job.job_id, those jobs will be monitored until complete.  To re-run
+    jobs that are returned from this filter function, first use `job.reset()`
+    before passing the jobs to the job-manager.
+
+    .. note::
+        The input jobs are not modified in any way in this function, i.e. there
+        are no updates from the jobs_db applied to the input jobs.
+
+        To recover jobs from the jobs_db, use
+        - :py:meth:`AWSBatchDB.find_jobs_to_run()`
+        - :py:meth:`AWSBatchDB.jobs_db.all()`
     """
     jobs_outstanding = []
     for job in jobs:
-        jobs_saved = jobs_db.find_by_job_name(job.job_name)
-        if jobs_saved:
-            # TODO: find latest jobId?  -  use job.job_tries
-            # TODO: compare saved job with input job?
-            job_data = jobs_saved[0]
-            job_state = AWSBatchJob(**job_data)
-            LOGGER.info(
-                "AWS Batch job (%s:%s) has db status: %s",
-                job_state.job_name,
-                job_state.job_id,
-                job_state.status,
-            )
-            if job_state.job_id and job_state.status == "SUCCEEDED":
-                LOGGER.debug(job_state.job_description)
-                continue
+        # Avoid side-effects in this function:
+        # - treat the job as a read-only object
+        # - treat any jobs_db records as read-only objects
+        # - if a job is not saved, don't save it to jobs_db
+        # - if a job exists in jobs_db, don't update the job data
 
-        # if the job is not saved, don't save it here as a side-effect;
-        # that should be reserved for some kind of db-cache/db-sync
-
+        # First check the job itself before checking the jobs_db
         if job.job_id and job.status == "SUCCEEDED":
             LOGGER.debug(job.job_description)
             continue
+
+        db_job = jobs_db.find_latest_job_name(job.job_name)
+        if db_job:
+            LOGGER.info(
+                "AWS Batch job (%s:%s) has db status: %s",
+                db_job.job_name,
+                db_job.job_id,
+                db_job.status,
+            )
+            if db_job.job_id and db_job.status == "SUCCEEDED":
+                LOGGER.debug(db_job.job_description)
+                continue
 
         jobs_outstanding.append(job)
 
@@ -547,6 +602,8 @@ def jobs_to_run(jobs: List[AWSBatchJob], jobs_db: AWSBatchDB,) -> List[AWSBatchJ
 
 @dataclass
 class AWSBatchConfig:
+    #: an optional AWS region name
+    aws_region: str = None
     #: a number of retries for an AWS client request/response
     retries: int = 5
     #: a batch job startup pause, ``random.uniform(start_pause, start_pause * 2)``;
@@ -562,6 +619,14 @@ class AWSBatchConfig:
     max_jitter: float = MAX_JITTER
     #: an asyncio.Semaphore to limit the number of concurrent client requests
     sem: asyncio.Semaphore = CLIENT_SEMAPHORE
+    #: an aiobotocore.session.AioSession
+    session: aiobotocore.session.AioSession = AIO_AWS_SESSION
+
+    def get_batch_client(self) -> aiobotocore.client.AioBaseClient:
+        return self.session.create_client("batch", region_name=self.aws_region)
+
+    def get_logs_client(self) -> aiobotocore.client.AioBaseClient:
+        return self.session.create_client("logs", region_name=self.aws_region)
 
 
 #: a default AWSBatchConfig
@@ -605,11 +670,7 @@ async def aio_batch_job_submit(
                 LOGGER.info("AWS Batch job params: %s", params)
                 response = await client.submit_job(**params)
                 LOGGER.info("AWS Batch job response: %s", response)
-                if response_success(response):
-                    job.job_id = response["jobId"]
-                    job.job_submission = response
-                    job.job_tries.append(job.job_id)
-                    job.num_tries += 1
+                # TODO: are there some submission failures that could be recovered here?
                 return response
 
             except botocore.exceptions.ClientError as err:
@@ -660,18 +721,21 @@ async def aio_batch_job_status(
 
 async def aio_batch_job_logs(
     job: AWSBatchJob,
-    client: aiobotocore.client.AioBaseClient,
+    logs_client: aiobotocore.client.AioBaseClient,
     config: AWSBatchConfig = AWS_BATCH_CONFIG,
-) -> Optional[Dict]:
+) -> Optional[List[Dict]]:
     """
-    Asynchronous coroutine to get logs for a batch job log stream.
+    Asynchronous coroutine to get logs for a batch job log stream.  All
+    the events available for a log stream are collected and returned.  The
+    AWS Cloud Watch log streams can have delays, don't expect near real-time
+    values in these data.
 
-    :param job: an AWSBatchJob that has been submitted
-    :param client: an aiobotocore client for AWS CloudWatchLogs
+    :param job: A set of job parameters
+    :param logs_client: an aiobotocore client for AWS CloudWatchLogs
     :param config: settings for task pauses between retries
-    :return: a get_log_events response (or consolidation of them)
+    :return: a list of all the log events from get_log_events responses
     :raises: botocore.exceptions.ClientError
-    
+
     .. seealso::
         https://botocore.amazonaws.com/v1/documentation/api/latest/reference/services/logs.html
     """
@@ -681,7 +745,7 @@ async def aio_batch_job_logs(
 
     log_stream_name = job.job_description.get("container", {}).get("logStreamName")
     if not log_stream_name:
-        LOGGER.warning("AWS Batch job has no container:logStreamName")
+        LOGGER.warning("The log_stream_name is not defined")
         return
 
     async with config.sem:
@@ -689,30 +753,32 @@ async def aio_batch_job_logs(
         while tries < config.retries:
             tries += 1
             try:
-                response = await client.get_log_events(
-                    logGroupName='/aws/batch/job',
-                    logStreamName=log_stream_name,
-                    # startTime=123,
-                    # endTime=123,
-                    # nextToken='string',
-                    # limit=123,
-                    startFromHead=True
-                )
+                log_events = []
 
-                # TODO: handle pagination
-                return response
+                forward_token = None
+                while True:
+                    kwargs = {
+                        "logGroupName": "/aws/batch/job",
+                        "logStreamName": log_stream_name,
+                        "startFromHead": True,
+                        # "startTime": 123,
+                        # "endTime": 123,
+                        # "limit": 123,
+                    }
+                    if forward_token:
+                        kwargs["nextToken"] = forward_token
 
-                # {
-                #     'events': [
-                #         {
-                #             'timestamp': 123,
-                #             'message': 'string',
-                #             'ingestionTime': 123
-                #         },
-                #     ],
-                #     'nextForwardToken': 'string',
-                #     'nextBackwardToken': 'string'
-                # }
+                    response = await logs_client.get_log_events(**kwargs)
+
+                    events = response.get("events", [])
+                    log_events.extend(events)
+
+                    if forward_token != response["nextForwardToken"]:
+                        forward_token = response["nextForwardToken"]
+                    else:
+                        break
+
+                return log_events
 
             except botocore.exceptions.ClientError as err:
                 error = err.response.get("Error", {})
@@ -785,7 +851,7 @@ async def aio_batch_job_waiter(
     :param job: a batch job
     :param client: an aiobotocore client for AWS batch
     :param config: settings for task pauses between retries
-    :return: a describe_jobs response for job_id when it's complete
+    :return: a describe_jobs response for job.job_id when it's complete
     :raises: botocore.exceptions.ClientError
     """
     try:
@@ -797,10 +863,11 @@ async def aio_batch_job_waiter(
             job_desc = parse_job_description(job.job_id, response)
             if job_desc:
 
-                job.job_description = job_desc
-                job.status = job_desc["status"]
                 LOGGER.info(
-                    "AWS Batch job (%s:%s) status: %s", job.job_name, job.job_id, job.status
+                    "AWS Batch job (%s:%s) status: %s",
+                    job.job_name,
+                    job.job_id,
+                    job_desc["status"],
                 )
 
                 if job_desc["status"] in ["FAILED", "SUCCEEDED"]:
@@ -832,11 +899,16 @@ async def aio_batch_job_waiter(
 async def aio_batch_job_manager(
     job: AWSBatchJob,
     jobs_db: AWSBatchDB,
-    client: aiobotocore.client.AioBaseClient,
+    batch_client: aiobotocore.client.AioBaseClient,
+    logs_client: aiobotocore.client.AioBaseClient,
     config: AWSBatchConfig = AWS_BATCH_CONFIG,
 ) -> Optional[Dict]:
     """
-    Asynchronous coroutine to manage a batch job.
+    Asynchronous coroutine to manage a batch job.  The job-manager
+    will update attributes on the job as the job passes through
+    submission and completion.  On completion, the job logs are
+    retrieved.  As the job status and logs are collected, the
+    job data is persisted to the jobs_db.
 
     Note that any job with a job.job_id will not re-run, those
     jobs will be monitored until complete.  To re-run a job that
@@ -846,7 +918,8 @@ async def aio_batch_job_manager(
 
     :param job: a batch job spec
     :param jobs_db: an AWSBatchDB
-    :param client: an aiobotocore client for AWS batch
+    :param batch_client: an aiobotocore client for AWS batch
+    :param logs_client: an aiobotocore client for AWS CloudWatchLogs
     :param config: settings for task pauses between retries
     :return: a describe_jobs response for job_id when it's complete
     :raises: botocore.exceptions.ClientError
@@ -854,13 +927,39 @@ async def aio_batch_job_manager(
     while job.num_tries < job.max_tries:
 
         if job.job_id is None:
-            await aio_batch_job_submit(job, client, config)
-            async with jobs_db.DB_SEMAPHORE:
-                jobs_db.save(job)  # TODO: use async-db
+            response = await aio_batch_job_submit(job, client=batch_client, config=config)
+            if response_success(response):
+                job.job_id = response["jobId"]
+                job.job_submission = response
+                job.job_tries.append(job.job_id)
+                job.num_tries += 1
+                async with jobs_db.DB_SEMAPHORE:
+                    jobs_db.save_job(job)  # TODO: use async-db
+            else:
+                LOGGER.error(
+                    "AWS Batch job (%s:%s) submission failure.", job.job_name, job.job_id,
+                )
+                return
 
-        job_desc = await aio_batch_job_waiter(job, client, config)
+        job_desc = await aio_batch_job_waiter(job, client=batch_client, config=config)
+        job.job_description = job_desc
+        job.status = job_desc["status"]
         async with jobs_db.DB_SEMAPHORE:
-            jobs_db.save(job)  # TODO: use async-db
+            jobs_db.save_job(job)  # TODO: use async-db
+
+        try:
+            # Since cloud watch logs have a delay in gathering the job logs, pause first
+            await delay(
+                "batch-job-logs-pause", min_pause=config.min_pause, max_pause=config.max_pause
+            )
+            log_events = await aio_batch_job_logs(job, logs_client=logs_client, config=config)
+            if log_events:
+                job.logs = log_events
+                async with jobs_db.DB_SEMAPHORE:
+                    jobs_db.save_job_logs(job)
+        except:
+            # Allow job logs to fail on any failure
+            pass
 
         if job_desc["status"] == "SUCCEEDED":
             return job_desc
@@ -883,7 +982,7 @@ async def aio_batch_job_manager(
                     )
                     job.reset()
                     async with jobs_db.DB_SEMAPHORE:
-                        jobs_db.save(job)  # TODO: use async-db
+                        jobs_db.save_job(job)  # TODO: use async-db
                     continue
             except KeyError:
                 pass
@@ -894,95 +993,39 @@ async def aio_batch_job_manager(
 
 
 def aio_batch_run_jobs(
-    jobs: List[AWSBatchJob],
-    jobs_db: AWSBatchDB,
-    client: aiobotocore.client.AioBaseClient,
-    config: AWSBatchConfig,
+    jobs: List[AWSBatchJob], jobs_db: AWSBatchDB, config: AWSBatchConfig,
 ):
     loop = asyncio.get_event_loop()
+    batch_client = config.get_batch_client()
+    logs_client = config.get_logs_client()
     try:
         batch_tasks = [
             loop.create_task(
-                aio_batch_job_manager(job=job, jobs_db=jobs_db, client=client, config=config,)
+                aio_batch_job_manager(
+                    job=job,
+                    jobs_db=jobs_db,
+                    batch_client=batch_client,
+                    logs_client=logs_client,
+                    config=config,
+                )
             )
             for job in jobs
         ]
 
-        async def handle_as_completed(tasks):
+        async def handle_jobs_as_completed(tasks):
             for task in asyncio.as_completed(tasks):
-                task_result = await task
-                LOGGER.debug(task_result)
+                job_desc = await task
+                LOGGER.debug(job_desc)
 
-        loop.run_until_complete(handle_as_completed(batch_tasks))
+        # TODO: handle tasks when the event loop is already running
+        # TODO: consider https://github.com/erdewit/nest_asyncio
+        loop.run_until_complete(handle_jobs_as_completed(batch_tasks))
+
     finally:
-        loop.run_until_complete(client.close())
-        loop.stop()
-        loop.close()
-
-
-def main(
-    jobs_db: AWSBatchDB,
-    client: aiobotocore.client.AioBaseClient,
-    config: AWSBatchConfig = AWS_BATCH_CONFIG,
-):
-
-    loop = asyncio.get_event_loop()
-
-    try:
-        # TODO: check if batch-CE exists or create it
-        # TODO: check if batch-queue exists or create it
-        # TODO: use async-db for state-machine management
-        #       - maybe aioredis with both jobName and jobId keys
-        #       - jobName key would just have a list of jobId values
-        # TODO: get job logs
-
-        # # this function can be used as a task callback
-        # def print_result(task: asyncio.Future):
-        #     task_result = task.result()
-        #     print(task_result)
-
-        batch_tasks = []
-        for i in range(2):
-            job_name = f"test-sleep-job-{i:04d}"
-            jobs_saved = jobs_db.find_by_job_name(job_name)
-            if jobs_saved:
-                job_data = jobs_saved[0]  # TODO: find latest jobId?
-                batch_job = AWSBatchJob(**job_data)
-                LOGGER.info(
-                    "AWS Batch job (%s:%s) recovered from db, with status: %s",
-                    batch_job.job_name,
-                    batch_job.job_id,
-                    batch_job.status,
-                )
-                if batch_job.job_id and batch_job.status == "SUCCEEDED":
-                    LOGGER.debug(batch_job.job_description)
-                    continue
-            else:
-                # use 'container_overrides' dict for more options
-                batch_job = AWSBatchJob(
-                    job_name=job_name,
-                    job_definition="batch-dev",
-                    job_queue="batch-dev",
-                    command=["/bin/sh", "-c", "echo Hello && sleep 1 && echo Bye"],
-                )
-
-            batch_task = loop.create_task(
-                aio_batch_job_manager(
-                    job=batch_job, jobs_db=jobs_db, client=client, config=config,
-                )
-            )
-            # # batch_task.add_done_callback(print_result)  # use callbacks
-            batch_tasks.append(batch_task)
-
-        async def handle_as_completed(tasks):
-            for task in asyncio.as_completed(tasks):
-                task_result = await task
-                print(task_result)
-
-        loop.run_until_complete(handle_as_completed(batch_tasks))
-        # loop.run_until_complete(asyncio.wait(batch_tasks))  # use callbacks
-    finally:
-        loop.run_until_complete(client.close())
+        # TODO: close clients when the event loop is already running
+        loop.run_until_complete(batch_client.close())
+        loop.run_until_complete(logs_client.close())
+        # TODO: maybe don't close the loop if it was already running
         loop.stop()
         loop.close()
 
@@ -992,34 +1035,31 @@ if __name__ == "__main__":
     print()
     print("Test async batch jobs")
 
+    logs_command = "for a in `seq 1 10000`; do echo Hello $a; done"
+
     batch_jobs = []
     for i in range(2):
-        job_name = f"test-sleep-job-{i:04d}"
+        job_name = f"test-logs-job-{i:04d}"
         # use 'container_overrides' dict for more options
         batch_job = AWSBatchJob(
             job_name=job_name,
             job_definition="batch-dev",
             job_queue="batch-dev",
-            command=["/bin/sh", "-c", "echo Hello && sleep 1 && echo Bye"],
+            command=["/bin/sh", "-c", logs_command],
         )
         batch_jobs.append(batch_job)
 
-    # pylint: disable=C0103
-    batch_jobs_db = AWSBatchDB("/tmp/aws_batch_jobs.json")
-    LOGGER.info("Using jobs-db file: %s", batch_jobs_db.jobs_db_file)
+    batch_jobs_db = AWSBatchDB(
+        jobs_db_file="/tmp/aio_batch_jobs.json", logs_db_file="/tmp/aio_batch_logs.json",
+    )
 
     batch_jobs = jobs_to_run(jobs=batch_jobs, jobs_db=batch_jobs_db)
-
     if batch_jobs:
-        aws_region = "us-west-2"
-        aio_batch_client = AIO_AWS_SESSION.create_client("batch", region_name=aws_region)
-
         # for polling frequency of 10-30 seconds, with 30-60 second job starts
-        aio_batch_config = AWSBatchConfig(min_pause=10, max_pause=30, start_pause=30,)
+        aio_config = AWSBatchConfig(
+            aws_region="us-west-2", min_pause=10, max_pause=30, start_pause=30,
+        )
 
         aio_batch_run_jobs(
-            jobs=batch_jobs,
-            jobs_db=batch_jobs_db,
-            client=aio_batch_client,
-            config=aio_batch_config,
+            jobs=batch_jobs, jobs_db=batch_jobs_db, config=aio_config,
         )
