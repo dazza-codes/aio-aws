@@ -1,11 +1,14 @@
 
-Python Notes
-============
+aio-aws
+=======
 
-This is a random collection of notes about working with python.
-The notes are developed in a gitlab project at:
+A python package for asynchronous functions and utilities for AWS services.
 
-- https://gitlab.com/dazza-codes/python-notes
+- https://gitlab.com/dazza-codes/aio-aws
+
+This project has a very limited focus.  For general client solutions, see:
+- aioboto3: https://github.com/terrycain/aioboto3
+- aiobotocore: https://github.com/aio-libs/aiobotocore
 
 
 .. toctree::
@@ -13,14 +16,8 @@ The notes are developed in a gitlab project at:
     :caption: Contents
 
     about
-    concurrency
-    asyncio
-    asyncio_executor
-    asyncio_databases
     aio_aws
 
-    code_quality
-    linux
 
 Indices and tables
 ==================

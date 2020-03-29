@@ -13,12 +13,12 @@
 # limitations under the License.
 
 """
-Test the notes.async_executor module
+Test the aio_aws.async_executor module
 """
 import asyncio
 from types import ModuleType
 
-from notes import async_executor
+from aio_aws import async_executor
 
 
 def test_async_executor_module():

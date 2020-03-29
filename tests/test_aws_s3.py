@@ -15,8 +15,8 @@ from typing import List
 
 import pytest
 
-from notes.aio_aws.aio_aws import response_success
-from notes.aio_aws.aio_aws_s3 import aws_s3_buckets_access
+from aio_aws import response_success
+from aio_aws.aio_aws_s3 import aws_s3_buckets_access
 
 
 @pytest.fixture

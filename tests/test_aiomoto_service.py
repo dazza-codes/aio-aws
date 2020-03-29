@@ -24,8 +24,8 @@ import json
 import aiohttp
 import pytest
 
-from tests.aio_aws.aiomoto_services import HOST
-from tests.aio_aws.aiomoto_services import MotoService
+from tests.aiomoto_services import HOST
+from tests.aiomoto_services import MotoService
 
 
 def test_moto_service():
