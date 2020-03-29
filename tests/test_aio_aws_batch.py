@@ -31,21 +31,21 @@ import inspect
 import botocore.exceptions
 import pytest
 
-from notes.aio_aws import aio_aws_batch
-from notes.aio_aws.aio_aws import response_success
-from notes.aio_aws.aio_aws_batch import aio_batch_job_logs
-from notes.aio_aws.aio_aws_batch import aio_batch_job_manager
-from notes.aio_aws.aio_aws_batch import aio_batch_job_status
-from notes.aio_aws.aio_aws_batch import aio_batch_job_submit
-from notes.aio_aws.aio_aws_batch import aio_batch_job_terminate
-from notes.aio_aws.aio_aws_batch import aio_batch_job_waiter
-from notes.aio_aws.aio_aws_batch import aio_batch_run_jobs
-from notes.aio_aws.aio_aws_batch import AWSBatchConfig
-from notes.aio_aws.aio_aws_batch import AWSBatchDB
-from notes.aio_aws.aio_aws_batch import AWSBatchJob
-from tests.aio_aws.aiomoto_fixtures import aio_batch_infrastructure
-from tests.aio_aws.aiomoto_fixtures import AioAwsBatchClients
-from tests.aio_aws.aiomoto_fixtures import AioAwsBatchInfrastructure
+from aio_aws import aio_aws_batch
+from aio_aws import response_success
+from aio_aws.aio_aws_batch import aio_batch_job_logs
+from aio_aws.aio_aws_batch import aio_batch_job_manager
+from aio_aws.aio_aws_batch import aio_batch_job_status
+from aio_aws.aio_aws_batch import aio_batch_job_submit
+from aio_aws.aio_aws_batch import aio_batch_job_terminate
+from aio_aws.aio_aws_batch import aio_batch_job_waiter
+from aio_aws.aio_aws_batch import aio_batch_run_jobs
+from aio_aws.aio_aws_batch import AWSBatchConfig
+from aio_aws.aio_aws_batch import AWSBatchDB
+from aio_aws.aio_aws_batch import AWSBatchJob
+from tests.aiomoto_fixtures import aio_batch_infrastructure
+from tests.aiomoto_fixtures import AioAwsBatchClients
+from tests.aiomoto_fixtures import AioAwsBatchInfrastructure
 
 
 def test_async_aws_batch():

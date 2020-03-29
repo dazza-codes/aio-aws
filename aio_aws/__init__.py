@@ -1,6 +1,3 @@
-#! /usr/bin/env python3
-# pylint: disable=bad-continuation
-
 # Copyright 2020 Darren Weber
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,7 +34,7 @@ For example:
     import aiobotocore.config
     import time
 
-    from notes.aio_aws.aio_aws_s3 import aio_s3_objects_list
+    from aio_aws.aio_aws_s3 import aio_s3_objects_list
 
     MAX_CONNECTIONS = 20
     aio_semaphore = asyncio.Semaphore(MAX_CONNECTIONS)
@@ -86,20 +83,17 @@ For example:
 import asyncio
 import random
 
-import aiobotocore.client  # type: ignore
-import aiobotocore.config  # type: ignore
-import aiobotocore.session  # type: ignore
-import botocore.endpoint  # type: ignore
-import botocore.session  # type: ignore
+import aiobotocore.config
+import aiobotocore.session
+import botocore.endpoint
 
-from notes.aio_aws.logger import LOGGER
+from .logger import LOGGER
 
 #: max_pool_connections for AWS clients (10 by default)
 MAX_POOL_CONNECTIONS = botocore.endpoint.MAX_POOL_CONNECTIONS
 
 #: AWS asyncio session config;
 #: see https://github.com/boto/botocore/blob/develop/botocore/config.py
-AIO_AWS_CONFIG = aiobotocore.config.AioConfig(max_pool_connections=MAX_POOL_CONNECTIONS)
 
 #: a semaphore to limit requests to the max client connections
 CLIENT_SEMAPHORE = asyncio.Semaphore(MAX_POOL_CONNECTIONS)
@@ -120,6 +114,27 @@ MIN_JITTER: float = 1
 MAX_JITTER: float = 10
 
 
+AIO_AWS_CONFIG = aiobotocore.config.AioConfig(max_pool_connections=MAX_POOL_CONNECTIONS)
+
+
+async def aio_client(
+    service_name: str, aio_aws_config: aiobotocore.config.AioConfig = AIO_AWS_CONFIG, **kwargs
+):
+    """
+    Get an asyncio AWS client with an option to provide a client-specific config; this is a
+    thin wrapper on ``aio_aws_session().create_client()`` and the additional
+    kwargs as passed through to ``aio_aws_session().create_client(**kwargs)``.
+
+    :param service_name: an AWS service for a client, like "s3", try
+            :py:meth:`AIO_AWS_SESSION.get_available_services()`
+    :param aio_aws_config: an aiobotocore.config.AioConfig
+            (default :py:const:`AIO_AWS_CONFIG`)
+    :return: aiobotocore.client.AioBaseClient
+    """
+    return aio_aws_session().create_client(service_name, config=aio_aws_config, **kwargs)
+
+
+#: A default aio-aws session
 def aio_aws_session(
     aio_aws_config: aiobotocore.config.AioConfig = AIO_AWS_CONFIG,
 ) -> aiobotocore.session.AioSession:
@@ -137,7 +152,6 @@ def aio_aws_session(
     return session
 
 
-#: A default aio-aws session
 AIO_AWS_SESSION = aio_aws_session()
 
 # AIO_AWS_SESSION.full_config
@@ -162,23 +176,6 @@ AIO_AWS_SESSION = aio_aws_session()
 # OrderedDict([('jobs', <ListShape(StringList)>)])
 # >>> op.input_shape.required_members
 # ['jobs']
-
-
-async def aio_client(
-    service_name: str, aio_aws_config: aiobotocore.config.AioConfig = AIO_AWS_CONFIG, **kwargs
-):
-    """
-    Get an asyncio AWS client with an option to provide a client-specific config; this is a
-    thin wrapper on ``aio_aws_session().create_client()`` and the additional
-    kwargs as passed through to ``aio_aws_session().create_client(**kwargs)``.
-
-    :param service_name: an AWS service for a client, like "s3", try
-            :py:meth:`AIO_AWS_SESSION.get_available_services()`
-    :param aio_aws_config: an aiobotocore.config.AioConfig
-            (default :py:const:`AIO_AWS_CONFIG`)
-    :return: aiobotocore.client.AioBaseClient
-    """
-    return aio_aws_session().create_client(service_name, config=aio_aws_config, **kwargs)
 
 
 async def delay(
@@ -226,31 +223,3 @@ def response_code(response):
 def response_success(response):
     code = response_code(response)
     return code in [200, 204]
-
-
-if __name__ == "__main__":
-
-    # pylint: disable=C0103
-    loop = asyncio.get_event_loop()
-
-    try:
-        LOGGER.setLevel("DEBUG")
-
-        delay_task = loop.create_task(delay("delay_task", 0.1, 0.5))
-        jitter_task = loop.create_task(jitter("jitter_task", 0.1, 0.5))
-
-        loop.run_until_complete(delay_task)
-        print("Check delay task")
-        assert delay_task.done()
-        pause = delay_task.result()
-        assert 0.1 <= pause <= 0.5
-
-        loop.run_until_complete(jitter_task)
-        print("Check jitter task")
-        assert jitter_task.done()
-        pause = jitter_task.result()
-        assert 0.1 <= pause <= 0.5
-
-    finally:
-        loop.stop()
-        loop.close()
