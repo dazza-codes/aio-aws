@@ -27,7 +27,7 @@ using an :py:class:`.AsyncioExecutor`
 
 .. code-block:: shell
 
-    $ ./notes/async_executor.py --task-count 5
+    $ ./aio_aws/async_executor.py --task-count 5
     5 async tasks submitted in 0.00 seconds.
     Task 0 - await a sleep for 6.86
     Task 1 - await a sleep for 4.50
@@ -42,7 +42,7 @@ using an :py:class:`.AsyncioExecutor`
     5 async tasks completed in 6.87 seconds.
     5 async tasks validated in 6.87 seconds.
 
-    $ ./notes/async_executor.py --task-count 10000
+    $ ./aio_aws/async_executor.py --task-count 10000
     10000 async tasks submitted in 0.01 seconds.
     Task 0 - await a sleep for 8.39
     Task 1 - await a sleep for 6.96
@@ -227,7 +227,7 @@ class AsyncioExecutor(concurrent.futures.Executor):
         Schedules the callable, fn, to be executed as ``fn(*args **kwargs)`` and
         returns a Future object representing the execution of the callable.
 
-        Add notes for coroutine-functions, coroutine-objects, and blocking functions;
+        Add aio_aws for coroutine-functions, coroutine-objects, and blocking functions;
         apply the right typing annotations.  Maybe split this function up into different
         public (or private) methods to handle different fn types?
 
@@ -269,7 +269,7 @@ class AsyncioExecutor(concurrent.futures.Executor):
         tasks on shutdown, so gather all pending tasks.
 
         promises that submitted tasks will run to completion (not cancelled); maybe add
-        notes about how the user can first cancel tasks and then shutdown this executor
+        aio_aws about how the user can first cancel tasks and then shutdown this executor
         :param wait: wait for thread running event loop to join
         """
         if self._shutdown:

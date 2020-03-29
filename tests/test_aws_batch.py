@@ -28,10 +28,10 @@ according to the moto license (Apache-2.0).
 
 import pytest
 
-from notes.aio_aws.aio_aws import response_success
-from tests.aio_aws.aws_fixtures import AwsBatchClients
-from tests.aio_aws.aws_fixtures import AwsBatchInfrastructure
-from tests.aio_aws.aws_fixtures import batch_infrastructure
+from aio_aws import response_success
+from tests.aws_fixtures import AwsBatchClients
+from tests.aws_fixtures import AwsBatchInfrastructure
+from tests.aws_fixtures import batch_infrastructure
 
 
 @pytest.fixture

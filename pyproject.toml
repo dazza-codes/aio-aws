@@ -1,15 +1,15 @@
 [tool.poetry]
-name = "python-notes"
+name = "aio-aws"
 version = "0.1.0"
-description = "Python Notes"
+description = "aio-aws"
 authors = [
     "Darren Weber <dazza-codes@gitlab.com>",
 ]
 license = "Apache-2.0"
 
 readme = "README.md"  # Markdown files are supported
-repository = "https://gitlab.com/dazza-codes/python-notes.git"
-homepage = "https://gitlab.com/dazza-codes/python-notes"
+repository = "https://gitlab.com/dazza-codes/aio-aws.git"
+homepage = "https://gitlab.com/dazza-codes/aio-aws"
 
 keywords = [
     "Development Status :: 2 - Pre-Alpha",
@@ -19,15 +19,15 @@ keywords = [
     "Topic :: Utilities",
 ]
 
-include = ["notes/**/*"]
+include = ["aio_aws/**/*"]
 exclude = ["tests/**/*"]
 
 packages = [
-    {include = "notes"}
+    {include = "aio_aws"}
 ]
 
 # [tool.poetry.scripts]
-# hello = "notes.__main__:main"
+# hello = "aio_aws.__main__:main"
 
 [tool.poetry.dependencies]
 python = "^3.6"

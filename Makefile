@@ -5,7 +5,7 @@ SHELL = /bin/bash
 .ONESHELL:
 .SUFFIXES:
 
-LIB = notes
+LIB = aio_aws
 
 clean:
 	@rm -rf build dist .eggs *.egg-info

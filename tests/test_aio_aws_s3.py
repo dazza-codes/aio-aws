@@ -19,13 +19,13 @@ import aiobotocore.config
 import botocore.exceptions
 import pytest
 
-from notes.aio_aws.aio_aws import response_success
-from notes.aio_aws.aio_aws_s3 import aio_s3_bucket_access
-from notes.aio_aws.aio_aws_s3 import aio_s3_bucket_head
-from notes.aio_aws.aio_aws_s3 import aio_s3_buckets_access
-from notes.aio_aws.aio_aws_s3 import aio_s3_buckets_list
-from notes.aio_aws.aio_aws_s3 import aio_s3_object_head
-from notes.aio_aws.aio_aws_s3 import S3Parts
+from aio_aws import response_success
+from aio_aws.aio_aws_s3 import aio_s3_bucket_access
+from aio_aws.aio_aws_s3 import aio_s3_bucket_head
+from aio_aws.aio_aws_s3 import aio_s3_buckets_access
+from aio_aws.aio_aws_s3 import aio_s3_buckets_list
+from aio_aws.aio_aws_s3 import aio_s3_object_head
+from aio_aws.aio_aws_s3 import S3Parts
 
 
 @pytest.fixture

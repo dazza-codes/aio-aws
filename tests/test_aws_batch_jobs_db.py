@@ -19,9 +19,9 @@ Test AWS Batch TinyDB
 import pytest
 import tinydb
 
-from notes.aio_aws.aio_aws_batch import AWSBatchDB
-from notes.aio_aws.aio_aws_batch import AWSBatchJob
-from notes.aio_aws.aio_aws_batch import jobs_to_run
+from aio_aws.aio_aws_batch import AWSBatchDB
+from aio_aws.aio_aws_batch import AWSBatchJob
+from aio_aws.aio_aws_batch import jobs_to_run
 
 
 @pytest.fixture

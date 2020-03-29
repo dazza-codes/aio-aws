@@ -23,7 +23,7 @@ In testing this, it's able to run and monitor 100s of jobs from a laptop with mo
 CPU/RAM resources.  It can recover from a crash by using a db-state, without re-running
 the same jobs (by jobName).  It should be able to scale to run 1000s of jobs.
 
-To run the example, the ``notes.aio_aws.aio_aws_batch`` module has a ``main`` that will run and
+To run the example, the ``aio_aws.aio_aws_batch`` module has a ``main`` that will run and
 manage about 5 live batch jobs (very small ``sleep`` jobs that don't cost much to run).  The
 job state is persisted to ``aws_batch_jobs.json`` and if it runs successfully, it will not
 run the jobs again; the `TinyDB`_ is used to recover job state by ``jobName``.  (This demo
@@ -34,7 +34,7 @@ assumes that some simple AWS Batch infrastructure exists already.)
     # setup the python virtualenv
     # check the main details and modify for a preferred batch queue/CE and AWS region
 
-    $ ./notes/aio_aws/aio_aws_batch.py
+    $ ./aio_aws/aio_aws_batch.py
 
     Test async batch jobs
 
@@ -43,14 +43,14 @@ assumes that some simple AWS Batch infrastructure exists already.)
     # job status is saved and updated in `aws_batch_jobs.json`
     # when it's done, run it again and see that nothing is re-submitted
 
-    $ ./notes/aio_aws/aio_aws_batch.py
+    $ ./aio_aws/aio_aws_batch.py
 
 If the job monitoring is halted for some reason (like ``CNT-C``), it can recover from
 the db-state, e.g.
 
 .. code-block::
 
-    $ ./notes/aio_aws/aio_aws_batch.py
+    $ ./aio_aws/aio_aws_batch.py
 
     Test async batch jobs
     [INFO]  2020-03-05T14:51:53.372Z  aio-aws:<module>:485  AWS Batch job (test-sleep-job-0000) recovered from db
@@ -82,15 +82,11 @@ the settings should be changed for monitoring jobs to only check every 10 or 20 
 Monitoring Jobs
 ***************
 
-The :py:func:`notes.aio_aws.aio_aws_batch.aio_batch_job_manager` can submit a job, wait
+The :py:func:`aio_aws.aio_aws_batch.aio_batch_job_manager` can submit a job, wait
 for it to complete and retry if it fails on a SPOT termination. It saves the job status
-using the :py:class:`notes.aio_aws.aio_aws_batch import AWSBatchDB`.  The job manager
-uses :py:func:`notes.aio_aws.aio_aws_batch.aio_batch_job_waiter`, which uses these settings
-to control the async-wait between polling the job status:
-
-- :py:const:`notes.aio_aws.aio_aws.BATCH_STARTUP_PAUSE`
-- :py:const:`notes.aio_aws.aio_aws.MAX_PAUSE`
-- :py:const:`notes.aio_aws.aio_aws.MIN_PAUSE`
+using the :py:class:`aio_aws.aio_aws_batch.AWSBatchDB`.  The job manager
+uses :py:class:`aio_aws.aio_aws_batch.AWSBatchConfig`, which has settings
+to control the frequency of polling the job status.
 
 These settings control how often job descriptions are polled.  These requests for job status
 are also limited by the client connection pool and the client semaphore used by the job
@@ -131,12 +127,12 @@ after everything is done.
 
     import asyncio
 
-    from notes.aio_aws import AIO_AWS_SESSION
-    from notes.aio_aws.aio_aws_batch import AWSBatchConfig
-    from notes.aio_aws.aio_aws_batch import AWSBatchDB
-    from notes.aio_aws.aio_aws_batch import AWSBatchJob
-    from notes.aio_aws.aio_aws_batch import jobs_to_run
-    from notes.aio_aws.aio_aws_batch import aio_batch_run_jobs
+    from aio_aws import AIO_AWS_SESSION
+    from aio_aws.aio_aws_batch import AWSBatchConfig
+    from aio_aws.aio_aws_batch import AWSBatchDB
+    from aio_aws.aio_aws_batch import AWSBatchJob
+    from aio_aws.aio_aws_batch import jobs_to_run
+    from aio_aws.aio_aws_batch import aio_batch_run_jobs
 
     aws_region = "us-west-2"
 
@@ -206,17 +202,17 @@ import botocore.session  # type: ignore
 import tinydb
 from dataclasses import dataclass
 
-from notes.aio_aws.aio_aws import AIO_AWS_SESSION
-from notes.aio_aws.aio_aws import BATCH_STARTUP_PAUSE
-from notes.aio_aws.aio_aws import CLIENT_SEMAPHORE
-from notes.aio_aws.aio_aws import delay
-from notes.aio_aws.aio_aws import jitter
-from notes.aio_aws.aio_aws import MAX_JITTER
-from notes.aio_aws.aio_aws import MAX_PAUSE
-from notes.aio_aws.aio_aws import MIN_JITTER
-from notes.aio_aws.aio_aws import MIN_PAUSE
-from notes.aio_aws.aio_aws import response_success
-from notes.aio_aws.logger import LOGGER
+from aio_aws import AIO_AWS_SESSION
+from aio_aws import BATCH_STARTUP_PAUSE
+from aio_aws import CLIENT_SEMAPHORE
+from aio_aws import delay
+from aio_aws import jitter
+from aio_aws import MAX_JITTER
+from aio_aws import MAX_PAUSE
+from aio_aws import MIN_JITTER
+from aio_aws import MIN_PAUSE
+from aio_aws import response_success
+from aio_aws.logger import LOGGER
 
 
 @dataclass

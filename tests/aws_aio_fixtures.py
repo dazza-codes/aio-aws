@@ -20,8 +20,8 @@ import aiohttp
 import pytest
 from aiobotocore.config import AioConfig
 
-from tests.aio_aws.aiomoto_services import CONNECT_TIMEOUT
-from tests.aio_aws.aiomoto_services import HOST
+from tests.aiomoto_services import CONNECT_TIMEOUT
+from tests.aiomoto_services import HOST
 
 
 @pytest.fixture(scope="session", params=[True, False], ids=["debug[true]", "debug[false]"])

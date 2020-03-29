@@ -23,12 +23,12 @@ import os
 
 from botocore.client import BaseClient
 
-from notes.aio_aws.aio_aws import response_success
-from tests.aio_aws.aws_fixtures import AwsBatchClients
-from tests.aio_aws.utils import AWS_ACCESS_KEY_ID
-from tests.aio_aws.utils import AWS_REGION
-from tests.aio_aws.utils import AWS_SECRET_ACCESS_KEY
-from tests.aio_aws.utils import has_moto_mocks
+from aio_aws import response_success
+from tests.aws_fixtures import AwsBatchClients
+from tests.utils import AWS_ACCESS_KEY_ID
+from tests.utils import AWS_REGION
+from tests.utils import AWS_SECRET_ACCESS_KEY
+from tests.utils import has_moto_mocks
 
 
 def test_aws_credentials(aws_credentials):
