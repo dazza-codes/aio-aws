@@ -29,7 +29,7 @@ approach uses a client connection limiter, based on ``asyncio.Semaphore(20)``.
 
 .. code-block:: shell
 
-    $ ./notes/aio_aws/aio_aws_s3.py
+    $ ./aio_aws/aio_aws_s3.py
 
     aio-aws check an s3 object that exists
     GET HEAD s3://noaa-goes16/index.html -> {'ResponseMetadata': {'RequestId': 'A2F4DF282C84341B', 'HostId': 'Rt45GH1taNRVUAPTg8XJfs4KLvri0OKos/6Wohp5tAfQa+moUT/9mC/0Wa9cYVQZcMAWKtIYfkE=', 'HTTPStatusCode': 200, 'HTTPHeaders': {'x-amz-id-2': 'Rt45GH1taNRVUAPTg8XJfs4KLvri0OKos/6Wohp5tAfQa+moUT/9mC/0Wa9cYVQZcMAWKtIYfkE=', 'x-amz-request-id': 'A2F4DF282C84341B', 'date': 'Tue, 03 Mar 2020 19:22:21 GMT', 'last-modified': 'Wed, 12 Feb 2020 19:14:27 GMT', 'etag': '"8f9810548f75fd8b8a16431c74ad54ac"', 'content-encoding': 'text/html', 'accept-ranges': 'bytes', 'content-type': 'text/html', 'content-length': '32356', 'server': 'AmazonS3'}, 'RetryAttempts': 0}, 'AcceptRanges': 'bytes', 'LastModified': datetime.datetime(2020, 2, 12, 19, 14, 27, tzinfo=tzutc()), 'ContentLength': 32356, 'ETag': '"8f9810548f75fd8b8a16431c74ad54ac"', 'ContentEncoding': 'text/html', 'ContentType': 'text/html', 'Metadata': {}}
@@ -79,7 +79,7 @@ after everything is done.
     import aiobotocore.config
     import time
 
-    from notes.aio_aws.aio_aws_s3 import aio_s3_objects_list
+    from aio_aws.aio_aws_s3 import aio_s3_objects_list
 
     MAX_CONNECTIONS = 20
     aio_semaphore = asyncio.Semaphore(MAX_CONNECTIONS)
@@ -144,13 +144,13 @@ import botocore.exceptions  # type: ignore
 import botocore.session  # type: ignore
 from dataclasses import dataclass
 
-from notes.aio_aws.aio_aws import aio_aws_session
-from notes.aio_aws.aio_aws import CLIENT_SEMAPHORE
-from notes.aio_aws.aio_aws import jitter
-from notes.aio_aws.aio_aws import MAX_JITTER
-from notes.aio_aws.aio_aws import MIN_JITTER
-from notes.aio_aws.aio_aws import response_success
-from notes.aio_aws.logger import LOGGER
+from aio_aws import aio_aws_session
+from aio_aws import CLIENT_SEMAPHORE
+from aio_aws import jitter
+from aio_aws import MAX_JITTER
+from aio_aws import MIN_JITTER
+from aio_aws import response_success
+from aio_aws.logger import LOGGER
 
 
 @dataclass(frozen=True)

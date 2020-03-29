@@ -12,15 +12,15 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath('.'))
+import os
+import sys
+sys.path.insert(0, os.path.abspath('..'))
 
 
 # -- Project information -----------------------------------------------------
 
-project = "Python Notes"
-copyright = "2020, Darren Weber"
+project = "aio-aws"
+copyright = "2019-2020, Darren Weber"
 author = "Darren Weber"
 
 # The short X.Y version
@@ -125,7 +125,7 @@ html_static_path = ["_static"]
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = "PythonNotesdoc"
+htmlhelp_basename = "AioAwsDoc"
 
 
 # -- Options for LaTeX output ------------------------------------------------
@@ -148,14 +148,14 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
-latex_documents = [(master_doc, "PythonNotes.tex", "Python Notes", "Darren Weber", "manual")]
+latex_documents = [(master_doc, "AioAws.tex", "aio-aws", "Darren Weber", "manual")]
 
 
 # -- Options for manual page output ------------------------------------------
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [(master_doc, "pythonnotes", "Python Notes", [author], 1)]
+man_pages = [(master_doc, "aio_aws", "aio-aws", [author], 1)]
 
 
 # -- Options for Texinfo output ----------------------------------------------
@@ -166,11 +166,11 @@ man_pages = [(master_doc, "pythonnotes", "Python Notes", [author], 1)]
 texinfo_documents = [
     (
         master_doc,
-        "PythonNotes",
-        "Python Notes",
+        "AioAws",
+        "aio-aws",
         author,
-        "PythonNotes",
-        "Random notes about working with python.",
+        "AioAws",
+        "Utilities for async AWS services.",
         "Miscellaneous",
     )
 ]

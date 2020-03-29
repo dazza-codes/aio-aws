@@ -19,7 +19,7 @@ This test suite uses a large suite of moto mocks for the AWS batch
 infrastructure. These infrastructure mocks are derived from the moto test
 suite for testing the batch client. The test infrastructure should be used
 according to the moto license. That license overrides any global license
-applied to my notes project.
+applied to my aio_aws project.
 
 .. seealso::
 
@@ -40,9 +40,9 @@ from moto import mock_iam
 from moto import mock_logs
 from moto import mock_s3
 
-from tests.aio_aws.utils import AWS_ACCESS_KEY_ID
-from tests.aio_aws.utils import AWS_REGION
-from tests.aio_aws.utils import AWS_SECRET_ACCESS_KEY
+from tests.utils import AWS_ACCESS_KEY_ID
+from tests.utils import AWS_REGION
+from tests.utils import AWS_SECRET_ACCESS_KEY
 
 # import moto.settings
 # moto.settings.TEST_SERVER_MODE = True

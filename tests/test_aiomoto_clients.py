@@ -28,12 +28,12 @@ import pytest
 from aiobotocore.client import AioBaseClient
 from aiobotocore.session import AioSession
 
-from notes.aio_aws.aio_aws import response_success
-from tests.aio_aws.aiomoto_fixtures import AioAwsBatchClients
-from tests.aio_aws.utils import AWS_ACCESS_KEY_ID
-from tests.aio_aws.utils import AWS_REGION
-from tests.aio_aws.utils import AWS_SECRET_ACCESS_KEY
-from tests.aio_aws.utils import has_moto_mocks
+from aio_aws import response_success
+from tests.aiomoto_fixtures import AioAwsBatchClients
+from tests.utils import AWS_ACCESS_KEY_ID
+from tests.utils import AWS_REGION
+from tests.utils import AWS_SECRET_ACCESS_KEY
+from tests.utils import has_moto_mocks
 
 
 def test_aio_aws_session_credentials(aio_aws_session):
