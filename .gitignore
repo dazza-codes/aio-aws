@@ -3,6 +3,9 @@ aws_batch_jobs.json
 example.db
 .vscode/
 
+# Sourcetrail
+*.srctrl*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

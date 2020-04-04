@@ -24,51 +24,6 @@ It's recommended to use a single session and a single client with a connection p
 Although there are context manager patterns, it's also possible to manage closing the client
 after everything is done.
 
-For example:
-
-.. code-block::
-
-    # python 3.6
-
-    import asyncio
-    import aiobotocore.config
-    import time
-
-    from aio_aws.aio_aws_s3 import aio_s3_objects_list
-
-    MAX_CONNECTIONS = 20
-    aio_semaphore = asyncio.Semaphore(MAX_CONNECTIONS)
-    aio_config = aiobotocore.config.AioConfig(max_pool_connections=MAX_CONNECTIONS)
-    aio_session = aio_aws_session(aio_config)
-    aio_client = aio_session.create_client("s3")
-
-    main_loop = asyncio.get_event_loop()
-
-    try:
-        # https://registry.opendata.aws/noaa-goes/
-        noaa_goes_bucket = "noaa-goes16"
-        noaa_prefix = "ABI-L2-ADPC/2019"  # use a prior year for stable results
-
-        print("aio-aws collection of all objects in a bucket-prefix.")
-        start = time.perf_counter()
-        aio_s3_objects = main_loop.run_until_complete(
-            aio_s3_objects_list(
-                bucket_name=noaa_goes_bucket,
-                bucket_prefix=noaa_prefix,
-                s3_client=aio_client,
-                sem=aio_semaphore,
-            )
-        )
-        aio_s3_uris = [f"s3://{noaa_goes_bucket}/{obj['Key']}" for obj in aio_s3_objects]
-        print(f"found {len(aio_s3_uris)} s3 objects")
-        end = time.perf_counter() - start
-        print(f"finished in {end:0.2f} seconds.")
-
-    finally:
-        main_loop.run_until_complete(aio_client.close())
-        main_loop.stop()
-        main_loop.close()
-
 .. seealso::
     - https://aiobotocore.readthedocs.io/en/latest/
     - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/batch.html
@@ -83,9 +38,12 @@ For example:
 import asyncio
 import random
 
+import aiobotocore.client
 import aiobotocore.config
 import aiobotocore.session
 import botocore.endpoint
+from async_generator import asynccontextmanager
+from dataclasses import dataclass
 
 from .logger import LOGGER
 
@@ -97,6 +55,14 @@ MAX_POOL_CONNECTIONS = botocore.endpoint.MAX_POOL_CONNECTIONS
 
 #: a semaphore to limit requests to the max client connections
 CLIENT_SEMAPHORE = asyncio.Semaphore(MAX_POOL_CONNECTIONS)
+
+#: a default client config with py:const:`MAX_POOL_CONNECTIONS`
+AIO_AWS_CONFIG = aiobotocore.config.AioConfig(max_pool_connections=MAX_POOL_CONNECTIONS)
+
+#: a default session with py:const:`AIO_AWS_CONFIG`
+AIO_AWS_SESSION = aiobotocore.get_session()
+AIO_AWS_SESSION.user_agent_name = "aio-aws"
+AIO_AWS_SESSION.set_default_client_config(AIO_AWS_CONFIG)
 
 #: batch job startup pause (seconds)
 BATCH_STARTUP_PAUSE: float = 30
@@ -114,27 +80,6 @@ MIN_JITTER: float = 1
 MAX_JITTER: float = 10
 
 
-AIO_AWS_CONFIG = aiobotocore.config.AioConfig(max_pool_connections=MAX_POOL_CONNECTIONS)
-
-
-async def aio_client(
-    service_name: str, aio_aws_config: aiobotocore.config.AioConfig = AIO_AWS_CONFIG, **kwargs
-):
-    """
-    Get an asyncio AWS client with an option to provide a client-specific config; this is a
-    thin wrapper on ``aio_aws_session().create_client()`` and the additional
-    kwargs as passed through to ``aio_aws_session().create_client(**kwargs)``.
-
-    :param service_name: an AWS service for a client, like "s3", try
-            :py:meth:`AIO_AWS_SESSION.get_available_services()`
-    :param aio_aws_config: an aiobotocore.config.AioConfig
-            (default :py:const:`AIO_AWS_CONFIG`)
-    :return: aiobotocore.client.AioBaseClient
-    """
-    return aio_aws_session().create_client(service_name, config=aio_aws_config, **kwargs)
-
-
-#: A default aio-aws session
 def aio_aws_session(
     aio_aws_config: aiobotocore.config.AioConfig = AIO_AWS_CONFIG,
 ) -> aiobotocore.session.AioSession:
@@ -152,7 +97,25 @@ def aio_aws_session(
     return session
 
 
-AIO_AWS_SESSION = aio_aws_session()
+async def aio_aws_client(
+    service_name: str, aio_aws_config: aiobotocore.config.AioConfig = AIO_AWS_CONFIG, **kwargs
+):
+    """
+    Yield an asyncio AWS client with an option to provide a client-specific config; this is a
+    thin wrapper on ``AIO_AWS_SESSION.create_client()`` and the additional
+    kwargs as passed through to ``AIO_AWS_SESSION.create_client(**kwargs)``.
+
+    :param service_name: an AWS service for a client, like "s3", try
+            :py:meth:`AIO_AWS_SESSION.get_available_services()`
+    :param aio_aws_config: an aiobotocore.config.AioConfig
+            (default :py:const:`AIO_AWS_CONFIG`)
+    :yield: aiobotocore.client.AioBaseClient
+    """
+    async with AIO_AWS_SESSION.create_client(
+        service_name, config=aio_aws_config, **kwargs
+    ) as client:
+        yield client
+
 
 # AIO_AWS_SESSION.full_config
 # AIO_AWS_SESSION.get_config_variable('region')
@@ -176,6 +139,56 @@ AIO_AWS_SESSION = aio_aws_session()
 # OrderedDict([('jobs', <ListShape(StringList)>)])
 # >>> op.input_shape.required_members
 # ['jobs']
+
+
+@dataclass
+class AioAWSConfig:
+    #: an optional AWS region name
+    aws_region: str = None
+    #: a number of retries for an AWS client request/response
+    retries: int = 5
+    #: an asyncio.sleep for ``random.uniform(min_pause, max_pause)``
+    min_pause: float = MIN_PAUSE
+    #: an asyncio.sleep for ``random.uniform(min_pause, max_pause)``
+    max_pause: float = MAX_PAUSE
+    #: an asyncio.sleep for ``random.uniform(min_jitter, max_jitter)``
+    min_jitter: float = MIN_JITTER
+    #: an asyncio.sleep for ``random.uniform(min_jitter, max_jitter)``
+    max_jitter: float = MAX_JITTER
+    #: defines a limit to the number of client connections
+    max_pool_connections: int = MAX_POOL_CONNECTIONS
+    #: an asyncio.Semaphore to limit the number of concurrent clients;
+    #: this should be equivalent to the session client connection pool
+    sem: asyncio.Semaphore = CLIENT_SEMAPHORE
+    #: an aiobotocore.session.AioSession
+    session: aiobotocore.session.AioSession = AIO_AWS_SESSION
+
+    def __post_init__(self):
+        client_config = self.session.get_default_client_config()
+        if client_config.region_name != self.aws_region:
+            client_config.region_name = self.aws_region
+
+        client_config.max_pool_connections = self.max_pool_connections
+        self.sem = asyncio.Semaphore(self.max_pool_connections)
+        self.session.set_default_client_config(client_config)
+
+    @asynccontextmanager
+    async def create_client(self, service: str) -> aiobotocore.client.AioBaseClient:
+        """
+        Create and yield a new client using the ``AioAWSConfig.session``;
+        the number of clients (each using one connection) is limited by
+        the ``AioAWSConfig.max_connection_pool``
+
+        .. code-block::
+            config = AioAWSConfig()
+            async with config.create_client("s3") as client:
+                response = await s3_client.head_bucket(Bucket=bucket_name)
+
+        :yield: an aiobotocore.client.AioBaseClient for AWS service
+        """
+        async with self.sem:
+            async with self.session.create_client(service) as client:
+                yield client
 
 
 async def delay(
