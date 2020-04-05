@@ -117,6 +117,7 @@ after everything is done.
         print(f"finished in {end:0.2f} seconds.")
 
     finally:
+        main_loop.run_until_complete(main_loop.shutdown_asyncgens())
         main_loop.stop()
         main_loop.close()
 
@@ -128,10 +129,6 @@ after everything is done.
     - https://docs.python.org/3/library/asyncio.html
     - https://www.mathewmarcus.com/blog/asynchronous-aws-api-requests-with-asyncio.html
 
-.. _aiobotocore: https://aiobotocore.readthedocs.io/en/latest/
-.. _aiohttp: https://aiohttp.readthedocs.io/en/latest/
-.. _asyncio: https://docs.python.org/3/library/asyncio.html
-.. _botocore: https://botocore.amazonaws.com/v1/documentation/api/latest/index.html
 """
 
 import asyncio
@@ -198,11 +195,13 @@ def handle_head_error_code(
 
 def aws_s3_buckets_access(s3_client: botocore.client.BaseClient) -> Dict[str, bool]:
     """
-    Sequential, synchronous approach to list all s3 buckets
-    and issue a HEAD request to check if access is allowed.
+    A sequential, synchronous approach to list all s3 buckets
+    and issue a HEAD request to check if access is allowed.  This
+    is used in performance comparisons between botocore and
+    aiobotocore functionality.
 
     :param s3_client: botocore.client for s3
-    :return: dict of {bucket_name: str, access: bool}
+    :return: a tuple of ``(bucket_name: str, access: bool)``
     """
     access_buckets = {}
     response = s3_client.list_buckets()
@@ -271,7 +270,7 @@ async def aio_s3_bucket_access(
 
     :param bucket_name: an s3 bucket name
     :param config: an AioAWSConfig
-    :return: a tuple of (bucket_name: str, access: bool)
+    :return: a tuple of ``(bucket_name: str, access: bool)``
     """
     try:
         head = await aio_s3_bucket_head(bucket_name, config)
@@ -332,7 +331,7 @@ async def aio_s3_buckets_access(
     :param buckets: a list of bucket names to check; the default is
                     to issue a request for all buckets in the session region
     :param config: an AioAWSConfig
-    :return: dict of {bucket_name: str, access: bool}
+    :return: dict of ``{bucket_name: str, access: bool}``
     """
     access_coroutines = [aio_s3_bucket_access(bucket, config) for bucket in buckets]
     results = await asyncio.gather(*access_coroutines)
@@ -391,7 +390,7 @@ async def aio_s3_object_access(
 
     :param s3_uri: an s3 URI
     :param config: an AioAWSConfig
-    :return: a tuple of (s3_uri: str, access: bool)
+    :return: a tuple of ``(s3_uri: str, access: bool)``
     """
     try:
 
@@ -420,7 +419,16 @@ async def aio_s3_objects_list(
     :param bucket_name: param passed to s3_client.list_objects_v2 'Bucket'
     :param bucket_prefix: param passed to s3_client.list_objects_v2 'Prefix'
     :param config: an AioAWSConfig
-    :return: dict of {bucket_name: str, access: bool}
+    :return: a list of s3 object data, e.g.
+
+        .. code-block::
+
+            >>> aio_s3_objects[0]
+            {'ETag': '"192e29f360ea8297b5876b33b8419741"',
+             'Key': 'ABI-L2-ADPC/2019/337/13/OR_ABI-L2-ADPC-M6_G16_s20193371331167_e20193371333539_c20193371334564.nc',
+             'LastModified': datetime.datetime(2019, 12, 3, 14, 27, 5, tzinfo=tzutc()),
+             'Size': 892913,
+             'StorageClass': 'INTELLIGENT_TIERING'}
 
     .. seealso:
         - https://botocore.amazonaws.com/v1/documentation/api/latest/reference/services/s3.html#S3.Client.list_objects_v2
@@ -492,7 +500,7 @@ async def aio_s3_objects_access(
 
     :param s3_uris: a list of s3 uris in the form 's3://bucket-name/key'
     :param config: an AioAWSConfig
-    :return: dict of {s3_uri: str, access: bool}
+    :return: dict of ``{s3_uri: str, access: bool}``
     """
     access_coroutines = [aio_s3_object_access(s3_uri, config) for s3_uri in s3_uris]
     results = await asyncio.gather(*access_coroutines)
