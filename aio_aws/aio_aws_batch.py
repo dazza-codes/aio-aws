@@ -158,7 +158,7 @@ after everything is done.
     # - create a `batch-dev` batch queue
     # - create a `batch-dev` job definition using alpine:latest
 
-    logs_command = "for a in `seq 1 10000`; do echo Hello $a; done"
+    job_command = "for a in `seq 1 10`; do echo Hello $a; sleep 0.5; done"
 
     # Create a list of AWSBatchJob objects, which are simple wrappers
     # on AWS Batch job data.  These objects are simple, by design, to
@@ -166,12 +166,16 @@ after everything is done.
     batch_jobs = []
     for i in range(20):
         job_name = f"test-logs-job-{i:04d}"
-        # use 'container_overrides' dict for more options
+
+        # Creating an AWSBatchJob instance does not run anything, it's simply
+        # a dataclass to retain and track job attributes.
+        # Replace 'command' with 'container_overrides' dict for more options;
+        # do not use 'command' together with 'container_overrides'.
         batch_job = AWSBatchJob(
             job_name=job_name,
             job_definition="batch-dev",
             job_queue="batch-dev",
-            command=["/bin/sh", "-c", logs_command],
+            command=["/bin/sh", "-c", job_command],
         )
         batch_jobs.append(batch_job)
 
@@ -191,9 +195,10 @@ after everything is done.
         loop.set_debug(enabled=True)
         try:
 
-            # for polling frequency of 10-30 seconds, with 30-60 second job starts
+            # for polling frequency of 10-30 seconds, with 30-60 second job starts;
+            # use lower frequency polling for long running jobs
             aio_config = AWSBatchConfig(
-                max_pool_connections=20,
+                max_pool_connections=10,
                 aws_region="us-west-2",
                 batch_db=batch_jobs_db,
                 min_pause=10,
@@ -220,11 +225,6 @@ after everything is done.
     - https://aiobotocore.readthedocs.io/en/latest/
     - https://botocore.amazonaws.com/v1/documentation/api/latest/index.html
 
-.. _aiobotocore: https://aiobotocore.readthedocs.io/en/latest/
-.. _aiohttp: https://aiohttp.readthedocs.io/en/latest/
-.. _asyncio: https://docs.python.org/3/library/asyncio.html
-.. _botocore: https://botocore.amazonaws.com/v1/documentation/api/latest/index.html
-.. _TinyDB: https://tinydb.readthedocs.io/en/latest/intro.html
 """
 
 import asyncio
@@ -280,10 +280,21 @@ class AWSBatchJob:
     """
     AWS Batch job
 
+    Creating an AWSBatchJob instance does not run anything, it's simply
+    a dataclass to retain and track job attributes.  There are no instance
+    methods to run a job, the instances are passed to async coroutine functions.
+
+    Replace 'command' with 'container_overrides' dict for more options;
+    do not use 'command' together with 'container_overrides', or understand
+    that the construction will update the `container_overrides['command']`
+    when the `command is not None`.
+
+    :param job_name: A job jobName (truncated to 128 characters).
     :param job_definition: A job job_definition.
     :param job_queue: A batch queue.
     :param command: A container command.
     :param depends_on: list of dictionaries like:
+
         .. code-block::
 
             [
@@ -291,9 +302,15 @@ class AWSBatchJob:
             ]
 
         type is optional, used only for job arrays
-    :param container_overrides: a dictionary of container container_overrides.
+
+    :param container_overrides: a dictionary of container overrides.
         Overrides include 'vcpus', 'memory', 'instanceType',
-        'environment', and 'resourceRequirements'.
+        'environment', and 'resourceRequirements'. If the `command`
+        parameter is defined, it overrides the `container_overrides['command']`
+
+    :param max_tries: an optional limit to the number of job retries, which
+        can apply in the job-manager function to any job with a SPOT failure
+        only and it applies regardless of the job-definition settings.
 
     .. seealso::
         https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/batch.html
@@ -1144,13 +1161,18 @@ if __name__ == "__main__":
     print()
     print("Test async batch jobs")
 
+    # job_command = "for a in `seq 1 10000`; do echo Hello $a; done"
     job_command = "for a in `seq 1 10`; do echo Hello $a; sleep 0.5; done"
 
     n_jobs = 20
     batch_jobs = []
     for i in range(n_jobs):
         job_name = f"test-job-{i:04d}"
-        # use 'container_overrides' dict for more options
+
+        # Creating an AWSBatchJob instance does not run anything, it's simply
+        # a dataclass to retain and track job attributes.
+        # Replace 'command' with 'container_overrides' dict for more options;
+        # do not use 'command' together with 'container_overrides'.
         batch_job = AWSBatchJob(
             job_name=job_name,
             job_definition="batch-dev",
@@ -1176,10 +1198,10 @@ if __name__ == "__main__":
             aio_config = AWSBatchConfig(
                 aws_region="us-west-2",
                 batch_db=batch_jobs_db,
+                max_pool_connections=10,
                 min_pause=5,
                 max_pause=20,
                 start_pause=30,
-                max_pool_connections=10,
             )
 
             loop.run_until_complete(aio_batch_run_jobs(jobs=batch_jobs, config=aio_config))
