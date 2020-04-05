@@ -36,6 +36,8 @@ dataclasses = {version = "*", python = "^3.6.0"}
 aiobotocore = {extras = ["awscli", "boto3"], version = "^0.12.0"}
 aioredis = "^1.3"
 click = "^7.0"
+async_generator = "^1.10"
+
 databases = {extras = ["postgresql", "mysql", "sqlite"], version = "*"}
 tinydb = "^3.15"
 
