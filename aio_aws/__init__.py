@@ -29,10 +29,12 @@ after everything is done.
     - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/batch.html
     - https://www.mathewmarcus.com/blog/asynchronous-aws-api-requests-with-asyncio.html
 
-.. _aiobotocore: https://aiobotocore.readthedocs.io/en/latest/
+.. _aioboto3: https://github.com/terrycain/aioboto3
+.. _aiobotocore: https://github.com/aio-libs/aiobotocore
 .. _aiohttp: https://aiohttp.readthedocs.io/en/latest/
 .. _asyncio: https://docs.python.org/3/library/asyncio.html
 .. _botocore: https://botocore.amazonaws.com/v1/documentation/api/latest/index.html
+.. _TinyDB: https://tinydb.readthedocs.io/en/latest/intro.html
 """
 
 import asyncio
@@ -180,6 +182,7 @@ class AioAWSConfig:
         the ``AioAWSConfig.max_connection_pool``
 
         .. code-block::
+
             config = AioAWSConfig()
             async with config.create_client("s3") as client:
                 response = await s3_client.head_bucket(Bucket=bucket_name)
