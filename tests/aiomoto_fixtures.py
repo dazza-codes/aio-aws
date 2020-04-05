@@ -160,7 +160,7 @@ def aio_aws_session(aws_credentials, aws_region, event_loop):
     session.set_credentials(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
     session.set_debug_logger(logger_name="aiomoto")
 
-    yield session
+    return session
 
 
 @pytest.fixture
