@@ -1,79 +1,155 @@
+#! /usr/bin/env python3
+
+# Copyright 2020 Darren Weber
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """
-Asyncio AWS Lambda
-------------------
+Aio AWS Lambda
+--------------
 
-This code is MIT License, from Mathew Marcus
-
-The explanation for this code is in Mathew's blog post.  It does not
-use the ``aiobotocore`` library; it uses ``aiohttp``.  The example
-gathers lambda function calls, but the same pattern applies to any AWS
-service API. The code is copied here to preserve and proliferate the pattern;
-thanks Mathew!  It has trivial changes for pep8 and black formatting.
-
-.. seealso::
-    - https://www.mathewmarcus.com/blog/asynchronous-aws-api-requests-with-asyncio.html
-    - The code is declared MIT License at http://disq.us/p/230227m
 """
-
-
-# TODO: all of this might not work as expected without using aiobotocore
-#       - revise all of this to use aiobotocore
 
 
 import asyncio
 from json import dumps
-from os.path import join
-from urllib.parse import urlparse
+from typing import Dict
 
-from aiohttp import ClientSession
-from botocore.auth import SigV4Auth
-from botocore.awsrequest import AWSRequest
-from botocore.session import Session
+import botocore.exceptions
+from dataclasses import dataclass
 
-CREDENTIALS = Session().get_credentials()
-LAMBDA_ENDPOINT_BASE = "https://lambda.{region}.amazonaws.com/2015-03-31/functions"
-
-
-def create_signed_headers(url, payload):
-    host_segments = urlparse(url).netloc.split(".")
-    service = host_segments[0]
-    region = host_segments[1]
-    request = AWSRequest(method="POST", url=url, data=dumps(payload))
-    SigV4Auth(CREDENTIALS, service, region).add_auth(request)
-    return dict(request.headers.items())
+from aio_aws import AioAWSConfig
+from aio_aws import jitter
+from aio_aws import LOGGER
+from aio_aws import response_success
 
 
-async def invoke(url, payload, session):
-    signed_headers = create_signed_headers(url, payload)
-    async with session.post(url, json=payload, headers=signed_headers) as response:
-        return await response.json()
+@dataclass
+class LambdaFunc:
+    """
+
+    For an example of a ClientContext JSON, see PutEvents in the Amazon Mobile
+    Analytics API Reference and User Guide. The ClientContext JSON must be
+    base64-encoded and has a maximum size of 3583 bytes.
+
+    Payload (bytes or seekable file-like object) -- JSON that you want to
+    provide to your Lambda function as input.
+
+    Qualifier (string) --
+    You can use this optional parameter to specify a Lambda function version
+    or alias name. If you specify a function version, the API uses the qualified
+    function ARN to invoke a specific Lambda function. If you specify an alias
+    name, the API uses the alias ARN to invoke the Lambda function version to
+    which the alias points. If you don't provide this parameter, then the API
+    uses unqualified function ARN which results in invocation of the $LATEST version.
+
+    """
+    name: str
+    type: str = "RequestResponse"  # or 'Event' or 'DryRun'
+    log_type: str = "None"  # 'None' or 'Tail'
+    context: str = None
+    payload: bytes = b""  # or a file
+    qualifier: str = None
+    response: Dict = None
+
+    def __post_init__(self):
+
+        self.name = self.name[:64]
+
+        if self.type != "RequestResponse":
+            self.log_type = "None"
+
+    @property
+    def params(self):
+        """AWS Lambda parameters to invoke function"""
+        params = {
+            "FunctionName": self.name,
+            "InvocationType": self.type,
+            "LogType": self.log_type,
+        }
+        if self.context:
+            params["ClientContext"] = self.context
+        if self.payload:
+            params["Payload"] = self.payload
+        if self.qualifier:
+            params["Qualifier"] = self.qualifier
+        return params
 
 
-def generate_invocations(functions_and_payloads, base_url, session):
-    for func_name, payload in functions_and_payloads:
-        url = join(base_url, func_name, "invocations")
-        yield invoke(url, payload, session)
+async def aio_lambda_invoke(
+    func: LambdaFunc, config: AioAWSConfig,
+) -> Dict:
+    """
+    Asynchronous coroutine to invoke a lambda function
 
+    :param func: A lambda function
+    :param config: aio session and client settings
+    :return: a lambda response
+    :raises: botocore.exceptions.ClientError, botocore.exceptions.ParamValidationError
+    """
+    async with config.create_client("lambda") as lambda_client:
+        tries = 0
+        while tries < config.retries:
+            tries += 1
+            try:
+                LOGGER.debug("AWS Lambda params: %s", func.params)
+                response = await lambda_client.invoke(**func.params)
+                LOGGER.debug("AWS Lambda response: %s", response)
 
-def invoke_all(functions_and_payloads, region="us-east-1"):
-    base_url = LAMBDA_ENDPOINT_BASE.format(region=region)
+                func.response = response
+                if response_success(response):
+                    LOGGER.info("AWS Lambda (%s) invoked OK", func.name)
+                else:
+                    # TODO: are there some failures that could be recovered here?
+                    LOGGER.error("AWS Lambda (%s) invoke failure.", func.name)
+                return response
 
-    async def wrapped():
-        async with ClientSession(raise_for_status=True) as session:
-            invocations = generate_invocations(functions_and_payloads, base_url, session)
-            return await asyncio.gather(*invocations)
-
-    return asyncio.get_event_loop().run_until_complete(wrapped())
-
-
-def main():
-    func_name = "hello-world-{}"
-    funcs_and_payloads = ((func_name.format(i), dict(hello=i)) for i in range(100))
-
-    lambda_responses = invoke_all(funcs_and_payloads)
-
-    # Do some further processing with the responses
+            except botocore.exceptions.ClientError as err:
+                error = err.response.get("Error", {})
+                if error.get("Code") == "TooManyRequestsException":
+                    if tries < config.retries:
+                        # add an extra random sleep period to avoid API throttle
+                        await jitter("lambda-invoke", config.min_jitter, config.max_jitter)
+                    continue  # allow it to retry, if possible
+                else:
+                    raise
+        else:
+            raise RuntimeError("AWS Lambda invoke exceeded retries")
 
 
 if __name__ == "__main__":
-    main()
+
+    print()
+    print("Test async lambda functions")
+
+    # Create an event loop for the aio processing
+    loop = asyncio.get_event_loop()
+    loop.set_debug(enabled=True)
+    try:
+
+        aio_config = AioAWSConfig(
+            aws_region="us-west-2",
+            max_pool_connections=10,
+            min_jitter=0.2,
+            max_jitter=0.8,
+        )
+
+        func = LambdaFunc("lambda_dev")
+        loop.run_until_complete(aio_lambda_invoke(func, config=aio_config))
+
+        print(func.response)
+
+    finally:
+        loop.run_until_complete(loop.shutdown_asyncgens())
+        loop.stop()
+        loop.close()
