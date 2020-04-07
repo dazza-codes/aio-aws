@@ -238,4 +238,4 @@ def response_code(response):
 
 def response_success(response):
     code = response_code(response)
-    return code in [200, 204]
+    return 200 <= code < 300

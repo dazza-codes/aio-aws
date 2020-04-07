@@ -86,7 +86,6 @@ def test_jobs_db() -> AWSBatchDB:
 def batch_config(
     aio_aws_session, aio_aws_batch_server, aio_aws_logs_server, test_jobs_db,
 ) -> AWSBatchConfig:
-
     class TestBatchConfig(AWSBatchConfig):
         session = aio_aws_session
 

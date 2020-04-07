@@ -94,6 +94,14 @@ async def aio_aws_dynamodb2_server():
 
 
 @pytest.fixture
+async def aio_aws_lambda_server():
+    async with MotoService("lambda") as svc:
+        svc.reset()
+        yield svc.endpoint_url
+        svc.reset()
+
+
+@pytest.fixture
 async def aio_aws_logs_server():
     # cloud watch logs
     async with MotoService("logs") as svc:
@@ -199,6 +207,14 @@ async def aio_aws_ecs_client(aio_aws_session, aio_aws_ecs_server):
 async def aio_aws_iam_client(aio_aws_session, aio_aws_iam_server):
     async with aio_aws_session.create_client("iam", endpoint_url=aio_aws_iam_server) as client:
         client.meta.config.region_name = "aws-global"  # not AWS_REGION
+        yield client
+
+
+@pytest.fixture
+async def aio_aws_lambda_client(aio_aws_session, aio_aws_lambda_server):
+    async with aio_aws_session.create_client(
+        "lambda", endpoint_url=aio_aws_lambda_server
+    ) as client:
         yield client
 
 
@@ -333,10 +349,10 @@ async def aio_batch_infrastructure(
         jobDefinitionName=job_definition_name,
         type="container",
         containerProperties={
-            "image": "busybox",
-            "vcpus": 2,
+            "image": "alpine",
+            "vcpus": 1,
             "memory": 8,
-            "command": ["sleep", "10"],  # NOTE: job runs for 10 sec without overrides
+            "command": ["sleep", "5"],  # NOTE: job runs for 5 sec without overrides
         },
     )
     assert resp["jobDefinitionName"] == job_definition_name

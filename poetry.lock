@@ -86,10 +86,10 @@ description = "MySQL driver for asyncio."
 name = "aiomysql"
 optional = false
 python-versions = "*"
-version = "0.0.20"
+version = "0.0.15"
 
 [package.dependencies]
-PyMySQL = ">=0.9,<=0.9.2"
+PyMySQL = ">=0.7.5"
 
 [package.extras]
 sa = ["sqlalchemy (>=1.0)"]
@@ -397,7 +397,7 @@ python-versions = "*"
 version = "2020.4.5.1"
 
 [[package]]
-category = "main"
+category = "dev"
 description = "Foreign Function Interface for Python calling C code."
 name = "cffi"
 optional = false
@@ -454,17 +454,6 @@ version = "7.1.1"
 
 [[package]]
 category = "dev"
-description = "Minimal bindings to GitHub's fork of cmark"
-name = "cmarkgfm"
-optional = false
-python-versions = "*"
-version = "0.4.2"
-
-[package.dependencies]
-cffi = ">=1.0.0"
-
-[[package]]
-category = "dev"
 description = "Hosted coverage reports for GitHub, Bitbucket and Gitlab"
 name = "codecov"
 optional = false
@@ -508,7 +497,7 @@ version = "5.0.4"
 toml = ["toml"]
 
 [[package]]
-category = "main"
+category = "dev"
 description = "cryptography is a package which provides cryptographic recipes and primitives to Python developers."
 name = "cryptography"
 optional = false
@@ -1305,7 +1294,7 @@ description = "Python Build Reasonableness"
 name = "pbr"
 optional = false
 python-versions = "*"
-version = "5.4.4"
+version = "5.4.5"
 
 [[package]]
 category = "dev"
@@ -1443,7 +1432,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 version = "2.5.0"
 
 [[package]]
-category = "main"
+category = "dev"
 description = "C parser in Python"
 name = "pycparser"
 optional = false
@@ -1500,10 +1489,10 @@ description = "Pure Python MySQL Driver"
 name = "pymysql"
 optional = false
 python-versions = "*"
-version = "0.9.2"
+version = "0.9.3"
 
-[package.dependencies]
-cryptography = "*"
+[package.extras]
+rsa = ["cryptography"]
 
 [[package]]
 category = "dev"
@@ -1777,10 +1766,6 @@ Pygments = ">=2.5.1"
 bleach = ">=2.1.0"
 docutils = ">=0.13.1"
 six = "*"
-
-[package.dependencies.cmarkgfm]
-optional = true
-version = ">=0.2.0"
 
 [package.extras]
 md = ["cmarkgfm (>=0.2.0)"]
@@ -2372,8 +2357,7 @@ aioitertools = [
     {file = "aioitertools-0.5.1.tar.gz", hash = "sha256:1609c66e6ab1a98c3bb1b1e4acb7bf632a4d78818042cf827f73d31e6caf0d39"},
 ]
 aiomysql = [
-    {file = "aiomysql-0.0.20-py3-none-any.whl", hash = "sha256:5fd798481f16625b424eec765c56d712ac78a51f3bd0175a3de94107aae43307"},
-    {file = "aiomysql-0.0.20.tar.gz", hash = "sha256:d89ce25d44dadb43cf2d9e4603bd67b7a0ad12d5e67208de013629ba648df2ba"},
+    {file = "aiomysql-0.0.15.tar.gz", hash = "sha256:8ea2977e5790f9bda966e0f955530d693c4b3359c62d1d6f29adb4d3a69fdd4c"},
 ]
 aioredis = [
     {file = "aioredis-1.3.1-py3-none-any.whl", hash = "sha256:b61808d7e97b7cd5a92ed574937a079c9387fdadd22bfbfa7ad2fd319ecc26e3"},
@@ -2534,36 +2518,6 @@ chardet = [
 click = [
     {file = "click-7.1.1-py2.py3-none-any.whl", hash = "sha256:e345d143d80bf5ee7534056164e5e112ea5e22716bbb1ce727941f4c8b471b9a"},
     {file = "click-7.1.1.tar.gz", hash = "sha256:8a18b4ea89d8820c5d0c7da8a64b2c324b4dabb695804dbfea19b9be9d88c0cc"},
-]
-cmarkgfm = [
-    {file = "cmarkgfm-0.4.2-cp27-cp27m-macosx_10_6_intel.macosx_10_9_intel.macosx_10_9_x86_64.macosx_10_10_intel.macosx_10_10_x86_64.whl", hash = "sha256:d6f716d7b1182bf35862b5065112f933f43dd1aa4f8097c9bcfb246f71528a34"},
-    {file = "cmarkgfm-0.4.2-cp27-cp27m-manylinux1_i686.whl", hash = "sha256:275905bb371a99285c74931700db3f0c078e7603bed383e8cf1a09f3ee05a3de"},
-    {file = "cmarkgfm-0.4.2-cp27-cp27m-manylinux1_x86_64.whl", hash = "sha256:d08bad67fa18f7e8ff738c090628ee0cbf0505d74a991c848d6d04abfe67b697"},
-    {file = "cmarkgfm-0.4.2-cp27-cp27m-win32.whl", hash = "sha256:50ed116d0b60a07df0dc7b180c28569064b9d37d1578d4c9021cff04d725cb63"},
-    {file = "cmarkgfm-0.4.2-cp27-cp27m-win_amd64.whl", hash = "sha256:c5f1b9e8592d2c448c44e6bc0d91224b16ea5f8293908b1561de1f6d2d0658b1"},
-    {file = "cmarkgfm-0.4.2-cp27-cp27mu-manylinux1_i686.whl", hash = "sha256:cf219bec69e601fe27e3974b7307d2f06082ab385d42752738ad2eb630a47d65"},
-    {file = "cmarkgfm-0.4.2-cp27-cp27mu-manylinux1_x86_64.whl", hash = "sha256:761ee7b04d1caee2931344ac6bfebf37102ffb203b136b676b0a71a3f0ea3c87"},
-    {file = "cmarkgfm-0.4.2-cp34-cp34m-macosx_10_6_intel.macosx_10_9_intel.macosx_10_9_x86_64.macosx_10_10_intel.macosx_10_10_x86_64.whl", hash = "sha256:61a72def110eed903cd1848245897bcb80d295cd9d13944d4f9f30cba5b76655"},
-    {file = "cmarkgfm-0.4.2-cp34-cp34m-manylinux1_i686.whl", hash = "sha256:c573ea89dd95d41b6d8cf36799c34b6d5b1eac4aed0212dee0f0a11fb7b01e8f"},
-    {file = "cmarkgfm-0.4.2-cp34-cp34m-manylinux1_x86_64.whl", hash = "sha256:1a625afc6f62da428df96ec325dc30866cc5781520cbd904ff4ec44cf018171c"},
-    {file = "cmarkgfm-0.4.2-cp34-cp34m-win32.whl", hash = "sha256:811527e9b7280b136734ed6cb6845e5fbccaeaa132ddf45f0246cbe544016957"},
-    {file = "cmarkgfm-0.4.2-cp34-cp34m-win_amd64.whl", hash = "sha256:70b18f843aec58e4e64aadce48a897fe7c50426718b7753aaee399e72df64190"},
-    {file = "cmarkgfm-0.4.2-cp35-cp35m-macosx_10_6_intel.macosx_10_9_intel.macosx_10_9_x86_64.macosx_10_10_intel.macosx_10_10_x86_64.whl", hash = "sha256:665303d34d7f14f10d7b0651082f25ebf7107f29ef3d699490cac16cdc0fc8ce"},
-    {file = "cmarkgfm-0.4.2-cp35-cp35m-manylinux1_i686.whl", hash = "sha256:987b0e157f70c72a84f3c2f9ef2d7ab0f26c08f2bf326c12c087ff9eebcb3ff5"},
-    {file = "cmarkgfm-0.4.2-cp35-cp35m-manylinux1_x86_64.whl", hash = "sha256:e08e479102627641c7cb4ece421c6ed4124820b1758765db32201136762282d9"},
-    {file = "cmarkgfm-0.4.2-cp35-cp35m-win32.whl", hash = "sha256:50098f1c4950722521f0671e54139e0edc1837d63c990cf0f3d2c49607bb51a2"},
-    {file = "cmarkgfm-0.4.2-cp35-cp35m-win_amd64.whl", hash = "sha256:0186dccca79483e3405217993b83b914ba4559fe9a8396efc4eea56561b74061"},
-    {file = "cmarkgfm-0.4.2-cp36-cp36m-macosx_10_6_intel.macosx_10_9_intel.macosx_10_9_x86_64.macosx_10_10_intel.macosx_10_10_x86_64.whl", hash = "sha256:9fc6a2183d0a9b0974ec7cdcdad42bd78a3be674cc3e65f87dd694419b3b0ab7"},
-    {file = "cmarkgfm-0.4.2-cp36-cp36m-manylinux1_i686.whl", hash = "sha256:e25f53c37e319241b9a412382140dffac98ca756ba8f360ac7ab5e30cad9670a"},
-    {file = "cmarkgfm-0.4.2-cp36-cp36m-manylinux1_x86_64.whl", hash = "sha256:cbe581456357d8f0674d6a590b1aaf46c11d01dd0a23af147a51a798c3818034"},
-    {file = "cmarkgfm-0.4.2-cp36-cp36m-win32.whl", hash = "sha256:64186fb75d973a06df0e6ea12879533b71f6e7ba1ab01ffee7fc3e7534758889"},
-    {file = "cmarkgfm-0.4.2-cp36-cp36m-win_amd64.whl", hash = "sha256:e20ac21418af0298437d29599f7851915497ce9f2866bc8e86b084d8911ee061"},
-    {file = "cmarkgfm-0.4.2-cp37-cp37m-macosx_10_6_intel.macosx_10_9_intel.macosx_10_9_x86_64.macosx_10_10_intel.macosx_10_10_x86_64.whl", hash = "sha256:207b7673ff4e177374c572feeae0e4ef33be620ec9171c08fd22e2b796e03e3d"},
-    {file = "cmarkgfm-0.4.2-cp37-cp37m-manylinux1_i686.whl", hash = "sha256:e8932bddf159064f04e946fbb64693753488de21586f20e840b3be51745c8c09"},
-    {file = "cmarkgfm-0.4.2-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:cf5014eb214d814a83a7a47407272d5db10b719dbeaf4d3cfe5969309d0fcf4b"},
-    {file = "cmarkgfm-0.4.2-cp37-cp37m-win32.whl", hash = "sha256:a3d17ee4ae739fe16f7501a52255c2e287ac817cfd88565b9859f70520afffea"},
-    {file = "cmarkgfm-0.4.2-cp37-cp37m-win_amd64.whl", hash = "sha256:ba5b5488719c0f2ced0aa1986376f7baff1a1653a8eb5fdfcf3f84c7ce46ef8d"},
-    {file = "cmarkgfm-0.4.2.tar.gz", hash = "sha256:f20900f16377f2109783ae9348d34bc80530808439591c3d3df73d5c7ef1a00c"},
 ]
 codecov = [
     {file = "codecov-2.0.22-py2.py3-none-any.whl", hash = "sha256:09fb045eb044a619cd2b9dacd7789ae8e322cb7f18196378579fd8d883e6b665"},
@@ -2993,8 +2947,8 @@ pathspec = [
     {file = "pathspec-0.7.0.tar.gz", hash = "sha256:562aa70af2e0d434367d9790ad37aed893de47f1693e4201fd1d3dca15d19b96"},
 ]
 pbr = [
-    {file = "pbr-5.4.4-py2.py3-none-any.whl", hash = "sha256:61aa52a0f18b71c5cc58232d2cf8f8d09cd67fcad60b742a60124cb8d6951488"},
-    {file = "pbr-5.4.4.tar.gz", hash = "sha256:139d2625547dbfa5fb0b81daebb39601c478c21956dc57e2e07b74450a8c506b"},
+    {file = "pbr-5.4.5-py2.py3-none-any.whl", hash = "sha256:579170e23f8e0c2f24b0de612f71f648eccb79fb1322c814ae6b3c07b5ba23e8"},
+    {file = "pbr-5.4.5.tar.gz", hash = "sha256:07f558fece33b05caf857474a366dfcc00562bca13dd8b47b2b3e22d9f9bf55c"},
 ]
 pexpect = [
     {file = "pexpect-4.8.0-py2.py3-none-any.whl", hash = "sha256:0b48a55dcb3c05f3329815901ea4fc1537514d6ba867a152b581d69ae3710937"},
@@ -3102,8 +3056,8 @@ pylint = [
     {file = "pylint-2.4.4.tar.gz", hash = "sha256:3db5468ad013380e987410a8d6956226963aed94ecb5f9d3a28acca6d9ac36cd"},
 ]
 pymysql = [
-    {file = "PyMySQL-0.9.2-py2.py3-none-any.whl", hash = "sha256:95f057328357e0e13a30e67857a8c694878b0175797a9a203ee7adbfb9b1ec5f"},
-    {file = "PyMySQL-0.9.2.tar.gz", hash = "sha256:9ec760cbb251c158c19d6c88c17ca00a8632bac713890e465b2be01fdc30713f"},
+    {file = "PyMySQL-0.9.3-py2.py3-none-any.whl", hash = "sha256:3943fbbbc1e902f41daf7f9165519f140c4451c179380677e6a848587042561a"},
+    {file = "PyMySQL-0.9.3.tar.gz", hash = "sha256:d8c059dcd81dedb85a9f034d5e22dcb4442c0b201908bede99e306d65ea7c8e7"},
 ]
 pyparsing = [
     {file = "pyparsing-2.4.7-py2.py3-none-any.whl", hash = "sha256:ef9d7589ef3c200abe66653d3f1ab1033c3c419ae9b9bdb1240a85b024efc88b"},
