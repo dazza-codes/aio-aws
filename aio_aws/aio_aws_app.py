@@ -2,6 +2,7 @@ from pathlib import Path
 
 from starlette.applications import Starlette
 from starlette.staticfiles import StaticFiles
+
 # from starlette.responses import HTMLResponse
 from starlette.templating import Jinja2Templates
 import uvicorn
@@ -9,20 +10,20 @@ import uvicorn
 
 app_path = Path(__file__).parent
 
-templates = Jinja2Templates(directory=app_path / 'templates')
+templates = Jinja2Templates(directory=app_path / "templates")
 
 app = Starlette(debug=True)
-app.mount('/static', StaticFiles(directory=app_path / 'statics'), name='static')
+app.mount("/static", StaticFiles(directory=app_path / "statics"), name="static")
 
 
-@app.route('/')
+@app.route("/")
 async def homepage(request):
     template = "index.html"
     context = {"request": request}
     return templates.TemplateResponse(template, context)
 
 
-@app.route('/error')
+@app.route("/error")
 async def error(request):
     """
     An example error. Switch the `debug` setting to see either tracebacks or 500 pages.
@@ -51,5 +52,4 @@ async def server_error(request, exc):
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host='0.0.0.0', port=8000)
-
+    uvicorn.run(app, host="0.0.0.0", port=8000)
