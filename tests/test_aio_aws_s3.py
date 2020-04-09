@@ -131,7 +131,6 @@ async def aio_s3_object_uri(
 
 @pytest.fixture
 def s3_config(aio_aws_session, aio_aws_s3_server) -> AioAWSConfig:
-
     class TestS3Config(AioAWSConfig):
         session = aio_aws_session
 
@@ -142,12 +141,7 @@ def s3_config(aio_aws_session, aio_aws_s3_server) -> AioAWSConfig:
             ) as client:
                 yield client
 
-    config = TestS3Config(
-        min_pause=0.2,
-        max_pause=0.6,
-        min_jitter=0.1,
-        max_jitter=0.2,
-    )
+    config = TestS3Config(min_pause=0.2, max_pause=0.6, min_jitter=0.1, max_jitter=0.2,)
 
     yield config
 

@@ -1,4 +1,3 @@
-
 # from starlette.responses import HTMLResponse
 from starlette.testclient import TestClient
 import pytest
@@ -12,12 +11,12 @@ def client():
 
 
 def test_home(client):
-    response = client.get('/')
+    response = client.get("/")
     assert response.status_code == 200
-    assert 'Hello, world!' in response.content.decode('utf-8')
+    assert "Hello, world!" in response.content.decode("utf-8")
 
 
 def test_missing(client):
-    response = client.get('/fake-path')
+    response = client.get("/fake-path")
     assert response.status_code == 404
-    assert 'Page not found.' in response.content.decode('utf-8')
+    assert "Page not found." in response.content.decode("utf-8")
