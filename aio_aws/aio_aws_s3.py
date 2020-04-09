@@ -225,10 +225,7 @@ def aws_s3_buckets_access(s3_client: botocore.client.BaseClient) -> Dict[str, bo
     return access_buckets
 
 
-async def aio_s3_bucket_head(
-    bucket_name: str,
-    config: AioAWSConfig
-) -> Dict:
+async def aio_s3_bucket_head(bucket_name: str, config: AioAWSConfig) -> Dict:
     """
     Asynchronous coroutine to issue a HEAD request for s3 bucket.
 
@@ -261,10 +258,7 @@ async def aio_s3_bucket_head(
             raise RuntimeError("AWS S3 bucket poke exceeded retries")
 
 
-async def aio_s3_bucket_access(
-    bucket_name: str,
-    config: AioAWSConfig
-) -> Tuple[str, bool]:
+async def aio_s3_bucket_access(bucket_name: str, config: AioAWSConfig) -> Tuple[str, bool]:
     """
     Asynchronous coroutine to issue a HEAD request to check if s3 bucket access is allowed.
 
@@ -287,9 +281,7 @@ async def aio_s3_bucket_access(
         raise
 
 
-async def aio_s3_buckets_list(
-    config: AioAWSConfig
-) -> Dict:
+async def aio_s3_buckets_list(config: AioAWSConfig) -> Dict:
     """
     Asynchronous coroutine to list all buckets.
 
@@ -320,10 +312,7 @@ async def aio_s3_buckets_list(
             raise RuntimeError("AWS S3 buckets list exceeded retries")
 
 
-async def aio_s3_buckets_access(
-    buckets: List[str],
-    config: AioAWSConfig
-) -> Dict[str, bool]:
+async def aio_s3_buckets_access(buckets: List[str], config: AioAWSConfig) -> Dict[str, bool]:
     """
     Asynchronous coroutine to issue HEAD requests on all available
     s3 buckets to check if each bucket allows access.
@@ -344,10 +333,7 @@ async def aio_s3_buckets_access(
     return bucket_access
 
 
-async def aio_s3_object_head(
-    s3_uri: str,
-    config: AioAWSConfig
-) -> Dict:
+async def aio_s3_object_head(s3_uri: str, config: AioAWSConfig) -> Dict:
     """
     Asynchronous coroutine to issue a HEAD request for s3 object.
 
@@ -381,10 +367,7 @@ async def aio_s3_object_head(
             raise RuntimeError("AWS S3 poke exceeded retries")
 
 
-async def aio_s3_object_access(
-    s3_uri: str,
-    config: AioAWSConfig
-) -> Tuple[str, bool]:
+async def aio_s3_object_access(s3_uri: str, config: AioAWSConfig) -> Tuple[str, bool]:
     """
     Asynchronous coroutine to issue a HEAD request to check if s3 object access is allowed.
 
@@ -409,9 +392,7 @@ async def aio_s3_object_access(
 
 
 async def aio_s3_objects_list(
-    bucket_name: str,
-    bucket_prefix: str,
-    config: AioAWSConfig
+    bucket_name: str, bucket_prefix: str, config: AioAWSConfig
 ) -> List[Dict]:
     """
     Asynchronous coroutine to collect all objects in a bucket prefix.
@@ -490,10 +471,7 @@ async def aio_s3_objects_list(
             raise RuntimeError("AWS S3 list objects exceeded retries")
 
 
-async def aio_s3_objects_access(
-    s3_uris: List[str],
-    config: AioAWSConfig
-) -> Dict[str, bool]:
+async def aio_s3_objects_access(s3_uris: List[str], config: AioAWSConfig) -> Dict[str, bool]:
     """
     Asynchronous coroutine to issue HEAD requests on all available
     s3 objects to check if each s3_object allows access.
@@ -559,9 +537,7 @@ if __name__ == "__main__":
         print("aio-aws check an s3 object that is missing; it raises.")
         try:
             s3_uri = f"s3://{noaa_goes_bucket}/missing.html"
-            main_loop.run_until_complete(
-                aio_s3_object_head(s3_uri, config=aio_config)
-            )
+            main_loop.run_until_complete(aio_s3_object_head(s3_uri, config=aio_config))
         except botocore.exceptions.ClientError as err:
             err_code = err.response.get("Error", {}).get("Code")
             if err_code == "401":
@@ -574,9 +550,7 @@ if __name__ == "__main__":
         print()
         print("aio-aws find all buckets that allow access.")
         start = time.perf_counter()
-        buckets_response = main_loop.run_until_complete(
-            aio_s3_buckets_list(config=aio_config)
-        )
+        buckets_response = main_loop.run_until_complete(aio_s3_buckets_list(config=aio_config))
         s3_buckets = [bucket["Name"] for bucket in buckets_response["Buckets"]]
         aio_bucket_access = main_loop.run_until_complete(
             aio_s3_buckets_access(s3_buckets, config=aio_config)
@@ -590,9 +564,7 @@ if __name__ == "__main__":
         start = time.perf_counter()
         aio_s3_objects = main_loop.run_until_complete(
             aio_s3_objects_list(
-                bucket_name=noaa_goes_bucket,
-                bucket_prefix=noaa_prefix,
-                config=aio_config
+                bucket_name=noaa_goes_bucket, bucket_prefix=noaa_prefix, config=aio_config
             )
         )
         aio_s3_uris = [f"s3://{noaa_goes_bucket}/{obj['Key']}" for obj in aio_s3_objects]
