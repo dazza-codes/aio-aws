@@ -8,7 +8,7 @@ limited focus on s3 and AWS Batch.  Additional services could be
 added, but this project is likely to retain a limited focus.
 For general client solutions, see
 [aioboto3](https://github.com/terrycain/aioboto3) and
-[aiobotocore](https://github.com/aio-libs/aiobotocore), which wrap 
+[aiobotocore](https://github.com/aio-libs/aiobotocore), which wrap
 [botocore](https://botocore.amazonaws.com/v1/documentation/api/latest/index.html)
 
 The API documentation is published as gitlab pages at:
@@ -42,7 +42,7 @@ make init  # calls poetry install
 
 This project has a very limited focus.  For general client solutions, see
 [aioboto3](https://github.com/terrycain/aioboto3) and
-[aiobotocore](https://github.com/aio-libs/aiobotocore), which wrap 
+[aiobotocore](https://github.com/aio-libs/aiobotocore), which wrap
 [botocore](https://botocore.amazonaws.com/v1/documentation/api/latest/index.html)
 to patch it with features for async coroutines using
 [aiohttp](https://aiohttp.readthedocs.io/en/latest/) and

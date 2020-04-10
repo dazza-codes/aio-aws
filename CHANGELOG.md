@@ -20,3 +20,13 @@ Focus on aio-aws
     maintain active connections that are
     allocated to clients as they are created
 
+
+0.4.0 (2020-04-09)
+------------------
+- Read lambda response content
+- poetry update
+- Replace aio-aws-lambda code
+- Update NOTICES
+- Add starlette example app
+- Update API docs
+
