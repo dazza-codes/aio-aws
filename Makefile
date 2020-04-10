@@ -16,8 +16,9 @@ clean:
 	@find . -type f -name "*.py[co]" -exec rm -rf {} +
 
 coverage:
-	@poetry run pytest \
+	@poetry run pytest -q \
 		-W ignore::DeprecationWarning \
+		-n auto \
 		--cov-config .coveragerc \
 		--verbose \
 		--cov-report term \
@@ -49,7 +50,7 @@ lint: clean
 	@poetry run pylint $(LIB)
 
 test: clean
-	@poetry run pytest -q --durations=10 --show-capture=no --junitxml=report.xml tests
+	@poetry run pytest -n auto -q --durations=10 --show-capture=no --junitxml=report.xml tests
 
 typehint: clean
 	@poetry run mypy --follow-imports=skip $(LIB)

@@ -34,6 +34,7 @@ from async_generator import asynccontextmanager
 
 from aio_aws import aio_aws_batch
 from aio_aws import response_success
+from aio_aws.aio_aws_batch import aio_batch_get_logs
 from aio_aws.aio_aws_batch import aio_batch_job_logs
 from aio_aws.aio_aws_batch import aio_batch_job_manager
 from aio_aws.aio_aws_batch import aio_batch_job_status
@@ -42,14 +43,10 @@ from aio_aws.aio_aws_batch import aio_batch_job_terminate
 from aio_aws.aio_aws_batch import aio_batch_job_waiter
 from aio_aws.aio_aws_batch import aio_batch_run_jobs
 from aio_aws.aio_aws_batch import AWSBatchConfig
-from aio_aws.aio_aws_batch import AWSBatchDB
 from aio_aws.aio_aws_batch import AWSBatchJob
-
-from aio_aws.aio_aws_batch import aio_batch_get_logs
 from tests.aiomoto_fixtures import aio_batch_infrastructure
 from tests.aiomoto_fixtures import AioAwsBatchClients
 from tests.aiomoto_fixtures import AioAwsBatchInfrastructure
-from tests.aiomoto_services import MotoService
 
 
 def test_async_aws_batch():
@@ -71,21 +68,10 @@ async def aio_aws_batch_infrastructure(
 
 
 @pytest.fixture
-def test_jobs_db() -> AWSBatchDB:
-    batch_db = AWSBatchDB(
-        jobs_db_file="/tmp/test_batch_jobs_db.json", logs_db_file="/tmp/test_batch_logs_db.json"
-    )
-    batch_db.jobs_db.purge()
-    batch_db.logs_db.purge()
-    yield batch_db
-    batch_db.jobs_db.purge()
-    batch_db.logs_db.purge()
-
-
-@pytest.fixture
 def batch_config(
     aio_aws_session, aio_aws_batch_server, aio_aws_logs_server, test_jobs_db,
 ) -> AWSBatchConfig:
+
     class TestBatchConfig(AWSBatchConfig):
         session = aio_aws_session
 

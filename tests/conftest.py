@@ -13,11 +13,26 @@
 # limitations under the License.
 
 """
-pytest fixtures
+AioAWS test fixtures
 
 """
+
+import pytest
+
+from aio_aws.aio_aws_batch import AWSBatchDB
+
 
 pytest_plugins = [
     "tests.aws_fixtures",
     "tests.aiomoto_fixtures",
 ]
+
+
+@pytest.fixture
+def test_jobs_db(tmp_path) -> AWSBatchDB:
+    jobs_db_file = str(tmp_path / "test_batch_jobs_db.json")
+    logs_db_file = str(tmp_path / "test_batch_logs_db.json")
+    batch_jobs_db = AWSBatchDB(jobs_db_file=jobs_db_file, logs_db_file=logs_db_file)
+    assert batch_jobs_db.jobs_db.all() == []
+    assert batch_jobs_db.logs_db.all() == []
+    yield batch_jobs_db

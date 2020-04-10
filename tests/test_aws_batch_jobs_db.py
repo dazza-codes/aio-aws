@@ -19,19 +19,8 @@ Test AWS Batch TinyDB
 import pytest
 import tinydb
 
-from aio_aws.aio_aws_batch import AWSBatchDB
 from aio_aws.aio_aws_batch import AWSBatchJob
 from aio_aws.aio_aws_batch import jobs_to_run
-
-
-@pytest.fixture
-def test_jobs_db() -> AWSBatchDB:
-    batch_jobs_db = AWSBatchDB(jobs_db_file="/tmp/test_batch_jobs_db.json")
-    batch_jobs_db.jobs_db.purge()
-    assert batch_jobs_db.jobs_db.all() == []
-    yield batch_jobs_db
-    batch_jobs_db.jobs_db.purge()
-    assert batch_jobs_db.jobs_db.all() == []
 
 
 @pytest.fixture
