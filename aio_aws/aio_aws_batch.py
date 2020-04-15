@@ -872,7 +872,10 @@ async def aio_batch_job_logs(
     log_stream_name = job.job_description.get("container", {}).get("logStreamName")
     if not log_stream_name:
         LOGGER.warning(
-            "AWS Batch job (%s:%s) has no log stream.", job.job_name, job.job_id,
+            "AWS Batch job (%s:%s) has no log stream: %s",
+            job.job_name,
+            job.job_id,
+            job.job_description,
         )
         return
 
