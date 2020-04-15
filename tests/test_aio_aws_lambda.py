@@ -68,7 +68,19 @@ def lambda_config(
     yield config
 
 
-# see also https://github.com/spulec/moto/blob/master/tests/test_awslambda/test_lambda.py
+@pytest.fixture
+async def lambda_iam_role(lambda_config):
+
+    async with lambda_config.create_client("iam") as client:
+        try:
+            response = await client.get_role(RoleName="my-role")
+            iam = response["Role"]["Arn"]
+        except botocore.client.ClientError:
+            response = await client.create_role(
+                RoleName="my-role", AssumeRolePolicyDocument="some policy", Path="/my-path/",
+            )
+            iam = response["Role"]["Arn"]
+    return iam
 
 
 def _process_lambda(func_str) -> bytes:
@@ -83,38 +95,19 @@ def _process_lambda(func_str) -> bytes:
 @pytest.fixture
 def aws_lambda_zip() -> bytes:
     lambda_src = """
-import json
 def lambda_handler(event, context):
-    print(event)
-    csv = ", ".join([str(i) for i in range(10)])
-    print(csv)  # content for logs
-    return {"statusCode": 200, "body": json.dumps(csv)}
+    print(f"event: {event}")
+    return {"statusCode": 200, "body": event}
 """
     return _process_lambda(lambda_src)
 
 
 @pytest.fixture
-def aws_lambda_func():
+async def aws_lambda_func(aws_lambda_zip, lambda_config, lambda_iam_role) -> AWSLambdaFunction:
+
     event = {"i": 1}
-    func = AWSLambdaFunction(name="lambda_dev", payload=json.dumps(event))
-    return func
-
-
-@pytest.mark.skip("https://github.com/aio-libs/aiobotocore/issues/793")
-@pytest.mark.asyncio
-async def test_async_lambda_invoke(aws_lambda_zip, aws_lambda_func, lambda_config):
-
-    func = aws_lambda_func
-
-    async with lambda_config.create_client("iam") as client:
-        try:
-            response = await client.get_role(RoleName="my-role")
-            iam = response["Role"]["Arn"]
-        except botocore.client.ClientError:
-            response = await client.create_role(
-                RoleName="my-role", AssumeRolePolicyDocument="some policy", Path="/my-path/",
-            )
-            iam = response["Role"]["Arn"]
+    payload = json.dumps(event).encode()
+    func = AWSLambdaFunction(name="lambda_dev", payload=payload)
 
     async with lambda_config.create_client("lambda") as client:
         response = await client.create_function(
@@ -122,13 +115,26 @@ async def test_async_lambda_invoke(aws_lambda_zip, aws_lambda_func, lambda_confi
             Runtime="python3.6",
             Handler="lambda_function.lambda_handler",
             Code={"ZipFile": aws_lambda_zip},
-            Role=iam,
+            Role=lambda_iam_role,
             Description="lambda_dev function",
-            Timeout=3,
+            Timeout=10,
             MemorySize=128,
             Publish=True,
         )
         assert response_success(response)
+
+    return func
+
+
+# see also https://github.com/spulec/moto/blob/master/tests/test_awslambda/test_lambda.py
+# https://github.com/spulec/moto/issues/2886
+# @pytest.mark.skip("https://github.com/aio-libs/aiobotocore/issues/793")
+@pytest.mark.asyncio
+async def test_async_lambda_invoke(
+    aws_lambda_zip, aws_lambda_func, lambda_iam_role, lambda_config
+):
+
+    func: AWSLambdaFunction = aws_lambda_func
 
     response = await func.invoke(lambda_config)
     assert response_success(response)
@@ -137,3 +143,6 @@ async def test_async_lambda_invoke(aws_lambda_zip, aws_lambda_func, lambda_confi
         assert func.error
     else:
         assert func.content
+
+    # since this function should work, test the response data
+    assert func.content == {"statusCode": 200, "body": {"i": 1}}
