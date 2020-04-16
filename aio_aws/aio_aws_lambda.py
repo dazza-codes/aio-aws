@@ -55,6 +55,7 @@ minimal billing period, so it's as cheap as it can be and could fit within a mon
 """
 
 import asyncio
+import base64
 import json
 import os
 import time
@@ -104,6 +105,7 @@ class AWSLambdaFunction:
     response: Dict = None
     content: Any = None
     error: Any = None
+    logs: Any = None
 
     TYPES = ["RequestResponse", "Event", "DryRun"]
     LOG_TYPES = ["None", "Tail"]
@@ -187,16 +189,25 @@ class AWSLambdaFunction:
 
         :raises: botocore.exceptions.ClientError, botocore.exceptions.ParamValidationError
         """
+
         if self.response and response_success(self.response):
+
+            log_result = self.response.get("LogResult")
+            if log_result:
+                self.logs = base64.b64decode(log_result)
 
             response_payload = self.response.get("Payload")
             if response_payload:
+
+                async with response_payload as stream:
+                    data = await stream.read()
+
+                body = data.decode()
+
                 if self.response.get("FunctionError"):
-                    error = await response_payload.read()
-                    self.error = error
+                    self.error = body
                 else:
-                    data = await response_payload.read()
-                    self.content = json.loads(data.decode("utf-8"))
+                    self.content = json.loads(body)
 
 
 if __name__ == "__main__":
@@ -222,7 +233,8 @@ if __name__ == "__main__":
         lambda_tasks = []
         for i in range(N_lambdas):
             event = {"i": i}
-            func = AWSLambdaFunction(name="lambda_dev", payload=json.dumps(event))
+            payload = json.dumps(event).encode()
+            func = AWSLambdaFunction(name="lambda_dev", payload=payload)
             lambda_funcs.append(func)
             lambda_task = loop.create_task(func.invoke(aio_config))
             lambda_tasks.append(lambda_task)
@@ -233,8 +245,14 @@ if __name__ == "__main__":
             assert response_success(func.response)
             # TODO: parse and gather all responses
             if N_lambdas < 5:
+                print()
+                print(func.params)
+                print()
                 print(func.response)
+                print()
                 print(func.content)
+                print()
+                print(func.logs)
 
     finally:
         loop.run_until_complete(loop.shutdown_asyncgens())

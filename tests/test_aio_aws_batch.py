@@ -71,7 +71,6 @@ async def aio_aws_batch_infrastructure(
 def batch_config(
     aio_aws_session, aio_aws_batch_server, aio_aws_logs_server, test_jobs_db,
 ) -> AWSBatchConfig:
-
     class TestBatchConfig(AWSBatchConfig):
         session = aio_aws_session
 
@@ -437,7 +436,7 @@ async def test_async_batch_get_logs(aws_batch_sleep1_job, batch_config, event_lo
     batch_jobs = [job]
 
     await aio_batch_run_jobs(jobs=batch_jobs, config=batch_config, loop=event_loop)
-    await asyncio.sleep(2)  # wait for logs to propagate to cloud watch service
+    await asyncio.sleep(4)  # wait for logs to propagate to cloud watch service
     await aio_batch_get_logs(jobs=batch_jobs, config=batch_config, loop=event_loop)
 
     jobs_db = batch_config.get_batch_db()
