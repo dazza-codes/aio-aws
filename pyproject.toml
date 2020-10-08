@@ -3,13 +3,13 @@ name = "aio-aws"
 version = "0.4.0"
 description = "aio-aws"
 authors = [
-    "Darren Weber <dazza-codes@gitlab.com>",
+    "Darren Weber <dazza-codes@github.com>",
 ]
 license = "Apache-2.0"
 
 readme = "README.md"  # Markdown files are supported
-repository = "https://gitlab.com/dazza-codes/aio-aws.git"
-homepage = "https://gitlab.com/dazza-codes/aio-aws"
+repository = "https://github.com/dazza-codes/aio-aws.git"
+homepage = "https://github.com/dazza-codes/aio-aws"
 
 keywords = [
     "Development Status :: 2 - Pre-Alpha",
@@ -49,7 +49,6 @@ jinja2 = "^2.11.1"
 python-multipart = "^0.0.5"
 pyyaml = "5.2"
 requests = "^2.23.0"
-# ujson doesn't provide binary wheels for gitlab-CI
 uvicorn = "^0.11.3"
 
 [tool.poetry.dev-dependencies]

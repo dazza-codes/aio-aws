@@ -2,7 +2,7 @@
 About
 =====
 
-See https://gitlab.com/dazza-codes/aio-aws
+See https://github.com/dazza-codes/aio-aws
 
 Code for some examples can be run by cloning
 the repo and following the instructions to get started.
@@ -21,7 +21,7 @@ The following setup assumes that
 
 .. code-block:: shell
 
-    git clone https://gitlab.com/dazza-codes/aio-aws
+    git clone https://github.com/dazza-codes/aio-aws
     cd aio-aws
     conda create -n aio-aws python=3.6
     conda activate aio-aws
