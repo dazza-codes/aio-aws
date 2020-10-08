@@ -76,7 +76,6 @@ code_test:
     changes:
       - package/**/*
       - tests/**/*
-      - .gitlab-ci.yml
       - Makefile
       - pyproject.toml
   script:
