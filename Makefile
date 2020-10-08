@@ -41,7 +41,6 @@ format: clean
 
 init: poetry
 	@source "$(HOME)/.poetry/env"
-	@rm -f poetry.lock
 	@poetry run pip install --upgrade pip
 	@poetry install -v --no-interaction
 
