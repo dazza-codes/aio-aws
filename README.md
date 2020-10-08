@@ -1,5 +1,5 @@
-[![pipeline status](https://gitlab.com/dazza-codes/aio-aws/badges/master/pipeline.svg)](https://gitlab.com/dazza-codes/aio-aws/-/commits/master)
-[![coverage report](https://gitlab.com/dazza-codes/aio-aws/badges/master/coverage.svg)](https://gitlab.com/dazza-codes/aio-aws/-/commits/master)
+[![pipeline status](https://github.com/dazza-codes/aio-aws/badges/master/pipeline.svg)](https://github.com/dazza-codes/aio-aws/-/commits/master)
+[![coverage report](https://github.com/dazza-codes/aio-aws/badges/master/coverage.svg)](https://github.com/dazza-codes/aio-aws/-/commits/master)
 
 # aio-aws
 
@@ -11,8 +11,8 @@ For general client solutions, see
 [aiobotocore](https://github.com/aio-libs/aiobotocore), which wrap
 [botocore](https://botocore.amazonaws.com/v1/documentation/api/latest/index.html)
 
-The API documentation is published as gitlab pages at:
-- http://dazza-codes.gitlab.io/aio-aws
+The API documentation is published as github pages at:
+- http://dazza-codes.github.io/aio-aws
 
 # Getting Started
 
@@ -31,7 +31,7 @@ The following setup assumes that
       both the project itself and development dependencies
 
 ```shell
-git clone https://gitlab.com/dazza-codes/aio-aws
+git clone https://github.com/dazza-codes/aio-aws
 cd aio-aws
 conda create -n aio-aws python=3.6
 conda activate aio-aws
@@ -49,7 +49,7 @@ to patch it with features for async coroutines using
 [asyncio](https://docs.python.org/3/library/asyncio.html).
 This project is not published as a pypi package because there is no promise
 to support or develop it extensively, at this time.  For the curious, it
-can be used directly from a gitlab tag.  Note that any 0.x releases are
+can be used directly from a github tag.  Note that any 0.x releases are
 likely to have breaking API changes.
 
 ## pip
@@ -58,17 +58,17 @@ pip can install packages using a
 [git protocol](https://pip.pypa.io/en/stable/reference/pip_install/#git).
 
 ```shell
-pip install -U "git+https://gitlab.com/dazza-codes/aio-aws.git#egg=aio-aws"
+pip install -U "git+https://github.com/dazza-codes/aio-aws.git#egg=aio-aws"
 pip check  # might not guarantee consistent packages
 # use git refs
-pip install -U "git+https://gitlab.com/dazza-codes/aio-aws.git@master#egg=aio-aws"
-pip install -U "git+https://gitlab.com/dazza-codes/aio-aws.git@0.1.0#egg=aio-aws"
+pip install -U "git+https://github.com/dazza-codes/aio-aws.git@master#egg=aio-aws"
+pip install -U "git+https://github.com/dazza-codes/aio-aws.git@0.1.0#egg=aio-aws"
 ```
 
 ## poetry
 
 ```shell
-poetry add "git+https://gitlab.com/dazza-codes/aio-aws.git"
+poetry add "git+https://github.com/dazza-codes/aio-aws.git"
 pip check  # poetry will try to guarantee consistent packages or fail
 ```
 
@@ -77,9 +77,9 @@ pip check  # poetry will try to guarantee consistent packages or fail
 
 [tool.poetry.dependencies]
 python = "^3.6"
-aio-aws = {git = "https://gitlab.com/dazza-codes/aio-aws.git"}
+aio-aws = {git = "https://github.com/dazza-codes/aio-aws.git"}
 # Or use a tagged release - recommended
-# aio-aws = {git = "https://gitlab.com/dazza-codes/aio-aws.git", tag = "0.1.0"}
+# aio-aws = {git = "https://github.com/dazza-codes/aio-aws.git", tag = "0.1.0"}
 ```
 
 # License
