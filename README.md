@@ -1,5 +1,4 @@
-[![pipeline status](https://github.com/dazza-codes/aio-aws/badges/master/pipeline.svg)](https://github.com/dazza-codes/aio-aws/-/commits/master)
-[![coverage report](https://github.com/dazza-codes/aio-aws/badges/master/coverage.svg)](https://github.com/dazza-codes/aio-aws/-/commits/master)
+![pipeline status](https://travis-ci.com/dazza-codes/aio-aws.svg?branch=master)
 
 # aio-aws
 
