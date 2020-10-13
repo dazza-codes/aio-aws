@@ -1,4 +1,4 @@
-![pipeline status](https://travis-ci.com/dazza-codes/aio-aws.svg?branch=master)
+[![Build Status](https://travis-ci.com/dazza-codes/aio-aws.svg?branch=master)](https://travis-ci.com/dazza-codes/aio-aws)
 
 # aio-aws
 
