@@ -22,7 +22,6 @@ import time
 
 # Third Party
 import aiohttp
-import moto.backends
 import moto.server
 import werkzeug.serving
 
@@ -41,6 +40,13 @@ def get_free_tcp_port(release_socket: bool = False):
         return port
 
     return sckt, port
+
+
+def moto_service_reset(service_name: str):
+    # each service can have multiple regional backends
+    service_backends = moto.server.backends.get_backend(service_name)
+    for region_name, backend in service_backends.items():
+        backend.reset()
 
 
 class MotoService:
@@ -71,7 +77,7 @@ class MotoService:
 
     def reset(self):
         # each service can have multiple regional backends
-        service_backends = moto.backends.BACKENDS[self._service_name]
+        service_backends = moto.server.backends.get_backend(self._service_name)
         for region_name, backend in service_backends.items():
             backend.reset()
 
