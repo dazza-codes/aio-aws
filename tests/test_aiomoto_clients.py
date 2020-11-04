@@ -36,9 +36,10 @@ from tests.utils import AWS_SECRET_ACCESS_KEY
 from tests.utils import has_moto_mocks
 
 
-def test_aio_aws_session_credentials(aio_aws_session):
+@pytest.mark.asyncio
+async def test_aio_aws_session_credentials(aio_aws_session):
     assert isinstance(aio_aws_session, AioSession)
-    credentials = aio_aws_session.get_credentials()
+    credentials = await aio_aws_session.get_credentials()
     assert credentials.access_key == AWS_ACCESS_KEY_ID
     assert credentials.secret_key == AWS_SECRET_ACCESS_KEY
     assert os.getenv("AWS_ACCESS_KEY_ID")
