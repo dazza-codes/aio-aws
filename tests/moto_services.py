@@ -69,12 +69,10 @@ class MotoService:
         return "http://{}:{}".format(self._ip_address, self._port)
 
     def reset(self):
-        # TODO: this reset behavior is not working with recent moto-server
-        # # each service can have multiple regional backends
-        # service_backends = moto.backends.BACKENDS[self._service_name]
-        # for region_name, backend in service_backends.items():
-        #     backend.reset()
-        pass
+        # each service can have multiple regional backends
+        service_backends = moto.server.backends.get_backend(self._service_name)
+        for region_name, backend in service_backends.items():
+            backend.reset()
 
     def __call__(self, func):
         def wrapper(*args, **kwargs):

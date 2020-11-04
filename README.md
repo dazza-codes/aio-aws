@@ -3,7 +3,7 @@
 # aio-aws
 
 Asynchronous functions and tools for AWS services.  There is a
-limited focus on s3 and AWS Batch.  Additional services could be
+limited focus on s3 and AWS Batch and Lambda.  Additional services could be
 added, but this project is likely to retain a limited focus.
 For general client solutions, see
 [aioboto3](https://github.com/terrycain/aioboto3) and
@@ -25,6 +25,7 @@ The following setup assumes that
 
 - https://docs.conda.io/en/latest/miniconda.html
     - recommended for creating virtual environments with required versions of python
+    - see https://github.com/dazza-codes/conda_container/blob/master/conda_venv.sh
 - https://python-poetry.org/docs/
     - recommended for managing a python project with pip dependencies for
       both the project itself and development dependencies
@@ -57,18 +58,27 @@ pip can install packages using a
 [git protocol](https://pip.pypa.io/en/stable/reference/pip_install/#git).
 
 ```shell
-pip install -U "git+https://github.com/dazza-codes/aio-aws.git#egg=aio-aws"
-pip check  # might not guarantee consistent packages
+pip install -U 'git+https://github.com/dazza-codes/aio-aws.git#egg=aio-aws'
+pip check  # pip might not guarantee consistent packages
+
 # use git refs
-pip install -U "git+https://github.com/dazza-codes/aio-aws.git@master#egg=aio-aws"
-pip install -U "git+https://github.com/dazza-codes/aio-aws.git@0.1.0#egg=aio-aws"
+pip install -U 'git+https://github.com/dazza-codes/aio-aws.git@master#egg=aio-aws'
+pip install -U 'git+https://github.com/dazza-codes/aio-aws.git@0.1.0#egg=aio-aws'
+
+# add optional extras
+pip install -U 'git+https://github.com/dazza-codes/aio-aws.git@0.1.0#egg=aio-aws[database]'
+pip install -U 'git+https://github.com/dazza-codes/aio-aws.git@0.1.0#egg=aio-aws[server]'
 ```
 
 ## poetry
 
+poetry will try to guarantee consistent packages or fail.
+
 ```shell
-poetry add "git+https://github.com/dazza-codes/aio-aws.git"
-pip check  # poetry will try to guarantee consistent packages or fail
+poetry add 'git+https://github.com/dazza-codes/aio-aws.git'
+
+# add optional extras
+poetry add 'git+https://github.com/dazza-codes/aio-aws.git' --extras database --extras server
 ```
 
 ```toml
@@ -77,8 +87,18 @@ pip check  # poetry will try to guarantee consistent packages or fail
 [tool.poetry.dependencies]
 python = "^3.6"
 aio-aws = {git = "https://github.com/dazza-codes/aio-aws.git"}
+
 # Or use a tagged release - recommended
-# aio-aws = {git = "https://github.com/dazza-codes/aio-aws.git", tag = "0.1.0"}
+aio-aws = {git = "https://github.com/dazza-codes/aio-aws.git", rev = "0.1.0"}
+
+# add optional extras from the aio-aws package
+aio-aws = {git = "https://github.com/dazza-codes/aio-aws.git", rev = "0.1.0", extras = ["database","server"]}
+
+# make this package an optional extra
+aio-aws = {git = "https://github.com/dazza-codes/aio-aws.git", rev = "0.1.0", optional = true}
+[tool.poetry.extras]
+aio-aws = ["aio-aws"]
+
 ```
 
 # License

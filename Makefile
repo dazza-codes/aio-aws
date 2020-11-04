@@ -15,23 +15,15 @@ clean:
 	@find . -type d -name '*pytest_cache*' -exec rm -rf {} +
 	@find . -type f -name "*.py[co]" -exec rm -rf {} +
 
-coverage:
-	@poetry run pytest -q \
-		-W ignore::DeprecationWarning \
-		-n auto \
-		--cov-config .coveragerc \
-		--verbose \
-		--cov-report term \
-		--cov-report html \
-		--cov-report xml \
-		--cov=$(LIB) tests
-
 docs: clean
 	@cd docs
 	@rm -rf _build
 	@poetry run make html
 	@poetry run doc8
 	@echo -e "\033[95m\n\nBuild successful! View the docs homepage at docs/_build/html/index.html.\n\033[0m"
+
+pages: docs
+	cp -r docs/_build/html/* pages/
 
 flake8: clean
 	@poetry run flake8 --ignore=E501 $(LIB)
@@ -42,14 +34,21 @@ format: clean
 init: poetry
 	@source "$(HOME)/.poetry/env"
 	@poetry run pip install --upgrade pip
-	@poetry install -v --no-interaction
+	@poetry run pip install -r requirements.dev
+	@poetry install -v --no-interaction --extras server
 
 lint: clean
 	@poetry run pylint --disable=missing-docstring tests
 	@poetry run pylint $(LIB)
 
 test: clean
-	@poetry run pytest -n auto -q --durations=10 --show-capture=no --junitxml=report.xml tests
+	@poetry run pytest \
+		--durations=10 \
+		--show-capture=no \
+		--cov-config .coveragerc \
+		--cov-report html \
+		--cov-report term \
+		--cov=$(LIB) tests
 
 typehint: clean
 	@poetry run mypy --follow-imports=skip $(LIB)
@@ -66,8 +65,13 @@ publish: package-check
 	# poetry run twine upload dist/$(LIB)-*.whl
 
 poetry:
-	@if ! which poetry > /dev/null; then \
-		curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python
+	@if ! command -v poetry > /dev/null; then \
+		curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python; \
 	fi
 
-.PHONY: clean coverage docs flake8 format init lint test typehint package package-check publish poetry
+poetry-export:
+	poetry export --without-hashes -f requirements.txt -o requirements.txt
+	sed -i -e 's/^-e //g' requirements.txt
+
+.PHONY: clean docs flake8 format lint typehint
+.PHONY: init test package package-check publish poetry poetry-export
