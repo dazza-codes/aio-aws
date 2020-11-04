@@ -3,6 +3,10 @@ aws_batch_jobs.json
 example.db
 .vscode/
 
+# Pages
+pages/
+!pages/.keep
+
 # Sourcetrail
 *.srctrl*
 
