@@ -30,3 +30,23 @@ Focus on aio-aws
 - Add starlette example app
 - Update API docs
 
+
+0.5.0 (2020-11-04)
+------------------
+- Add pages directory and make recipe
+- Update README
+- Fix moto-server backend resets
+- Fix aiobotocore test for session credentials coroutine
+- make recipe revisions
+- poetry update
+- Update AWS library dependencies
+- Add test utility for moto-server
+- Add AWS Batch shell utility scripts
+- Enable travis-CI
+- Revisions for gitlab -> github
+- Allow more time for batch logs test
+- Fix moto-s3-bucket creation with unique bucket names
+- Fix aio-aws-lambda test
+- poetry update
+- Use unique fixtures for parallel tests
+
