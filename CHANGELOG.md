@@ -50,3 +50,8 @@ Focus on aio-aws
 - poetry update
 - Use unique fixtures for parallel tests
 
+
+0.5.1 (2020-11-04)
+------------------
+- Minor revisions and black formatting
+
