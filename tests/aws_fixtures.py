@@ -211,7 +211,9 @@ def batch_infrastructure(
     vpc_id = resp["Vpc"]["VpcId"]
 
     resp = aws_clients.ec2.create_subnet(
-        AvailabilityZone=f"{aws_clients.region}a", CidrBlock="172.30.0.0/25", VpcId=vpc_id
+        AvailabilityZone=f"{aws_clients.region}a",
+        CidrBlock="172.30.0.0/25",
+        VpcId=vpc_id,
     )
     subnet_id = resp["Subnet"]["SubnetId"]
 

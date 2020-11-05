@@ -56,7 +56,9 @@ def aws_batch_job() -> AWSBatchJob:
         "job_description": {
             "container": {
                 "command": [
-                    '/bin/sh -c "for a in `seq 1 ' "10`; do echo Hello World; " 'sleep 1; done"'
+                    '/bin/sh -c "for a in `seq 1 '
+                    "10`; do echo Hello World; "
+                    'sleep 1; done"'
                 ],
                 "logStreamName": "moto_test_job_definition/default/1aac2eab-897a-4b89-9eb3-08986fbb7144",
                 "privileged": False,
@@ -212,7 +214,9 @@ def test_batch_job_db_saved_filter_jobs_to_run_empty(test_jobs_db, aws_batch_job
     assert len(jobs) == 0  # successful jobs are done
 
 
-def test_batch_job_db_saved_filter_jobs_to_run_for_recovery(test_jobs_db, aws_batch_job):
+def test_batch_job_db_saved_filter_jobs_to_run_for_recovery(
+    test_jobs_db, aws_batch_job
+):
     job = aws_batch_job
     assert job.status == "SUCCEEDED"
     job_docs = test_jobs_db.save_job(job)
@@ -249,7 +253,9 @@ def test_batch_job_db_find_latest_job_name(test_jobs_db, aws_batch_job):
     assert job_found.job_id == fake_job_id
 
 
-def test_batch_job_db_saved_filter_jobs_to_run_with_duplicate(test_jobs_db, aws_batch_job):
+def test_batch_job_db_saved_filter_jobs_to_run_with_duplicate(
+    test_jobs_db, aws_batch_job
+):
     job = aws_batch_job
     # Fake a job failure
     job.job_description["status"] = "FAILED"

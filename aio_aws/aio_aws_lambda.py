@@ -120,7 +120,9 @@ class AWSLambdaFunction:
         if self.type != "RequestResponse":
             self.log_type = "None"
         elif self.log_type not in self.LOG_TYPES:
-            raise ValueError(f"The log_type ({self.log_type}) must be one of {self.LOG_TYPES}")
+            raise ValueError(
+                f"The log_type ({self.log_type}) must be one of {self.LOG_TYPES}"
+            )
 
     @property
     def params(self):
@@ -164,7 +166,9 @@ class AWSLambdaFunction:
                         if self.content:
                             LOGGER.info("AWS Lambda (%s) invoked OK", self.name)
                         elif self.error:
-                            LOGGER.error("AWS Lambda (%s) error: ", self.name, self.error)
+                            LOGGER.error(
+                                "AWS Lambda (%s) error: ", self.name, self.error
+                            )
                     else:
                         # TODO: are there some failures that could be recovered here?
                         LOGGER.error("AWS Lambda (%s) invoke failure.", self.name)
@@ -175,7 +179,9 @@ class AWSLambdaFunction:
                     if error.get("Code") == "TooManyRequestsException":
                         if tries < config.retries:
                             # add an extra random sleep period to avoid API throttle
-                            await jitter("lambda-invoke", config.min_jitter, config.max_jitter)
+                            await jitter(
+                                "lambda-invoke", config.min_jitter, config.max_jitter
+                            )
                         continue  # allow it to retry, if possible
                     else:
                         raise
