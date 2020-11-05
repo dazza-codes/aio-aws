@@ -1154,7 +1154,7 @@ server = ["starlette", "aiofiles", "graphene", "itsdangerous", "jinja2", "python
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.6"
-content-hash = "e6c3dd3f43f0d302d5d82a18e336679536b62aa1c67efe76ef8107550277abd4"
+content-hash = "738b164bd8ce3683fe66a45a976b2348a6938854b8c0fe17e00ada424307903b"
 
 [metadata.files]
 aiobotocore = [
