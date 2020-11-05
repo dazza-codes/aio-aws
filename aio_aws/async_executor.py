@@ -293,7 +293,9 @@ class AsyncioExecutor(concurrent.futures.Executor):
             raise RuntimeError("Cannot schedule new futures after shutdown")
 
         if not self.is_alive():
-            raise RuntimeError("Loop must be started before any function can be submitted")
+            raise RuntimeError(
+                "Loop must be started before any function can be submitted"
+            )
 
 
 #
@@ -348,7 +350,11 @@ async def submit_throttle(
 
 @click.command()
 @click.option(
-    "--task-count", default=5, show_default=True, type=int, help="A number of tasks to run",
+    "--task-count",
+    default=5,
+    show_default=True,
+    type=int,
+    help="A number of tasks to run",
 )
 def main(task_count):
     """Run asyncio executor"""

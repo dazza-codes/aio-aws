@@ -50,7 +50,7 @@ def moto_service_reset(service_name: str):
 
 
 class MotoService:
-    """ Will Create MotoService.
+    """Will Create MotoService.
     Service is ref-counted so there will only be one per process. Real Service will
     be returned by `__aenter__`."""
 
@@ -67,7 +67,7 @@ class MotoService:
 
         self._thread = None
         self._logger = logging.getLogger("MotoService")
-        self._refcount = None
+        self._refcount = 0
         self._ip_address = HOST
         self._server = None
 
@@ -153,7 +153,9 @@ class MotoService:
                     await asyncio.sleep(0.5)
             else:
                 await self._stop()  # pytest.fail doesn't call stop_process
-                raise Exception("Cannot start MotoService: {}".format(self._service_name))
+                raise Exception(
+                    "Cannot start MotoService: {}".format(self._service_name)
+                )
 
     async def _stop(self):
         if self._server:

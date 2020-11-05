@@ -87,8 +87,9 @@ def aio_s3_object_text() -> str:
 async def aio_s3_bucket(aio_s3_uri, aio_aws_s3_client, aws_region) -> str:
     s3_parts = S3Parts.parse_s3_uri(aio_s3_uri)
     resp = await aio_aws_s3_client.create_bucket(
-        Bucket=s3_parts.bucket, ACL="public-read-write",
-        CreateBucketConfiguration={'LocationConstraint': aws_region}
+        Bucket=s3_parts.bucket,
+        ACL="public-read-write",
+        CreateBucketConfiguration={"LocationConstraint": aws_region},
     )
     assert response_success(resp)
     head = await aio_aws_s3_client.head_bucket(Bucket=s3_parts.bucket)
@@ -98,13 +99,16 @@ async def aio_s3_bucket(aio_s3_uri, aio_aws_s3_client, aws_region) -> str:
 
 
 @pytest.fixture
-async def aio_s3_buckets(aio_s3_bucket_name, aio_aws_s3_client, aws_region) -> List[str]:
+async def aio_s3_buckets(
+    aio_s3_bucket_name, aio_aws_s3_client, aws_region
+) -> List[str]:
     bucket_names = []
     for i in range(20):
         bucket_name = f"{aio_s3_bucket_name}_{i:02d}"
         resp = await aio_aws_s3_client.create_bucket(
-            Bucket=bucket_name, ACL="public-read-write",
-            CreateBucketConfiguration={'LocationConstraint': aws_region}
+            Bucket=bucket_name,
+            ACL="public-read-write",
+            CreateBucketConfiguration={"LocationConstraint": aws_region},
         )
         assert response_success(resp)
         head = await aio_aws_s3_client.head_bucket(Bucket=bucket_name)
@@ -145,7 +149,12 @@ def s3_config(aio_aws_session, aio_aws_s3_server) -> AioAWSConfig:
             ) as client:
                 yield client
 
-    config = TestS3Config(min_pause=0.2, max_pause=0.6, min_jitter=0.1, max_jitter=0.2,)
+    config = TestS3Config(
+        min_pause=0.2,
+        max_pause=0.6,
+        min_jitter=0.1,
+        max_jitter=0.2,
+    )
 
     yield config
 

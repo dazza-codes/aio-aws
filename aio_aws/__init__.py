@@ -47,7 +47,7 @@ import botocore.endpoint
 from async_generator import asynccontextmanager
 from dataclasses import dataclass
 
-from .logger import LOGGER
+from aio_aws.logger import LOGGER
 
 #: max_pool_connections for AWS clients (10 by default)
 MAX_POOL_CONNECTIONS = botocore.endpoint.MAX_POOL_CONNECTIONS
@@ -100,7 +100,9 @@ def aio_aws_session(
 
 
 async def aio_aws_client(
-    service_name: str, aio_aws_config: aiobotocore.config.AioConfig = AIO_AWS_CONFIG, **kwargs
+    service_name: str,
+    aio_aws_config: aiobotocore.config.AioConfig = AIO_AWS_CONFIG,
+    **kwargs
 ):
     """
     Yield an asyncio AWS client with an option to provide a client-specific config; this is a
@@ -195,7 +197,7 @@ class AioAWSConfig:
 
 
 async def delay(
-    task_id: str, min_pause: float = MIN_PAUSE, max_pause: float = MAX_PAUSE,
+    task_id: str, min_pause: float = MIN_PAUSE, max_pause: float = MAX_PAUSE
 ) -> float:
     """
     Await a random pause between :py:const:`MIN_PAUSE` and :py:const:`MAX_PAUSE`
@@ -218,7 +220,9 @@ async def delay(
 
 
 async def jitter(
-    task_id: str = "jitter", min_jitter: float = MIN_JITTER, max_jitter: float = MAX_JITTER,
+    task_id: str = "jitter",
+    min_jitter: float = MIN_JITTER,
+    max_jitter: float = MAX_JITTER,
 ) -> float:
     """
     Await a random pause between `min_jitter` and `max_jitter`
@@ -232,10 +236,13 @@ async def jitter(
     return jit
 
 
-def response_code(response):
-    return response.get("ResponseMetadata", {}).get("HTTPStatusCode")
+def response_code(response) -> int:
+    return int(response.get("ResponseMetadata", {}).get("HTTPStatusCode"))
 
 
-def response_success(response):
+def response_success(response) -> bool:
     code = response_code(response)
-    return 200 <= code < 300
+    if code:
+        return 200 <= code < 300
+    else:
+        return False
