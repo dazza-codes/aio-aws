@@ -149,7 +149,9 @@ def aio_aws_session(aws_credentials, aws_region, event_loop):
     session.user_agent_name = "aiomoto"
 
     assert session.get_default_client_config() is None
-    aioconfig = aiobotocore.config.AioConfig(max_pool_connections=1, region_name=aws_region)
+    aioconfig = aiobotocore.config.AioConfig(
+        max_pool_connections=1, region_name=aws_region
+    )
 
     # Note: tried to use proxies for the aiobotocore.endpoint, to replace
     #      'https://batch.us-west-2.amazonaws.com/v1/describejobqueues', but
@@ -168,7 +170,7 @@ def aio_aws_session(aws_credentials, aws_region, event_loop):
     session.set_credentials(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
     session.set_debug_logger(logger_name="aiomoto")
 
-    return session
+    yield session
 
 
 @pytest.fixture
@@ -193,19 +195,25 @@ async def aio_aws_batch_client(aio_aws_session, aio_aws_batch_server):
 
 @pytest.fixture
 async def aio_aws_ec2_client(aio_aws_session, aio_aws_ec2_server):
-    async with aio_aws_session.create_client("ec2", endpoint_url=aio_aws_ec2_server) as client:
+    async with aio_aws_session.create_client(
+        "ec2", endpoint_url=aio_aws_ec2_server
+    ) as client:
         yield client
 
 
 @pytest.fixture
 async def aio_aws_ecs_client(aio_aws_session, aio_aws_ecs_server):
-    async with aio_aws_session.create_client("ecs", endpoint_url=aio_aws_ecs_server) as client:
+    async with aio_aws_session.create_client(
+        "ecs", endpoint_url=aio_aws_ecs_server
+    ) as client:
         yield client
 
 
 @pytest.fixture
 async def aio_aws_iam_client(aio_aws_session, aio_aws_iam_server):
-    async with aio_aws_session.create_client("iam", endpoint_url=aio_aws_iam_server) as client:
+    async with aio_aws_session.create_client(
+        "iam", endpoint_url=aio_aws_iam_server
+    ) as client:
         client.meta.config.region_name = "aws-global"  # not AWS_REGION
         yield client
 
@@ -228,7 +236,9 @@ async def aio_aws_logs_client(aio_aws_session, aio_aws_logs_server):
 
 @pytest.fixture
 async def aio_aws_s3_client(aio_aws_session, aio_aws_s3_server, mocker):
-    async with aio_aws_session.create_client("s3", endpoint_url=aio_aws_s3_server) as client:
+    async with aio_aws_session.create_client(
+        "s3", endpoint_url=aio_aws_s3_server
+    ) as client:
         # TODO: find a way to apply this method mock only for creating "s3" clients;
         # # ensure the session returns the mock s3 client
         # mocker.patch.object(
