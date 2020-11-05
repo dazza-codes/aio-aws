@@ -24,7 +24,9 @@ from tests.aiomoto_services import CONNECT_TIMEOUT
 from tests.aiomoto_services import HOST
 
 
-@pytest.fixture(scope="session", params=[True, False], ids=["debug[true]", "debug[false]"])
+@pytest.fixture(
+    scope="session", params=[True, False], ids=["debug[true]", "debug[false]"]
+)
 def debug(request):
     return request.param
 
@@ -64,7 +66,9 @@ async def assert_num_uploads_found(
     amount_seen = None
     paginator = aio_s3_client.get_paginator(operation)
     for _ in range(num_attempts):
-        pages = paginator.paginate(Bucket=bucket_name, PaginationConfig={"MaxItems": max_items})
+        pages = paginator.paginate(
+            Bucket=bucket_name, PaginationConfig={"MaxItems": max_items}
+        )
         responses = []
         async for page in pages:
             responses.append(page)
@@ -79,7 +83,9 @@ async def assert_num_uploads_found(
         else:
             # Sleep and try again.
             await asyncio.sleep(2, loop=event_loop)
-        pytest.fail("Expected to see %s uploads, instead saw: %s" % (num_uploads, amount_seen))
+        pytest.fail(
+            "Expected to see %s uploads, instead saw: %s" % (num_uploads, amount_seen)
+        )
 
 
 def pytest_configure():
@@ -158,7 +164,9 @@ def moto_config(endpoint_url):
 
 def create_client(client_type, request, event_loop, session, region, config, **kw):
     async def f():
-        return session.create_client(client_type, region_name=region, config=config, **kw)
+        return session.create_client(
+            client_type, region_name=region, config=config, **kw
+        )
 
     client = event_loop.run_until_complete(f())
 
@@ -170,7 +178,9 @@ def create_client(client_type, request, event_loop, session, region, config, **k
 
 
 @pytest.fixture
-def aio_batch_client(request, session, region, config, s3_server, mocking_test, event_loop):
+def aio_batch_client(
+    request, session, region, config, s3_server, mocking_test, event_loop
+):
     kw = {}
     if mocking_test:
         kw = moto_config(s3_server)
@@ -179,7 +189,9 @@ def aio_batch_client(request, session, region, config, s3_server, mocking_test, 
 
 
 @pytest.fixture
-def aio_s3_client(request, session, region, config, s3_server, mocking_test, event_loop):
+def aio_s3_client(
+    request, session, region, config, s3_server, mocking_test, event_loop
+):
     kw = {}
     if mocking_test:
         kw = moto_config(s3_server)
@@ -188,7 +200,9 @@ def aio_s3_client(request, session, region, config, s3_server, mocking_test, eve
 
 
 @pytest.fixture
-def alt_s3_client(request, session, alt_region, config, s3_server, mocking_test, event_loop):
+def alt_s3_client(
+    request, session, alt_region, config, s3_server, mocking_test, event_loop
+):
     kw = {}
     if mocking_test:
         kw = moto_config(s3_server)
@@ -204,7 +218,9 @@ def aio_dynamodb_client(
     kw = {}
     if mocking_test:
         kw = moto_config(dynamodb2_server)
-    client = create_client("dynamodb", request, event_loop, session, region, config, **kw)
+    client = create_client(
+        "dynamodb", request, event_loop, session, region, config, **kw
+    )
     return client
 
 
@@ -215,19 +231,25 @@ def aio_cloudformation_client(
     kw = {}
     if mocking_test:
         kw = moto_config(cloudformation_server)
-    client = create_client("cloudformation", request, event_loop, session, region, config, **kw)
+    client = create_client(
+        "cloudformation", request, event_loop, session, region, config, **kw
+    )
     return client
 
 
 @pytest.fixture
-def aio_sns_client(request, session, region, config, sns_server, mocking_test, event_loop):
+def aio_sns_client(
+    request, session, region, config, sns_server, mocking_test, event_loop
+):
     kw = moto_config(sns_server) if mocking_test else {}
     client = create_client("sns", request, event_loop, session, region, config, **kw)
     return client
 
 
 @pytest.fixture
-def aio_sqs_client(request, session, region, config, sqs_server, mocking_test, event_loop):
+def aio_sqs_client(
+    request, session, region, config, sqs_server, mocking_test, event_loop
+):
     kw = moto_config(sqs_server) if mocking_test else {}
     client = create_client("sqs", request, event_loop, session, region, config, **kw)
     return client
@@ -307,9 +329,16 @@ async def create_table(aio_dynamodb_client):
         _table_name = table_name
         table_kwargs = {
             "TableName": table_name,
-            "AttributeDefinitions": [{"AttributeName": "testKey", "AttributeType": "S"},],
-            "KeySchema": [{"AttributeName": "testKey", "KeyType": "HASH"},],
-            "ProvisionedThroughput": {"ReadCapacityUnits": 1, "WriteCapacityUnits": 1,},
+            "AttributeDefinitions": [
+                {"AttributeName": "testKey", "AttributeType": "S"},
+            ],
+            "KeySchema": [
+                {"AttributeName": "testKey", "KeyType": "HASH"},
+            ],
+            "ProvisionedThroughput": {
+                "ReadCapacityUnits": 1,
+                "WriteCapacityUnits": 1,
+            },
         }
         response = await aio_dynamodb_client.create_table(**table_kwargs)
         while not (await _is_table_ready(table_name)):
@@ -359,7 +388,9 @@ def create_multipart_upload(request, aio_s3_client, bucket_name, event_loop):
         nonlocal upload_id
         _key_name = key_name
 
-        parsed = await aio_s3_client.create_multipart_upload(Bucket=bucket_name, Key=key_name)
+        parsed = await aio_s3_client.create_multipart_upload(
+            Bucket=bucket_name, Key=key_name
+        )
         upload_id = parsed["UploadId"]
         return upload_id
 
@@ -384,7 +415,8 @@ async def aio_session(event_loop):
 def dynamodb_put_item(request, aio_dynamodb_client, table_name):
     async def _f(key_string_value):
         response = await aio_dynamodb_client.put_item(
-            TableName=table_name, Item={"testKey": {"S": key_string_value}},
+            TableName=table_name,
+            Item={"testKey": {"S": key_string_value}},
         )
         assert_status_code(response, 200)
 

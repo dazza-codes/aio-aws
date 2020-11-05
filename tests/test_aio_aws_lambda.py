@@ -38,7 +38,10 @@ def test_async_aws_lambda():
 
 @pytest.fixture
 def lambda_config(
-    aio_aws_session, aio_aws_iam_server, aio_aws_lambda_server, aio_aws_logs_server,
+    aio_aws_session,
+    aio_aws_iam_server,
+    aio_aws_lambda_server,
+    aio_aws_logs_server,
 ) -> AioAWSConfig:
     class TestConfig(AioAWSConfig):
         session = aio_aws_session
@@ -62,7 +65,11 @@ def lambda_config(
                     yield client
 
     config = TestConfig(
-        max_pool_connections=1, min_pause=0.2, max_pause=0.6, min_jitter=0.1, max_jitter=0.2,
+        max_pool_connections=1,
+        min_pause=0.2,
+        max_pause=0.6,
+        min_jitter=0.1,
+        max_jitter=0.2,
     )
 
     yield config
@@ -77,7 +84,9 @@ async def lambda_iam_role(lambda_config):
             iam = response["Role"]["Arn"]
         except botocore.client.ClientError:
             response = await client.create_role(
-                RoleName="my-role", AssumeRolePolicyDocument="some policy", Path="/my-path/",
+                RoleName="my-role",
+                AssumeRolePolicyDocument="some policy",
+                Path="/my-path/",
             )
             iam = response["Role"]["Arn"]
     return iam
@@ -103,7 +112,9 @@ def lambda_handler(event, context):
 
 
 @pytest.fixture
-async def aws_lambda_func(aws_lambda_zip, lambda_config, lambda_iam_role) -> AWSLambdaFunction:
+async def aws_lambda_func(
+    aws_lambda_zip, lambda_config, lambda_iam_role
+) -> AWSLambdaFunction:
 
     event = {"i": 1}
     payload = json.dumps(event).encode()

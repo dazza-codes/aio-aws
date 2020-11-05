@@ -28,13 +28,14 @@ def s3_bucket_name() -> str:
 @pytest.fixture
 def s3_bucket(s3_bucket_name, aws_s3_client, aws_region) -> str:
     resp = aws_s3_client.create_bucket(
-        Bucket=s3_bucket_name, ACL="public-read-write",
-        CreateBucketConfiguration={'LocationConstraint': aws_region}
+        Bucket=s3_bucket_name,
+        ACL="public-read-write",
+        CreateBucketConfiguration={"LocationConstraint": aws_region},
     )
     assert response_success(resp)
 
     # Ensure the bucket exists
-    exists_waiter = aws_s3_client.get_waiter('bucket_exists')
+    exists_waiter = aws_s3_client.get_waiter("bucket_exists")
     exists_waiter.wait(Bucket=s3_bucket_name)
 
     head = aws_s3_client.head_bucket(Bucket=s3_bucket_name)
@@ -48,12 +49,13 @@ def s3_buckets(s3_bucket_name, aws_s3_client, aws_region) -> List[str]:
     for i in range(20):
         bucket_name = f"{s3_bucket_name}_{i:02d}"
         resp = aws_s3_client.create_bucket(
-            Bucket=bucket_name, ACL="public-read-write",
-            CreateBucketConfiguration={'LocationConstraint': aws_region}
+            Bucket=bucket_name,
+            ACL="public-read-write",
+            CreateBucketConfiguration={"LocationConstraint": aws_region},
         )
         assert response_success(resp)
         # Ensure the bucket exists
-        exists_waiter = aws_s3_client.get_waiter('bucket_exists')
+        exists_waiter = aws_s3_client.get_waiter("bucket_exists")
         exists_waiter.wait(Bucket=bucket_name)
 
         head = aws_s3_client.head_bucket(Bucket=bucket_name)

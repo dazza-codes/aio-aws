@@ -593,7 +593,10 @@ class AWSBatchDB:
         jobs_outstanding = []
         for job in jobs:
             LOGGER.info(
-                "AWS Batch job (%s:%s) has db status: %s", job.job_name, job.job_id, job.status,
+                "AWS Batch job (%s:%s) has db status: %s",
+                job.job_name,
+                job.job_id,
+                job.status,
             )
             if job.job_id and job.status == "SUCCEEDED":
                 LOGGER.debug(job.job_description)
@@ -604,7 +607,7 @@ class AWSBatchDB:
         return jobs_outstanding
 
 
-def jobs_to_run(jobs: List[AWSBatchJob], jobs_db: AWSBatchDB,) -> List[AWSBatchJob]:
+def jobs_to_run(jobs: List[AWSBatchJob], jobs_db: AWSBatchDB) -> List[AWSBatchJob]:
     """
     Use the job.job_name to find any jobs_db records and check the job status
     on the latest submission of any job matching the job-name.  For any job that
@@ -655,7 +658,7 @@ def jobs_to_run(jobs: List[AWSBatchJob], jobs_db: AWSBatchDB,) -> List[AWSBatchJ
     return jobs_outstanding
 
 
-def jobs_recovery(jobs: List[AWSBatchJob], jobs_db: AWSBatchDB,) -> List[AWSBatchJob]:
+def jobs_recovery(jobs: List[AWSBatchJob], jobs_db: AWSBatchDB) -> List[AWSBatchJob]:
     """
     Use the job.job_name to find any jobs_db records to recover job data.
     """
@@ -764,7 +767,7 @@ def parse_job_description(job_id: str, jobs: Dict) -> Optional[Dict]:
 
 
 async def aio_batch_job_submit(
-    job: AWSBatchJob, config: AWSBatchConfig = AWS_BATCH_CONFIG,
+    job: AWSBatchJob, config: AWSBatchConfig = AWS_BATCH_CONFIG
 ) -> Dict:
     """
     Asynchronous coroutine to submit a batch job; for a successful
@@ -798,11 +801,17 @@ async def aio_batch_job_submit(
                     async with jobs_db.DB_SEMAPHORE:
                         jobs_db.save_job(job)
                     LOGGER.info(
-                        "AWS Batch job (%s:%s) submission OK", job.job_name, job.job_id,
+                        "AWS Batch job (%s:%s) submitted try: %d of %d",
+                        job.job_name,
+                        job.job_id,
+                        job.num_tries,
+                        job.max_tries,
                     )
                 else:
                     # TODO: are there some submission failures that could be recovered here?
-                    LOGGER.error("AWS Batch job (%s:xxx) submission failure.", job.job_name)
+                    LOGGER.error(
+                        "AWS Batch job (%s:xxx) submission failure.", job.job_name
+                    )
                 return response
 
             except botocore.exceptions.ClientError as err:
@@ -810,7 +819,9 @@ async def aio_batch_job_submit(
                 if error.get("Code") == "TooManyRequestsException":
                     if tries < config.retries:
                         # add an extra random sleep period to avoid API throttle
-                        await jitter("batch-job-submit", config.min_jitter, config.max_jitter)
+                        await jitter(
+                            "batch-job-submit", config.min_jitter, config.max_jitter
+                        )
                     continue  # allow it to retry, if possible
                 else:
                     raise
@@ -819,7 +830,7 @@ async def aio_batch_job_submit(
 
 
 async def aio_batch_job_status(
-    jobs: List[str], config: AWSBatchConfig = AWS_BATCH_CONFIG,
+    jobs: List[str], config: AWSBatchConfig = AWS_BATCH_CONFIG
 ) -> Optional[Dict]:
     """
     Asynchronous coroutine to issue a batch job description request
@@ -840,7 +851,9 @@ async def aio_batch_job_status(
                 if error.get("Code") == "TooManyRequestsException":
                     if tries < config.retries:
                         # add an extra random sleep period to avoid API throttle
-                        await jitter("batch-job-status", config.min_jitter, config.max_jitter)
+                        await jitter(
+                            "batch-job-status", config.min_jitter, config.max_jitter
+                        )
                     continue  # allow it to retry, if possible
                 else:
                     raise
@@ -849,7 +862,7 @@ async def aio_batch_job_status(
 
 
 async def aio_batch_job_logs(
-    job: AWSBatchJob, config: AWSBatchConfig = AWS_BATCH_CONFIG,
+    job: AWSBatchJob, config: AWSBatchConfig = AWS_BATCH_CONFIG
 ) -> Optional[List[Dict]]:
     """
     Asynchronous coroutine to get logs for a batch job log stream.  All
@@ -872,10 +885,7 @@ async def aio_batch_job_logs(
     log_stream_name = job.job_description.get("container", {}).get("logStreamName")
     if not log_stream_name:
         LOGGER.warning(
-            "AWS Batch job (%s:%s) has no log stream: %s",
-            job.job_name,
-            job.job_id,
-            job.job_description,
+            "AWS Batch job (%s:%s) has no log stream.", job.job_name, job.job_id
         )
         return
 
@@ -922,7 +932,9 @@ async def aio_batch_job_logs(
                         jobs_db.save_job_logs(job)
                 else:
                     LOGGER.warning(
-                        "AWS Batch job (%s:%s) has no log events", job.job_name, job.job_id
+                        "AWS Batch job (%s:%s) has no log events",
+                        job.job_name,
+                        job.job_id,
                     )
 
                 return log_events
@@ -932,7 +944,9 @@ async def aio_batch_job_logs(
                 if error.get("Code") == "TooManyRequestsException":
                     if tries < config.retries:
                         # add an extra random sleep period to avoid API throttle
-                        await jitter("batch-job-logs", config.min_jitter, config.max_jitter)
+                        await jitter(
+                            "batch-job-logs", config.min_jitter, config.max_jitter
+                        )
                     continue  # allow it to retry, if possible
                 else:
                     raise
@@ -941,7 +955,7 @@ async def aio_batch_job_logs(
 
 
 async def aio_batch_job_terminate(
-    job_id: str, reason: str, config: AWSBatchConfig = AWS_BATCH_CONFIG,
+    job_id: str, reason: str, config: AWSBatchConfig = AWS_BATCH_CONFIG
 ) -> Dict:
     """
     Asynchronous coroutine to terminate a batch job
@@ -979,7 +993,7 @@ async def aio_batch_job_terminate(
 
 
 async def aio_batch_job_waiter(
-    job: AWSBatchJob, config: AWSBatchConfig = AWS_BATCH_CONFIG,
+    job: AWSBatchJob, config: AWSBatchConfig = AWS_BATCH_CONFIG
 ) -> Optional[Dict]:
     """
     Asynchronous coroutine to wait on a batch job.  There is no explict
@@ -1000,7 +1014,9 @@ async def aio_batch_job_waiter(
         monitor_failures = 0
         while True:
             response = await aio_batch_job_status([job.job_id], config)
-            LOGGER.debug("AWS Batch job (%s:%s) status: %s", job.job_name, job.job_id, response)
+            LOGGER.debug(
+                "AWS Batch job (%s:%s) status: %s", job.job_name, job.job_id, response
+            )
 
             job_desc = parse_job_description(job.job_id, response)
             if job_desc:
@@ -1012,7 +1028,10 @@ async def aio_batch_job_waiter(
                     jobs_db.save_job(job)  # TODO: use async-db
 
                 LOGGER.info(
-                    "AWS Batch job (%s:%s) status: %s", job.job_name, job.job_id, job.status,
+                    "AWS Batch job (%s:%s) status: %s",
+                    job.job_name,
+                    job.job_id,
+                    job.status,
                 )
 
                 if job_desc["status"] in ["FAILED", "SUCCEEDED"]:
@@ -1020,17 +1039,23 @@ async def aio_batch_job_waiter(
 
                 if job_desc["status"] in ["SUBMITTED", "PENDING", "RUNNABLE"]:
                     # Wait longer than regular pause to allow job startup
-                    await delay(job.job_name, config.start_pause, config.start_pause * 2)
+                    await delay(
+                        job.job_name, config.start_pause, config.start_pause * 2
+                    )
 
             else:
                 monitor_failures += 1
                 if monitor_failures <= config.retries:
                     LOGGER.warning(
-                        "AWS Batch job (%s:%s) retry job description", job.job_name, job.job_id
+                        "AWS Batch job (%s:%s) retry job description",
+                        job.job_name,
+                        job.job_id,
                     )
                 else:
                     LOGGER.error(
-                        "AWS Batch job (%s:%s) failed to monitor job", job.job_name, job.job_id
+                        "AWS Batch job (%s:%s) failed to monitor job",
+                        job.job_name,
+                        job.job_id,
                     )
                     break
 
@@ -1038,12 +1063,14 @@ async def aio_batch_job_waiter(
             await delay(job.job_name, config.min_pause, config.max_pause)
 
     except botocore.exceptions.ClientError as err:
-        LOGGER.error("AWS Batch job (%s:%s) failed to monitor job", job.job_name, job.job_id)
+        LOGGER.error(
+            "AWS Batch job (%s:%s) failed to monitor job", job.job_name, job.job_id
+        )
         raise
 
 
 async def aio_batch_job_manager(
-    job: AWSBatchJob, config: AWSBatchConfig = AWS_BATCH_CONFIG,
+    job: AWSBatchJob, config: AWSBatchConfig = AWS_BATCH_CONFIG
 ) -> Optional[Dict]:
     """
     Asynchronous coroutine to manage a batch job.  The job-manager
@@ -1063,50 +1090,48 @@ async def aio_batch_job_manager(
     :return: a describe_jobs response for job_id when it's complete
     :raises: botocore.exceptions.ClientError
     """
-    while job.num_tries < job.max_tries:
+    while True:
 
+        # jobs with an existing job.job_id skip submission to be waited
         if job.job_id is None:
-            # the job submission can update the job data and jobs-db
-            response = await aio_batch_job_submit(job, config=config)
-            if not response_success(response):
-                # If the job-submission has failed, don't retry it
-                # because there is probably something to fix.
-                # TODO: raise an exception here or just log errors in submission?
+            if job.num_tries < job.max_tries:
+                # the job submission can update the job data and jobs-db
+                response = await aio_batch_job_submit(job, config=config)
+                if not response_success(response):
+                    # If the job-submission has failed, don't retry it
+                    # because there is probably something to fix.
+                    return
+            else:
+                LOGGER.warning(
+                    "AWS Batch job (%s) exceeds retries: %d of %d",
+                    job.job_name,
+                    job.num_tries,
+                    job.max_tries,
+                )
                 return
 
-        # the job waiter can update the job description and status
+        # the job waiter updates the job description and status
         await aio_batch_job_waiter(job, config=config)
 
-        if job.status == "SUCCEEDED":
-            return job.job_description
-
         if job.status == "FAILED":
-            try:
-                # SPOT failure requires a retry, it usually has
-                # statusReason: Host EC2 (instance {instanceId}) terminated
-                #
-                # Some common reasons with no retry behavior:
-                # - user initiated job termination with a custom reason
-                # - "Dependent Job failed" - unknown upstream failure
-                # - "Essential container in task exited" - container error
-                reason = job.job_description.get("statusReason", "")
-                if re.match(r"Host EC2.*terminated", reason):
-                    LOGGER.warning(
-                        "AWS Batch job (%s:%s) SPOT failure, run retry.",
-                        job.job_name,
-                        job.job_id,
-                    )
-                    job.reset()
-                    jobs_db = config.get_batch_db()
-                    async with jobs_db.DB_SEMAPHORE:
-                        jobs_db.save_job(job)  # TODO: use async-db
-                    continue
-            except KeyError:
-                pass
+            # SPOT failure requires a retry, it usually has
+            # statusReason: Host EC2 (instance {instanceId}) terminated
+            #
+            # Some common reasons with no retry behavior:
+            # - user initiated job termination with a custom reason
+            # - "Dependent Job failed" - unknown upstream failure
+            # - "Essential container in task exited" - container error
+            reason = job.job_description.get("statusReason", "")
+            if re.match(r"Host EC2.*terminated", reason):
+                LOGGER.warning(
+                    "AWS Batch job (%s:%s) SPOT failure, run retry.",
+                    job.job_name,
+                    job.job_id,
+                )
+                job.reset()  # reset jobs are not saved to the jobs-db
+                continue
 
-            return job.job_description
-    else:
-        LOGGER.warning("AWS Batch job (%s:%s) retries exceeded.", job.job_name, job.job_id)
+        return job.job_description
 
 
 async def handle_tasks_as_completed(tasks, loop=None):
@@ -1144,7 +1169,9 @@ async def aio_batch_get_logs(
     if loop is None:
         loop = asyncio.get_event_loop()
 
-    batch_tasks = [loop.create_task(aio_batch_job_logs(job=job, config=config)) for job in jobs]
+    batch_tasks = [
+        loop.create_task(aio_batch_job_logs(job=job, config=config)) for job in jobs
+    ]
     await handle_tasks_as_completed(batch_tasks)
 
     # Using the asyncio.Task API
@@ -1185,7 +1212,7 @@ if __name__ == "__main__":
         batch_jobs.append(batch_job)
 
     batch_jobs_db = AWSBatchDB(
-        jobs_db_file="/tmp/aio_batch_jobs.json", logs_db_file="/tmp/aio_batch_logs.json",
+        jobs_db_file="/tmp/aio_batch_jobs.json", logs_db_file="/tmp/aio_batch_logs.json"
     )
 
     batch_jobs = jobs_recovery(jobs=batch_jobs, jobs_db=batch_jobs_db)
@@ -1207,14 +1234,18 @@ if __name__ == "__main__":
                 start_pause=30,
             )
 
-            loop.run_until_complete(aio_batch_run_jobs(jobs=batch_jobs, config=aio_config))
+            loop.run_until_complete(
+                aio_batch_run_jobs(jobs=batch_jobs, config=aio_config)
+            )
 
             complete_jobs = []
             for job in batch_jobs:
                 if job.status in ["SUCCEEDED", "FAILED"]:
                     complete_jobs.append(job)
 
-            loop.run_until_complete(aio_batch_get_logs(jobs=complete_jobs, config=aio_config))
+            loop.run_until_complete(
+                aio_batch_get_logs(jobs=complete_jobs, config=aio_config)
+            )
 
         finally:
             loop.run_until_complete(loop.shutdown_asyncgens())

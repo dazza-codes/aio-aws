@@ -48,7 +48,9 @@ def aws_batch_infrastructure(
     return aws_resources
 
 
-def test_aws_batch_infrastructure(aws_batch_infrastructure: AwsBatchInfrastructure,):
+def test_aws_batch_infrastructure(
+    aws_batch_infrastructure: AwsBatchInfrastructure,
+):
     infrastructure = aws_batch_infrastructure
     assert infrastructure
     assert infrastructure.vpc_id
@@ -63,7 +65,9 @@ def test_aws_batch_infrastructure(aws_batch_infrastructure: AwsBatchInfrastructu
     assert infrastructure.job_definition_arn
 
 
-def test_batch_job_definitions(aws_batch_infrastructure: AwsBatchInfrastructure,):
+def test_batch_job_definitions(
+    aws_batch_infrastructure: AwsBatchInfrastructure,
+):
     aws_resources = aws_batch_infrastructure
     aws_region = aws_resources.aws_region
     job_definition_name = aws_resources.job_definition_name
@@ -116,6 +120,8 @@ def test_batch_list_jobs(aws_batch_infrastructure: AwsBatchInfrastructure):
         "SUCCEEDED",
         "FAILED",
     ]:
-        response = clients.batch.list_jobs(jobQueue=job_queue_name, jobStatus=job_status)
+        response = clients.batch.list_jobs(
+            jobQueue=job_queue_name, jobStatus=job_status
+        )
         assert response_success(response)
         assert response["jobSummaryList"] == []
