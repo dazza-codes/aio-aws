@@ -34,8 +34,7 @@ format: clean
 init: poetry
 	@source "$(HOME)/.poetry/env"
 	@poetry run pip install --upgrade pip
-	@poetry run pip install -r requirements.dev
-	@poetry install -v --no-interaction --extras server
+	@poetry install -v --no-interaction --extras all
 
 lint: clean
 	@poetry run pylint --disable=missing-docstring tests
