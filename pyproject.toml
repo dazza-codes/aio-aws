@@ -26,16 +26,16 @@ packages = [
     {include = "aio_aws"}
 ]
 
+
 #[tool.poetry.scripts]
 #aio-aws-app = "aio_aws.aio_aws_app:app"
 
+
 [tool.poetry.dependencies]
-python = "^3.6"
-dataclasses = {version = "*", python = "^3.6.0"}
+python = "^3.7"
 
 # try to update to the latest aiobotocore
 aiobotocore = {extras = ["boto3"], version = "^1.1.0"}
-awscli = {version = "^1.18", optional = true}
 
 async-generator = "^1.10"
 
@@ -47,40 +47,25 @@ tinydb = "^3.15"
 # Optional packages
 #
 
-databases = {extras = ["postgresql", "mysql", "sqlite"], version = "*", optional = true}
-aioredis = {version = "^1.3", optional = true}
+awscli = {version = "^1.18", optional = true}
 
-# avoid ujson in 'full' extra
-starlette = {version = "^0.13.2", optional = true}
 aiofiles = {version = "^0.4.0", optional = true}
-graphene = {version = "^2.1.6", optional = true}
-itsdangerous = {version = "^1.1.0", optional = true}
-jinja2 = {version = "^2.11.1", optional = true}
-python-multipart = {version = "^0.0.5", optional = true}
-pyyaml = {version = "5.2", optional = true}
-uvicorn = {version = "^0.11.3", optional = true}
+aioredis = {version = "^1.3", optional = true}
+databases = {extras = ["postgresql", "mysql", "sqlite"], version = "*", optional = true}
 
 
 [tool.poetry.extras]
-awscli = ["awscli"]
 
-database = [
-    "aioredis",
-    "databases",
-]
-
-server = [
-    "starlette",
+all = [
     "aiofiles",
-    "graphene",
-    "itsdangerous",
-    "jinja2",
-    "python-multipart",
-    "pyyaml",
-    "uvicorn",
     "aioredis",
     "databases",
 ]
+
+# it's generally advised that awscli is installed separately
+# into a system installation rather than a venv installation,
+# so it's not included in the `all` extras here
+awscli = ["awscli"]
 
 
 [tool.poetry.dev-dependencies]
@@ -93,13 +78,9 @@ boto3 = "~1.14.40"
 botocore = "~1.17.40"
 moto = {version = "~1.3.16", extras = ["server"]}
 
-# requirements.dev is used to manage and install other
-# development dependencies, to avoid excessive delays
-# in poetry dep-tree resolution for all project + dev deps;
-# this also helps to avoid excess conflicts between dev-deps
-# and actual project dependencies.  It is not as reliable
-# as using poetry to manage it all, so liberal use of
-# 'pip check' is recommended.
+# py-dev-deps is used as a common denominator for many
+# development dependencies
+py-dev-deps = "^0.1.2"
 
 
 [build-system]
