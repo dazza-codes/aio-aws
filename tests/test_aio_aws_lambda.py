@@ -20,15 +20,15 @@ import inspect
 import io
 import json
 import zipfile
+from contextlib import asynccontextmanager
 
 import botocore.client
 import botocore.exceptions
 import pytest
-from async_generator import asynccontextmanager
 
 from aio_aws import aio_aws_lambda
-from aio_aws import AioAWSConfig
-from aio_aws import response_success
+from aio_aws.aio_aws_config import AioAWSConfig
+from aio_aws.aio_aws_config import response_success
 from aio_aws.aio_aws_lambda import AWSLambdaFunction
 
 

@@ -101,9 +101,9 @@ using the :py:class:`aio_aws.aio_aws_batch import AWSBatchDB`.  The job manager
 uses :py:func:`aio_aws.aio_aws_batch.aio_batch_job_waiter`, which uses these settings
 to control the async-wait between polling the job status:
 
-- :py:const:`aio_aws.aio_aws.BATCH_STARTUP_PAUSE`
-- :py:const:`aio_aws.aio_aws.MAX_PAUSE`
-- :py:const:`aio_aws.aio_aws.MIN_PAUSE`
+- :py:const:`aio_aws.aio_aws_config.BATCH_STARTUP_PAUSE`
+- :py:const:`aio_aws.aio_aws_config.MAX_PAUSE`
+- :py:const:`aio_aws.aio_aws_config.MIN_PAUSE`
 
 These settings control how often job descriptions are polled.  These requests for job status
 are also limited by the client connection pool and the client semaphore used by the job
@@ -144,7 +144,7 @@ after everything is done.
 
     import asyncio
 
-    from aio_aws import AIO_AWS_SESSION
+    from aio_aws.aio_aws_config import AIO_AWS_SESSION
     from aio_aws.aio_aws_batch import AWSBatchConfig
     from aio_aws.aio_aws_batch import AWSBatchDB
     from aio_aws.aio_aws_batch import AWSBatchJob
@@ -230,6 +230,8 @@ after everything is done.
 import asyncio
 import re
 from asyncio import AbstractEventLoop
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -240,20 +242,18 @@ import botocore.endpoint  # type: ignore
 import botocore.exceptions  # type: ignore
 import botocore.session  # type: ignore
 import tinydb
-from async_generator import asynccontextmanager
-from dataclasses import dataclass
 
-from aio_aws import AIO_AWS_SESSION
-from aio_aws import BATCH_STARTUP_PAUSE
-from aio_aws import CLIENT_SEMAPHORE
-from aio_aws import delay
-from aio_aws import jitter
-from aio_aws import MAX_JITTER
-from aio_aws import MAX_PAUSE
-from aio_aws import MAX_POOL_CONNECTIONS
-from aio_aws import MIN_JITTER
-from aio_aws import MIN_PAUSE
-from aio_aws import response_success
+from aio_aws.aio_aws_config import AIO_AWS_SESSION
+from aio_aws.aio_aws_config import BATCH_STARTUP_PAUSE
+from aio_aws.aio_aws_config import CLIENT_SEMAPHORE
+from aio_aws.aio_aws_config import delay
+from aio_aws.aio_aws_config import jitter
+from aio_aws.aio_aws_config import MAX_JITTER
+from aio_aws.aio_aws_config import MAX_PAUSE
+from aio_aws.aio_aws_config import MAX_POOL_CONNECTIONS
+from aio_aws.aio_aws_config import MIN_JITTER
+from aio_aws.aio_aws_config import MIN_PAUSE
+from aio_aws.aio_aws_config import response_success
 from aio_aws.logger import LOGGER
 
 
