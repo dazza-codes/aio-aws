@@ -55,3 +55,13 @@ Focus on aio-aws
 ------------------
 - Minor revisions and black formatting
 
+
+0.6.0 (2020-12-09)
+------------------
+- Update to python3.7 and prune dependencies
+  - drop support for python 3.6
+  - refactored aio config
+- Remove aio-aws-app and dependencies
+  - dropped app-server
+- Revise boto* and moto dependencies
+
