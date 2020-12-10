@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from contextlib import asynccontextmanager
 from typing import List
 
 import aiobotocore
@@ -19,10 +20,9 @@ import aiobotocore.client
 import aiobotocore.config
 import botocore.exceptions
 import pytest
-from async_generator import asynccontextmanager
 
-from aio_aws import AioAWSConfig
-from aio_aws import response_success
+from aio_aws.aio_aws_config import AioAWSConfig
+from aio_aws.aio_aws_config import response_success
 from aio_aws.aio_aws_s3 import aio_s3_bucket_access
 from aio_aws.aio_aws_s3 import aio_s3_bucket_head
 from aio_aws.aio_aws_s3 import aio_s3_buckets_access

@@ -37,7 +37,6 @@ python = "^3.7"
 # try to update to the latest aiobotocore
 aiobotocore = {extras = ["boto3"], version = "^1.1.0"}
 
-async-generator = "^1.10"
 
 requests = "^2.23.0"
 typer = "^0.3.2"

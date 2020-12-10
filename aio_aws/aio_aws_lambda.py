@@ -59,17 +59,16 @@ import base64
 import json
 import os
 import time
-from json import dumps
+from dataclasses import dataclass
 from typing import Any
 from typing import Dict
 
 import botocore.exceptions
-from dataclasses import dataclass
 
-from aio_aws import AioAWSConfig
-from aio_aws import jitter
-from aio_aws import LOGGER
-from aio_aws import response_success
+from aio_aws.aio_aws_config import AioAWSConfig
+from aio_aws.aio_aws_config import jitter
+from aio_aws.aio_aws_config import response_success
+from aio_aws.logger import LOGGER
 
 
 @dataclass

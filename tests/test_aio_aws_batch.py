@@ -27,13 +27,13 @@ according to the moto license (Apache-2.0).
 """
 import asyncio
 import inspect
+from contextlib import asynccontextmanager
 
 import botocore.exceptions
 import pytest
-from async_generator import asynccontextmanager
 
 from aio_aws import aio_aws_batch
-from aio_aws import response_success
+from aio_aws.aio_aws_config import response_success
 from aio_aws.aio_aws_batch import aio_batch_get_logs
 from aio_aws.aio_aws_batch import aio_batch_job_logs
 from aio_aws.aio_aws_batch import aio_batch_job_manager

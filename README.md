@@ -33,9 +33,10 @@ The following setup assumes that
 ```shell
 git clone https://github.com/dazza-codes/aio-aws
 cd aio-aws
-conda create -n aio-aws python=3.6
+conda create -n aio-aws python=3.7
 conda activate aio-aws
 make init  # calls poetry install
+make test
 ```
 
 # Install
@@ -66,8 +67,7 @@ pip install -U 'git+https://github.com/dazza-codes/aio-aws.git@master#egg=aio-aw
 pip install -U 'git+https://github.com/dazza-codes/aio-aws.git@0.1.0#egg=aio-aws'
 
 # add optional extras
-pip install -U 'git+https://github.com/dazza-codes/aio-aws.git@0.1.0#egg=aio-aws[database]'
-pip install -U 'git+https://github.com/dazza-codes/aio-aws.git@0.1.0#egg=aio-aws[server]'
+pip install -U 'git+https://github.com/dazza-codes/aio-aws.git@0.1.0#egg=aio-aws[all]'
 ```
 
 ## poetry
@@ -78,14 +78,14 @@ poetry will try to guarantee consistent packages or fail.
 poetry add 'git+https://github.com/dazza-codes/aio-aws.git'
 
 # add optional extras
-poetry add 'git+https://github.com/dazza-codes/aio-aws.git' --extras database --extras server
+poetry add 'git+https://github.com/dazza-codes/aio-aws.git' --extras all
 ```
 
 ```toml
 # pyproject.toml snippet
 
 [tool.poetry.dependencies]
-python = "^3.6"
+python = "^3.7"
 aio-aws = {git = "https://github.com/dazza-codes/aio-aws.git"}
 
 # Or use a tagged release - recommended

@@ -28,7 +28,7 @@ import pytest
 from aiobotocore.client import AioBaseClient
 from aiobotocore.session import AioSession
 
-from aio_aws import response_success
+from aio_aws.aio_aws_config import response_success
 from tests.aiomoto_fixtures import AioAwsBatchClients
 from tests.utils import AWS_ACCESS_KEY_ID
 from tests.utils import AWS_REGION
