@@ -73,13 +73,13 @@ after everything is done.
 
 .. code-block::
 
-    # python 3.6
+    # python 3.7
 
     import asyncio
     import aiobotocore.config
     import time
 
-    from aio_aws import AioAWSConfig
+    from aio_aws.aio_aws_config import AioAWSConfig
     from aio_aws.aio_aws_s3 import aio_s3_objects_list
 
     # Use a single session with a larger connection pool.
@@ -134,6 +134,7 @@ after everything is done.
 import asyncio
 import concurrent.futures
 import time
+from dataclasses import dataclass
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -144,12 +145,11 @@ import botocore.client  # type: ignore
 import botocore.endpoint  # type: ignore
 import botocore.exceptions  # type: ignore
 import botocore.session  # type: ignore
-from dataclasses import dataclass
 
-from aio_aws import aio_aws_session
-from aio_aws import AioAWSConfig
-from aio_aws import jitter
-from aio_aws import response_success
+from aio_aws.aio_aws_config import aio_aws_session
+from aio_aws.aio_aws_config import AioAWSConfig
+from aio_aws.aio_aws_config import jitter
+from aio_aws.aio_aws_config import response_success
 from aio_aws.logger import LOGGER
 
 
