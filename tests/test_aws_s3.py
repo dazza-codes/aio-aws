@@ -16,7 +16,7 @@ from typing import List
 
 import pytest
 
-from aio_aws import response_success
+from aio_aws.aio_aws_config import response_success
 from aio_aws.aio_aws_s3 import aws_s3_buckets_access
 
 
