@@ -48,26 +48,17 @@ This project has a very limited focus.  For general client solutions, see
 to patch it with features for async coroutines using
 [aiohttp](https://aiohttp.readthedocs.io/en/latest/) and
 [asyncio](https://docs.python.org/3/library/asyncio.html).
-This project is not published as a pypi package because there is no promise
-to support or develop it extensively, at this time.  For the curious, it
-can be used directly from a github tag.  Note that any 0.x releases are
-likely to have breaking API changes.
+
+This project is alpha-status with a 0.x.y API version that could break.
+There is no promise to support or develop it extensively, at this time.
+For the curious, it can be used directly from a github tag.  Note that
+any 0.x releases are likely to have breaking API changes.
 
 ## pip
 
-pip can install packages using a
-[git protocol](https://pip.pypa.io/en/stable/reference/pip_install/#git).
-
 ```shell
-pip install -U 'git+https://github.com/dazza-codes/aio-aws.git#egg=aio-aws'
+pip install -U aio-aws[all]
 pip check  # pip might not guarantee consistent packages
-
-# use git refs
-pip install -U 'git+https://github.com/dazza-codes/aio-aws.git@master#egg=aio-aws'
-pip install -U 'git+https://github.com/dazza-codes/aio-aws.git@0.1.0#egg=aio-aws'
-
-# add optional extras
-pip install -U 'git+https://github.com/dazza-codes/aio-aws.git@0.1.0#egg=aio-aws[all]'
 ```
 
 ## poetry
@@ -75,10 +66,8 @@ pip install -U 'git+https://github.com/dazza-codes/aio-aws.git@0.1.0#egg=aio-aws
 poetry will try to guarantee consistent packages or fail.
 
 ```shell
-poetry add 'git+https://github.com/dazza-codes/aio-aws.git'
-
-# add optional extras
-poetry add 'git+https://github.com/dazza-codes/aio-aws.git' --extras all
+# with optional extras
+poetry add aio-aws --extras all
 ```
 
 ```toml
@@ -86,16 +75,12 @@ poetry add 'git+https://github.com/dazza-codes/aio-aws.git' --extras all
 
 [tool.poetry.dependencies]
 python = "^3.7"
-aio-aws = {git = "https://github.com/dazza-codes/aio-aws.git"}
 
-# Or use a tagged release - recommended
-aio-aws = {git = "https://github.com/dazza-codes/aio-aws.git", rev = "0.1.0"}
+# with optional extras
+aio-aws = {version = "^0.1.0", extras = ["all"]}
 
-# add optional extras from the aio-aws package
-aio-aws = {git = "https://github.com/dazza-codes/aio-aws.git", rev = "0.1.0", extras = ["database","server"]}
-
-# make this package an optional extra
-aio-aws = {git = "https://github.com/dazza-codes/aio-aws.git", rev = "0.1.0", optional = true}
+# or, to make it an optional extra
+aio-aws = {version = "^0.1.0", extras = ["all"], optional = true}
 [tool.poetry.extras]
 aio-aws = ["aio-aws"]
 
