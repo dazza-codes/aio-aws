@@ -144,7 +144,6 @@ after everything is done.
 
     import asyncio
 
-    from aio_aws.aio_aws_config import AIO_AWS_SESSION
     from aio_aws.aio_aws_batch import AWSBatchConfig
     from aio_aws.aio_aws_batch import AWSBatchDB
     from aio_aws.aio_aws_batch import AWSBatchJob
@@ -228,6 +227,7 @@ after everything is done.
 """
 
 import asyncio
+import os
 import re
 from asyncio import AbstractEventLoop
 from contextlib import asynccontextmanager
@@ -243,18 +243,14 @@ import botocore.exceptions  # type: ignore
 import botocore.session  # type: ignore
 import tinydb
 
-from aio_aws.aio_aws_config import AIO_AWS_SESSION
-from aio_aws.aio_aws_config import BATCH_STARTUP_PAUSE
-from aio_aws.aio_aws_config import CLIENT_SEMAPHORE
+from aio_aws.aio_aws_config import AioAWSConfig
 from aio_aws.aio_aws_config import delay
 from aio_aws.aio_aws_config import jitter
-from aio_aws.aio_aws_config import MAX_JITTER
-from aio_aws.aio_aws_config import MAX_PAUSE
-from aio_aws.aio_aws_config import MAX_POOL_CONNECTIONS
-from aio_aws.aio_aws_config import MIN_JITTER
-from aio_aws.aio_aws_config import MIN_PAUSE
 from aio_aws.aio_aws_config import response_success
 from aio_aws.logger import LOGGER
+
+#: batch job startup pause (seconds)
+BATCH_STARTUP_PAUSE: float = 30
 
 
 @dataclass
@@ -460,9 +456,6 @@ class AWSBatchDB:
     #: a file used for :py:class::`TinyDB(logs_db_file)`
     logs_db_file: str = "/tmp/aws_batch_logs.json"
 
-    #: a semaphore to limit requests to the db
-    DB_SEMAPHORE = asyncio.Semaphore(1)
-
     def __post_init__(self):
 
         tinydb.TinyDB.DEFAULT_TABLE = "aws-batch-jobs"
@@ -475,6 +468,16 @@ class AWSBatchDB:
         self.logs_db = tinydb.TinyDB(self.logs_db_file)
         LOGGER.info("Using batch-jobs-db file: %s", self.jobs_db_file)
         LOGGER.info("Using batch-logs-db file: %s", self.logs_db_file)
+
+        # Lazy init for any asyncio instances
+        self._db_sem = None
+
+    @property
+    def db_semaphore(self) -> asyncio.Semaphore:
+        """A semaphore to limit requests to the db"""
+        if self._db_sem is None:
+            self._db_sem = asyncio.Semaphore()
+        return self._db_sem
 
     def find_by_job_id(self, job_id: str) -> Optional[tinydb.database.Document]:
         """
@@ -681,39 +684,12 @@ def jobs_recovery(jobs: List[AWSBatchJob], jobs_db: AWSBatchDB) -> List[AWSBatch
 
 
 @dataclass
-class AWSBatchConfig:
-    #: an optional AWS region name
-    aws_region: str = None
-    #: a number of retries for an AWS client request/response
-    retries: int = 5
+class AWSBatchConfig(AioAWSConfig):
     #: a batch job startup pause, ``random.uniform(start_pause, start_pause * 2)``;
     #: this applies when the job status is in ["SUBMITTED", "PENDING", "RUNNABLE"]
     start_pause: float = BATCH_STARTUP_PAUSE
-    #: defines an asyncio.sleep for ``random.uniform(min_pause, max_pause)``
-    min_pause: float = MIN_PAUSE
-    #: defines an asyncio.sleep for ``random.uniform(min_pause, max_pause)``
-    max_pause: float = MAX_PAUSE
-    #: defines an asyncio.sleep for ``random.uniform(min_jitter, max_jitter)``
-    min_jitter: float = MIN_JITTER
-    #: defines an asyncio.sleep for ``random.uniform(min_jitter, max_jitter)``
-    max_jitter: float = MAX_JITTER
-    #: defines a limit to the number of client connections
-    max_pool_connections: int = MAX_POOL_CONNECTIONS
-    #: an asyncio.Semaphore to limit the number of concurrent client requests
-    sem: asyncio.Semaphore = CLIENT_SEMAPHORE
-    #: an aiobotocore.session.AioSession
-    session: aiobotocore.session.AioSession = AIO_AWS_SESSION
     #: an optional AWSBatchDB
     batch_db: Optional[AWSBatchDB] = None
-
-    def __post_init__(self):
-        client_config = self.session.get_default_client_config()
-        if client_config.region_name != self.aws_region:
-            client_config.region_name = self.aws_region
-
-        client_config.max_pool_connections = self.max_pool_connections
-        self.sem = asyncio.Semaphore(self.max_pool_connections)
-        self.session.set_default_client_config(client_config)
 
     def get_batch_db(self) -> AWSBatchDB:
         """
@@ -732,9 +708,8 @@ class AWSBatchConfig:
 
         :yield: an aiobotocore.client.AioBaseClient for AWS Batch
         """
-        async with self.sem:
-            async with self.session.create_client("batch") as client:
-                yield client
+        async with self.session.create_client("batch") as client:
+            yield client
 
     @asynccontextmanager
     async def create_logs_client(self) -> aiobotocore.client.AioBaseClient:
@@ -743,13 +718,8 @@ class AWSBatchConfig:
 
         :yield: an aiobotocore.client.AioBaseClient for AWS CloudWatchLogs
         """
-        async with self.sem:
-            async with self.session.create_client("logs") as client:
-                yield client
-
-
-#: a default AWSBatchConfig
-AWS_BATCH_CONFIG = AWSBatchConfig()
+        async with self.session.create_client("logs") as client:
+            yield client
 
 
 def parse_job_description(job_id: str, jobs: Dict) -> Optional[Dict]:
@@ -767,7 +737,7 @@ def parse_job_description(job_id: str, jobs: Dict) -> Optional[Dict]:
 
 
 async def aio_batch_job_submit(
-    job: AWSBatchJob, config: AWSBatchConfig = AWS_BATCH_CONFIG
+    job: AWSBatchJob, config: AWSBatchConfig = None
 ) -> Dict:
     """
     Asynchronous coroutine to submit a batch job; for a successful
@@ -779,8 +749,11 @@ async def aio_batch_job_submit(
     :return: a job response
     :raises: botocore.exceptions.ClientError
     """
-    # async with config.sem:
+    # async with config.semaphore:
     #     async with config.session.create_client("batch") as batch_client:
+
+    if config is None:
+        config = AWSBatchConfig.get_default_config()
 
     async with config.create_batch_client() as batch_client:
         tries = 0
@@ -798,7 +771,7 @@ async def aio_batch_job_submit(
                     job.job_tries.append(job.job_id)
                     job.num_tries += 1
                     jobs_db = config.get_batch_db()
-                    async with jobs_db.DB_SEMAPHORE:
+                    async with jobs_db.db_semaphore:
                         jobs_db.save_job(job)
                     LOGGER.info(
                         "AWS Batch job (%s:%s) submitted try: %d of %d",
@@ -830,7 +803,7 @@ async def aio_batch_job_submit(
 
 
 async def aio_batch_job_status(
-    jobs: List[str], config: AWSBatchConfig = AWS_BATCH_CONFIG
+    jobs: List[str], config: AWSBatchConfig = None
 ) -> Optional[Dict]:
     """
     Asynchronous coroutine to issue a batch job description request
@@ -840,6 +813,9 @@ async def aio_batch_job_status(
     :return: a describe_jobs response
     :raises: botocore.exceptions.ClientError
     """
+    if config is None:
+        config = AWSBatchConfig.get_default_config()
+
     async with config.create_batch_client() as batch_client:
         tries = 0
         while tries < config.retries:
@@ -862,7 +838,7 @@ async def aio_batch_job_status(
 
 
 async def aio_batch_job_logs(
-    job: AWSBatchJob, config: AWSBatchConfig = AWS_BATCH_CONFIG
+    job: AWSBatchJob, config: AWSBatchConfig = None
 ) -> Optional[List[Dict]]:
     """
     Asynchronous coroutine to get logs for a batch job log stream.  All
@@ -878,6 +854,9 @@ async def aio_batch_job_logs(
     .. seealso::
         https://botocore.amazonaws.com/v1/documentation/api/latest/reference/services/logs.html
     """
+    if config is None:
+        config = AWSBatchConfig.get_default_config()
+
     if not job.job_description:
         LOGGER.warning("AWS Batch job has no description, cannot fetch logs")
         return
@@ -928,7 +907,7 @@ async def aio_batch_job_logs(
                     )
                     job.logs = log_events
                     jobs_db = config.get_batch_db()
-                    async with jobs_db.DB_SEMAPHORE:
+                    async with jobs_db.db_semaphore:
                         jobs_db.save_job_logs(job)
                 else:
                     LOGGER.warning(
@@ -955,7 +934,7 @@ async def aio_batch_job_logs(
 
 
 async def aio_batch_job_terminate(
-    job_id: str, reason: str, config: AWSBatchConfig = AWS_BATCH_CONFIG
+    job_id: str, reason: str, config: AWSBatchConfig = None
 ) -> Dict:
     """
     Asynchronous coroutine to terminate a batch job
@@ -966,6 +945,9 @@ async def aio_batch_job_terminate(
     :return: a job response
     :raises: botocore.exceptions.ClientError
     """
+    if config is None:
+        config = AWSBatchConfig.get_default_config()
+
     async with config.create_batch_client() as batch_client:
 
         tries = 0
@@ -993,7 +975,7 @@ async def aio_batch_job_terminate(
 
 
 async def aio_batch_job_waiter(
-    job: AWSBatchJob, config: AWSBatchConfig = AWS_BATCH_CONFIG
+    job: AWSBatchJob, config: AWSBatchConfig = None
 ) -> Optional[Dict]:
     """
     Asynchronous coroutine to wait on a batch job.  There is no explict
@@ -1010,6 +992,9 @@ async def aio_batch_job_waiter(
     :return: a describe_jobs response for job.job_id when it's complete
     :raises: botocore.exceptions.ClientError
     """
+    if config is None:
+        config = AWSBatchConfig.get_default_config()
+
     try:
         monitor_failures = 0
         while True:
@@ -1024,7 +1009,7 @@ async def aio_batch_job_waiter(
                 job.job_description = job_desc
                 job.status = job_desc["status"]
                 jobs_db = config.get_batch_db()
-                async with jobs_db.DB_SEMAPHORE:
+                async with jobs_db.db_semaphore:
                     jobs_db.save_job(job)  # TODO: use async-db
 
                 LOGGER.info(
@@ -1070,7 +1055,7 @@ async def aio_batch_job_waiter(
 
 
 async def aio_batch_job_manager(
-    job: AWSBatchJob, config: AWSBatchConfig = AWS_BATCH_CONFIG
+    job: AWSBatchJob, config: AWSBatchConfig = None
 ) -> Optional[Dict]:
     """
     Asynchronous coroutine to manage a batch job.  The job-manager
@@ -1090,6 +1075,9 @@ async def aio_batch_job_manager(
     :return: a describe_jobs response for job_id when it's complete
     :raises: botocore.exceptions.ClientError
     """
+    if config is None:
+        config = AWSBatchConfig.get_default_config()
+
     while True:
 
         # jobs with an existing job.job_id skip submission to be waited
@@ -1144,7 +1132,12 @@ async def aio_batch_run_jobs(
     jobs: List[AWSBatchJob], config: AWSBatchConfig, loop: AbstractEventLoop = None
 ):
     if loop is None:
-        loop = asyncio.get_event_loop()
+        # Ensure that an event loop is running in this thread
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
 
     batch_tasks = [
         loop.create_task(aio_batch_job_manager(job=job, config=config)) for job in jobs
@@ -1226,7 +1219,7 @@ if __name__ == "__main__":
 
             # for polling frequency of 5-20 seconds, with 30-60 second job starts
             aio_config = AWSBatchConfig(
-                aws_region="us-west-2",
+                aws_region=os.getenv("AWS_DEFAULT_REGION", "us-west-2"),
                 batch_db=batch_jobs_db,
                 max_pool_connections=10,
                 min_pause=5,

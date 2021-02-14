@@ -147,13 +147,16 @@ async def test_async_lambda_invoke(
 
     func: AWSLambdaFunction = aws_lambda_func
 
-    response = await func.invoke(lambda_config)
-    assert response_success(response)
-    # A successful response could have handled errors
-    if func.content is None:
-        assert func.error
-    else:
-        assert func.content
+    async with lambda_config.create_client("lambda") as lambda_client:
 
-    # since this function should work, test the response data
-    assert func.content == {"statusCode": 200, "body": {"i": 1}}
+        response = await func.invoke(lambda_config, lambda_client)
+        assert response_success(response)
+        # A successful response could have handled errors
+        if func.content is None:
+            assert func.error
+        else:
+            assert func.content
+
+        # since this function should work, test the response data
+        assert func.content == {"statusCode": 200, "body": {"i": 1}}
+

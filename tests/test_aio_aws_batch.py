@@ -33,7 +33,6 @@ import botocore.exceptions
 import pytest
 
 from aio_aws import aio_aws_batch
-from aio_aws.aio_aws_config import response_success
 from aio_aws.aio_aws_batch import aio_batch_get_logs
 from aio_aws.aio_aws_batch import aio_batch_job_logs
 from aio_aws.aio_aws_batch import aio_batch_job_manager
@@ -44,6 +43,7 @@ from aio_aws.aio_aws_batch import aio_batch_job_waiter
 from aio_aws.aio_aws_batch import aio_batch_run_jobs
 from aio_aws.aio_aws_batch import AWSBatchConfig
 from aio_aws.aio_aws_batch import AWSBatchJob
+from aio_aws.aio_aws_config import response_success
 from tests.aiomoto_fixtures import aio_batch_infrastructure
 from tests.aiomoto_fixtures import AioAwsBatchClients
 from tests.aiomoto_fixtures import AioAwsBatchInfrastructure
