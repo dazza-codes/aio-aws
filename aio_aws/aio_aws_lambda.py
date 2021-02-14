@@ -62,11 +62,14 @@ import time
 from dataclasses import dataclass
 from typing import Any
 from typing import Dict
+from typing import List
 
+import aiobotocore.client
 import botocore.exceptions
 
 from aio_aws.aio_aws_config import AioAWSConfig
 from aio_aws.aio_aws_config import jitter
+from aio_aws.aio_aws_config import MAX_POOL_CONNECTIONS
 from aio_aws.aio_aws_config import response_success
 from aio_aws.logger import LOGGER
 
@@ -139,17 +142,20 @@ class AWSLambdaFunction:
             params["Qualifier"] = self.qualifier
         return params
 
-    async def invoke(self, config: AioAWSConfig) -> Dict:
+    async def invoke(
+        self, config: AioAWSConfig, lambda_client: aiobotocore.client.AioBaseClient
+    ) -> Dict:
         """
         Asynchronous coroutine to invoke a lambda function; this
         updates the ``response`` and calls the py:meth:`.read_response`
         method to handle the response.
 
         :param config: aio session and client settings
+        :param lambda_client: aio client for lambda
         :return: a lambda response
         :raises: botocore.exceptions.ClientError, botocore.exceptions.ParamValidationError
         """
-        async with config.create_client("lambda") as lambda_client:
+        async with config.semaphore:
             tries = 0
             while tries < config.retries:
                 tries += 1
@@ -215,6 +221,40 @@ class AWSLambdaFunction:
                     self.content = json.loads(body)
 
 
+async def run_lambda_functions(lambda_functions: List[AWSLambdaFunction]):
+    """Use some default config settings to run lambda functions
+
+    .. code-block::
+
+        lambda_funcs = []
+        for i in range(5):
+            event = {"i": i}
+            payload = json.dumps(event).encode()
+            func = AWSLambdaFunction(name="lambda_dev", payload=payload)
+            lambda_funcs.append(func)
+        asyncio.run(run_lambda_functions(lambda_funcs))
+        for func in lambda_funcs:
+            assert response_success(func.response)
+
+    :return: it returns nothing, the lambda function will contain the
+        results of any lambda response in func.response
+    """
+    config = AioAWSConfig(
+        aws_region=os.getenv("AWS_DEFAULT_REGION", "us-west-2"),
+        min_jitter=0.2,
+        max_jitter=0.8,
+        max_pool_connections=MAX_POOL_CONNECTIONS
+    )
+    lambda_tasks = []
+    async with config.create_client("lambda") as lambda_client:
+        for lambda_func in lambda_functions:
+            lambda_task = asyncio.create_task(
+                lambda_func.invoke(config, lambda_client)
+            )
+            lambda_tasks.append(lambda_task)
+        await asyncio.gather(*lambda_tasks)
+
+
 if __name__ == "__main__":
 
     print()
@@ -222,47 +262,27 @@ if __name__ == "__main__":
     start = time.perf_counter()
     N_lambdas = int(os.environ.get("N_LAMBDAS", 1))
 
-    # Create an event loop for the aio processing
-    loop = asyncio.get_event_loop()
-    loop.set_debug(enabled=True)
-    try:
+    lambda_funcs = []
+    for i in range(N_lambdas):
+        event = {"i": i}
+        payload = json.dumps(event).encode()
+        func = AWSLambdaFunction(name="lambda_dev", payload=payload)
+        lambda_funcs.append(func)
 
-        aio_config = AioAWSConfig(
-            aws_region="us-west-2",
-            max_pool_connections=80,  # a large connection pool
-            min_jitter=0.2,
-            max_jitter=0.8,
-        )
+    asyncio.run(run_lambda_functions(lambda_funcs))
 
-        lambda_funcs = []
-        lambda_tasks = []
-        for i in range(N_lambdas):
-            event = {"i": i}
-            payload = json.dumps(event).encode()
-            func = AWSLambdaFunction(name="lambda_dev", payload=payload)
-            lambda_funcs.append(func)
-            lambda_task = loop.create_task(func.invoke(aio_config))
-            lambda_tasks.append(lambda_task)
-
-        loop.run_until_complete(asyncio.gather(*lambda_tasks))
-
-        for func in lambda_funcs:
-            assert response_success(func.response)
-            # TODO: parse and gather all responses
-            if N_lambdas < 5:
-                print()
-                print(func.params)
-                print()
-                print(func.response)
-                print()
-                print(func.content)
-                print()
-                print(func.logs)
-
-    finally:
-        loop.run_until_complete(loop.shutdown_asyncgens())
-        loop.stop()
-        loop.close()
+    for func in lambda_funcs:
+        assert response_success(func.response)
+        # TODO: parse and gather all responses
+        if N_lambdas < 5:
+            print()
+            print(func.params)
+            print()
+            print(func.response)
+            print()
+            print(func.content)
+            print()
+            print(func.logs)
 
     end = time.perf_counter() - start
     print(f"{N_lambdas} lambdas finished in {end:0.2f} seconds.\n")

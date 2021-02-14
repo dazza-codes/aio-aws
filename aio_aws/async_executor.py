@@ -103,13 +103,13 @@ def loop_mgr(loop: asyncio.AbstractEventLoop):
         # the loop was stopped and concurrent.futures.Executor
         # promises to complete tasks on shutdown.
         while True:
-            tasks = asyncio.Task.all_tasks(loop=loop)
+            tasks = asyncio.all_tasks(loop=loop)
             pending = [t for t in tasks if not t.done()]
             loop.run_until_complete(asyncio.gather(*pending))
 
             # ensure the task collection is updated
             # (this is _not_ redundant)
-            tasks = asyncio.Task.all_tasks(loop=loop)
+            tasks = asyncio.all_tasks(loop=loop)
             if all([t.done() for t in tasks]):
                 break
 

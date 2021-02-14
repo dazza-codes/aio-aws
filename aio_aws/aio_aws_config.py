@@ -53,27 +53,6 @@ from aio_aws.logger import LOGGER
 #: max_pool_connections for AWS clients (10 by default)
 MAX_POOL_CONNECTIONS = botocore.endpoint.MAX_POOL_CONNECTIONS
 
-#: a semaphore to limit requests to the max client connections
-CLIENT_SEMAPHORE = asyncio.Semaphore(MAX_POOL_CONNECTIONS)
-
-#: AWS asyncio session config;
-#: see https://github.com/boto/botocore/blob/develop/botocore/config.py
-#: a default client config with py:const:`MAX_POOL_CONNECTIONS`
-AIO_AWS_CONFIG = aiobotocore.config.AioConfig(max_pool_connections=MAX_POOL_CONNECTIONS)
-
-#: a default session with py:const:`AIO_AWS_CONFIG`
-AIO_AWS_SESSION = aiobotocore.get_session()
-AIO_AWS_SESSION.user_agent_name = "aio-aws"
-AIO_AWS_SESSION.set_default_client_config(AIO_AWS_CONFIG)
-# AIO_AWS_SESSION.full_config
-# AIO_AWS_SESSION.get_config_variable('region')
-# AIO_AWS_SESSION.get_scoped_config() is the same as:
-#     configs = AIO_AWS_SESSION.full_config
-#     configs['profiles'][AIO_AWS_SESSION.profile]
-
-#: batch job startup pause (seconds)
-BATCH_STARTUP_PAUSE: float = 30
-
 #: Minimum task pause
 MIN_PAUSE: float = 5
 
@@ -87,16 +66,63 @@ MIN_JITTER: float = 1
 MAX_JITTER: float = 10
 
 
+def asyncio_default_semaphore() -> asyncio.Semaphore:
+    """
+    a default semaphore to limit creation of clients;
+    it defaults to 2 * py:const:`MAX_POOL_CONNECTIONS`
+
+    .. seealso::
+        https://github.com/boto/botocore/blob/develop/botocore/config.py
+
+    :return: aiobotocore.config.AioConfig
+    """
+    return asyncio.Semaphore(MAX_POOL_CONNECTIONS * 2)
+
+
+def aio_aws_default_config() -> aiobotocore.config.AioConfig:
+    """
+    Get a default asyncio AWS config using a default
+    py:const:`MAX_POOL_CONNECTIONS`
+
+    .. seealso::
+        https://github.com/boto/botocore/blob/develop/botocore/config.py
+
+    :return: aiobotocore.config.AioConfig
+    """
+    return aiobotocore.config.AioConfig(max_pool_connections=MAX_POOL_CONNECTIONS)
+
+
+def aio_aws_default_session() -> aiobotocore.session.AioSession:
+    """
+    Get a default asyncio AWS session with a default config from
+    :py:func:`aio_aws_default_config`
+
+    :return: aiobotocore.session.AioSession
+    """
+    aio_config = aio_aws_default_config()
+    aio_session = aiobotocore.get_session()
+    aio_session.user_agent_name = "aio-aws"
+    aio_session.set_default_client_config(aio_config)
+    # aio_session.full_config
+    # aio_session.get_config_variable('region')
+    # aio_session.get_scoped_config() is the same as:
+    #     configs = aio_session.full_config
+    #     configs['profiles'][aio_session.profile]
+    return aio_session
+
+
 def aio_aws_session(
-    aio_aws_config: aiobotocore.config.AioConfig = AIO_AWS_CONFIG,
+    aio_aws_config: aiobotocore.config.AioConfig = None,
 ) -> aiobotocore.session.AioSession:
     """
     Get an asyncio AWS session
 
     :param aio_aws_config: an aiobotocore.config.AioConfig
-            (default :py:const:`AIO_AWS_CONFIG`)
+            (default :py:func:`aio_aws_default_config`)
     :return: aiobotocore.session.AioSession
     """
+    if aio_aws_config is None:
+        aio_aws_config = aio_aws_default_config()
     session = aiobotocore.get_session()
     session.user_agent_name = "aio-aws"
     # session.set_stream_logger("aio-aws")  # for debugging
@@ -106,21 +132,24 @@ def aio_aws_session(
 
 async def aio_aws_client(
     service_name: str,
-    aio_aws_config: aiobotocore.config.AioConfig = AIO_AWS_CONFIG,
+    aio_aws_config: aiobotocore.config.AioConfig = None,
     **kwargs
 ):
     """
     Yield an asyncio AWS client with an option to provide a client-specific config; this is a
-    thin wrapper on ``AIO_AWS_SESSION.create_client()`` and the additional
-    kwargs as passed through to ``AIO_AWS_SESSION.create_client(**kwargs)``.
+    thin wrapper on ``aiobotocore.get_session().create_client()`` and the additional
+    kwargs as passed through to ``session.create_client(**kwargs)``.
 
     :param service_name: an AWS service for a client, like "s3", try
-            :py:meth:`AIO_AWS_SESSION.get_available_services()`
+            :py:meth:`session.get_available_services()`
     :param aio_aws_config: an aiobotocore.config.AioConfig
-            (default :py:const:`AIO_AWS_CONFIG`)
+            (default :py:func:`aio_aws_default_config`)
     :yield: aiobotocore.client.AioBaseClient
     """
-    async with AIO_AWS_SESSION.create_client(
+    if aio_aws_config is None:
+        aio_aws_config = aio_aws_default_config()
+    session = aio_aws_session(aio_aws_config)
+    async with session.create_client(
         service_name, config=aio_aws_config, **kwargs
     ) as client:
         yield client
@@ -160,27 +189,51 @@ class AioAWSConfig:
     max_jitter: float = MAX_JITTER
     #: defines a limit to the number of client connections
     max_pool_connections: int = MAX_POOL_CONNECTIONS
-    #: an asyncio.Semaphore to limit the number of concurrent clients;
-    #: this should be equivalent to the session client connection pool
-    sem: asyncio.Semaphore = CLIENT_SEMAPHORE
+    # An asyncio.Semaphore to limit the number of concurrent clients;
+    # this defaults to the session client connection pool
+    sem: int = MAX_POOL_CONNECTIONS
     #: an aiobotocore.session.AioSession
-    session: aiobotocore.session.AioSession = AIO_AWS_SESSION
+    session: aiobotocore.session.AioSession = None
+
+    @classmethod
+    def get_default_config(cls):
+        # TODO: explore memoized default config
+        return cls()
 
     def __post_init__(self):
+        
+        # see also aiobotocore.endpoint.AioEndpointCreator.create_endpoint
+        # for all the options that config details can provide for aiohttp session
+
+        if self.session is None:
+            self.session = aio_aws_default_session()
+
         client_config = self.session.get_default_client_config()
         if client_config.region_name != self.aws_region:
             client_config.region_name = self.aws_region
 
         client_config.max_pool_connections = self.max_pool_connections
-        self.sem = asyncio.Semaphore(self.max_pool_connections)
         self.session.set_default_client_config(client_config)
+
+        # Lazy init for an asyncio instance
+        self._semaphore = None
+
+    @property
+    def semaphore(self) -> asyncio.Semaphore:
+        """
+        An asyncio.Semaphore to limit the number of concurrent clients;
+        this defaults to the session client connection pool
+        """
+        if self._semaphore is None:
+            self._semaphore = asyncio.Semaphore(self.sem)
+        return self._semaphore
 
     @asynccontextmanager
     async def create_client(self, service: str) -> aiobotocore.client.AioBaseClient:
         """
         Create and yield a new client using the ``AioAWSConfig.session``;
-        the number of clients (each using one connection) is limited by
-        the ``AioAWSConfig.max_connection_pool``
+        the clients are configured with a default limit on the size of
+        the connection pool defined by ``AioAWSConfig.max_pool_connections``
 
         .. code-block::
 
@@ -190,9 +243,8 @@ class AioAWSConfig:
 
         :yield: an aiobotocore.client.AioBaseClient for AWS service
         """
-        async with self.sem:
-            async with self.session.create_client(service) as client:
-                yield client
+        async with self.session.create_client(service) as client:
+            yield client
 
 
 async def delay(
