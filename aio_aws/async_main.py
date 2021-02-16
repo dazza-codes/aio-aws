@@ -22,7 +22,12 @@ from typing import Awaitable
 
 def main(run: Awaitable):
     """Run main loop"""
-    loop = asyncio.get_event_loop()
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
     try:
         loop.run_until_complete(run)
     finally:

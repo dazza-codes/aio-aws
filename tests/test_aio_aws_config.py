@@ -57,4 +57,6 @@ async def test_async_delay_defaults():
 async def test_async_jitter_defaults():
     pause = await aio_aws.aio_aws_config.jitter("jitter_task")
     assert isinstance(pause, float)
-    assert aio_aws.aio_aws_config.MIN_JITTER <= pause <= aio_aws.aio_aws_config.MAX_JITTER
+    assert (
+        aio_aws.aio_aws_config.MIN_JITTER <= pause <= aio_aws.aio_aws_config.MAX_JITTER
+    )
