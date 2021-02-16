@@ -21,7 +21,6 @@ import pytest
 
 from aio_aws.aio_aws_batch import AWSBatchDB
 
-
 pytest_plugins = [
     "tests.aws_fixtures",
     "tests.aiomoto_fixtures",
