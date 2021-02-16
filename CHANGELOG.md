@@ -65,3 +65,9 @@ Focus on aio-aws
   - dropped app-server
 - Revise boto* and moto dependencies
 
+
+0.7.0 (2021-02-15)
+------------------
+- Breaking changes to decouple semaphores and clients
+- Update README
+
