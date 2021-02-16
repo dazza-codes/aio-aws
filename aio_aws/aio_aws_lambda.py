@@ -243,14 +243,12 @@ async def run_lambda_functions(lambda_functions: List[AWSLambdaFunction]):
         aws_region=os.getenv("AWS_DEFAULT_REGION", "us-west-2"),
         min_jitter=0.2,
         max_jitter=0.8,
-        max_pool_connections=MAX_POOL_CONNECTIONS
+        max_pool_connections=MAX_POOL_CONNECTIONS,
     )
     lambda_tasks = []
     async with config.create_client("lambda") as lambda_client:
         for lambda_func in lambda_functions:
-            lambda_task = asyncio.create_task(
-                lambda_func.invoke(config, lambda_client)
-            )
+            lambda_task = asyncio.create_task(lambda_func.invoke(config, lambda_client))
             lambda_tasks.append(lambda_task)
         await asyncio.gather(*lambda_tasks)
 
