@@ -131,9 +131,7 @@ def aio_aws_session(
 
 
 async def aio_aws_client(
-    service_name: str,
-    aio_aws_config: aiobotocore.config.AioConfig = None,
-    **kwargs
+    service_name: str, aio_aws_config: aiobotocore.config.AioConfig = None, **kwargs
 ):
     """
     Yield an asyncio AWS client with an option to provide a client-specific config; this is a
@@ -201,7 +199,7 @@ class AioAWSConfig:
         return cls()
 
     def __post_init__(self):
-        
+
         # see also aiobotocore.endpoint.AioEndpointCreator.create_endpoint
         # for all the options that config details can provide for aiohttp session
 

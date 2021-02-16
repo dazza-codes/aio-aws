@@ -159,4 +159,3 @@ async def test_async_lambda_invoke(
 
         # since this function should work, test the response data
         assert func.content == {"statusCode": 200, "body": {"i": 1}}
-

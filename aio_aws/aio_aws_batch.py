@@ -736,9 +736,7 @@ def parse_job_description(job_id: str, jobs: Dict) -> Optional[Dict]:
     return job_desc
 
 
-async def aio_batch_job_submit(
-    job: AWSBatchJob, config: AWSBatchConfig = None
-) -> Dict:
+async def aio_batch_job_submit(job: AWSBatchJob, config: AWSBatchConfig = None) -> Dict:
     """
     Asynchronous coroutine to submit a batch job; for a successful
     job submission, the jobId and other submission details are
