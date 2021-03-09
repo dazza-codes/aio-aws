@@ -46,6 +46,7 @@ from dataclasses import dataclass
 import aiobotocore.client
 import aiobotocore.config
 import aiobotocore.session
+import botocore.client
 import botocore.endpoint
 
 from aio_aws.logger import LOGGER
@@ -115,7 +116,7 @@ def aio_aws_session(
     aio_aws_config: aiobotocore.config.AioConfig = None,
 ) -> aiobotocore.session.AioSession:
     """
-    Get an asyncio AWS session
+    Get an asyncio AWS session with an 'aio-aws' user agent name
 
     :param aio_aws_config: an aiobotocore.config.AioConfig
             (default :py:func:`aio_aws_default_config`)
@@ -130,26 +131,41 @@ def aio_aws_session(
     return session
 
 
+@asynccontextmanager
 async def aio_aws_client(
-    service_name: str, aio_aws_config: aiobotocore.config.AioConfig = None, **kwargs
-):
+    service_name: str, *args, **kwargs
+) -> aiobotocore.client.AioBaseClient:
     """
     Yield an asyncio AWS client with an option to provide a client-specific config; this is a
     thin wrapper on ``aiobotocore.get_session().create_client()`` and the additional
     kwargs as passed through to ``session.create_client(**kwargs)``.
 
+    It is possible to pass through additional args and kwargs
+    including `config: aiobotocore.config.AioConfig`
+    (the default is :py:func:`aio_aws_default_config`)
+
+    .. code-block::
+
+        s3_endpoint = "http://localhost:5555"
+        client_config = botocore.client.Config(
+            read_timeout=120,
+            max_pool_connections=50,
+        )
+        async with aio_aws_client(
+            "s3", endpoint_url=s3_endpoint, config=client_config
+        ) as client:
+            assert "aiobotocore.client.S3" in str(client)
+            assert isinstance(client, aiobotocore.client.AioBaseClient)
+
     :param service_name: an AWS service for a client, like "s3", try
             :py:meth:`session.get_available_services()`
-    :param aio_aws_config: an aiobotocore.config.AioConfig
-            (default :py:func:`aio_aws_default_config`)
     :yield: aiobotocore.client.AioBaseClient
+
+    .. seealso::
+        - https://botocore.amazonaws.com/v1/documentation/api/latest/reference/config.html
     """
-    if aio_aws_config is None:
-        aio_aws_config = aio_aws_default_config()
-    session = aio_aws_session(aio_aws_config)
-    async with session.create_client(
-        service_name, config=aio_aws_config, **kwargs
-    ) as client:
+    session = aio_aws_session()
+    async with session.create_client(service_name, *args, **kwargs) as client:
         yield client
 
 
@@ -206,15 +222,31 @@ class AioAWSConfig:
         if self.session is None:
             self.session = aio_aws_default_session()
 
-        client_config = self.session.get_default_client_config()
-        if client_config.region_name != self.aws_region:
-            client_config.region_name = self.aws_region
+        default_config = self.default_client_config
 
-        client_config.max_pool_connections = self.max_pool_connections
+        # self.session.get_default_client_config() is Optional[botocore.client.Config]
+        client_config = self.session.get_default_client_config()
+        if client_config:
+            client_config = client_config.merge(default_config)
+        else:
+            client_config = default_config
+
         self.session.set_default_client_config(client_config)
 
         # Lazy init for an asyncio instance
         self._semaphore = None
+
+    @property
+    def default_client_config(self) -> botocore.client.Config:
+        # botocore/config.py lists all the options
+        config = botocore.client.Config(
+            connect_timeout=20,
+            read_timeout=120,
+            max_pool_connections=self.max_pool_connections,
+        )
+        if self.aws_region:
+            config.region_name = self.aws_region
+        return config
 
     @property
     def semaphore(self) -> asyncio.Semaphore:
@@ -227,7 +259,9 @@ class AioAWSConfig:
         return self._semaphore
 
     @asynccontextmanager
-    async def create_client(self, service: str) -> aiobotocore.client.AioBaseClient:
+    async def create_client(
+        self, service: str, *args, **kwargs
+    ) -> aiobotocore.client.AioBaseClient:
         """
         Create and yield a new client using the ``AioAWSConfig.session``;
         the clients are configured with a default limit on the size of
@@ -239,9 +273,15 @@ class AioAWSConfig:
             async with config.create_client("s3") as client:
                 response = await s3_client.head_bucket(Bucket=bucket_name)
 
+        It is possible to pass through additional args and kwargs
+        including `config=botocore.client.Config`.
+
         :yield: an aiobotocore.client.AioBaseClient for AWS service
+
+        .. seealso::
+            - https://botocore.amazonaws.com/v1/documentation/api/latest/reference/config.html
         """
-        async with self.session.create_client(service) as client:
+        async with self.session.create_client(service, *args, **kwargs) as client:
             yield client
 
 
