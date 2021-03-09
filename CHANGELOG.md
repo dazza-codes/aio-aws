@@ -71,3 +71,9 @@ Focus on aio-aws
 - Breaking changes to decouple semaphores and clients
 - Update README
 
+
+0.8.0 (2021-03-08)
+------------------
+- Add create-client args and kwargs options
+- Fix hyperlinks for sphinx docs
+
