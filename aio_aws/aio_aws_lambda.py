@@ -144,7 +144,7 @@ class AWSLambdaFunction:
 
     async def invoke(
         self, config: AioAWSConfig, lambda_client: aiobotocore.client.AioBaseClient
-    ) -> Dict:
+    ) -> "AWSLambdaFunction":
         """
         Asynchronous coroutine to invoke a lambda function; this
         updates the ``response`` and calls the py:meth:`.read_response`
@@ -177,7 +177,8 @@ class AWSLambdaFunction:
                     else:
                         # TODO: are there some failures that could be recovered here?
                         LOGGER.error("AWS Lambda (%s) invoke failure.", self.name)
-                    return response
+
+                    return self
 
                 except botocore.exceptions.ClientError as err:
                     error = err.response.get("Error", {})
