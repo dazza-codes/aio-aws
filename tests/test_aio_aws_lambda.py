@@ -149,13 +149,14 @@ async def test_async_lambda_invoke(
 
     async with lambda_config.create_client("lambda") as lambda_client:
 
-        response = await func.invoke(lambda_config, lambda_client)
-        assert response_success(response)
+        lambda_func = await func.invoke(lambda_config, lambda_client)
+        assert id(lambda_func) == id(func)
+        assert response_success(lambda_func.response)
         # A successful response could have handled errors
-        if func.content is None:
-            assert func.error
+        if lambda_func.content is None:
+            assert lambda_func.error
         else:
-            assert func.content
+            assert lambda_func.content
 
         # since this function should work, test the response data
-        assert func.content == {"statusCode": 200, "body": {"i": 1}}
+        assert lambda_func.content == {"statusCode": 200, "body": {"i": 1}}
