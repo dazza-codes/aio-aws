@@ -191,29 +191,37 @@ async def test_aio_s3_bucket_head(aio_s3_bucket, aio_aws_s3_client, s3_config):
     resp = await aio_aws_s3_client.head_bucket(Bucket=aio_s3_bucket)
     assert response_success(resp)
 
-    head = await aio_s3_bucket_head(aio_s3_bucket, config=s3_config)
+    head = await aio_s3_bucket_head(
+        aio_s3_bucket, config=s3_config, s3_client=aio_aws_s3_client
+    )
     assert response_success(head)
     assert resp == head
 
 
 @pytest.mark.asyncio
-async def test_aio_s3_bucket_access(aio_s3_bucket, s3_config):
-    bucket_name, access = await aio_s3_bucket_access(aio_s3_bucket, config=s3_config)
+async def test_aio_s3_bucket_access(aio_s3_bucket, aio_aws_s3_client, s3_config):
+    bucket_name, access = await aio_s3_bucket_access(
+        aio_s3_bucket, config=s3_config, s3_client=aio_aws_s3_client
+    )
     assert bucket_name == aio_s3_bucket
     assert access is True
 
 
 @pytest.mark.asyncio
-async def test_aio_s3_bucket_access_with_missing_bucket(aio_s3_bucket, s3_config):
+async def test_aio_s3_bucket_access_with_missing_bucket(
+    aio_s3_bucket, aio_aws_s3_client, s3_config
+):
     bucket = "missing_bucket"
-    bucket_name, access = await aio_s3_bucket_access(bucket, config=s3_config)
+    bucket_name, access = await aio_s3_bucket_access(
+        bucket, config=s3_config, s3_client=aio_aws_s3_client
+    )
     assert bucket_name == bucket
     assert access is False
 
 
 @pytest.mark.asyncio
-async def test_aio_s3_buckets_list(aio_s3_buckets, s3_config):
-    resp = await aio_s3_buckets_list(config=s3_config)
+async def test_aio_s3_buckets_list(aio_s3_buckets, aio_aws_s3_client, s3_config):
+    resp = await aio_s3_buckets_list(config=s3_config, s3_client=aio_aws_s3_client)
     assert response_success(resp)
     buckets = [bucket["Name"] for bucket in resp["Buckets"]]
     assert buckets == aio_s3_buckets
@@ -221,8 +229,10 @@ async def test_aio_s3_buckets_list(aio_s3_buckets, s3_config):
 
 @pytest.mark.skip("Problems with test loop vs. code loop for some reason - why?")
 @pytest.mark.asyncio
-async def test_aio_s3_buckets_access(aio_s3_buckets, s3_config):
-    result = await aio_s3_buckets_access(aio_s3_buckets, config=s3_config)
+async def test_aio_s3_buckets_access(aio_s3_buckets, aio_aws_s3_client, s3_config):
+    result = await aio_s3_buckets_access(
+        aio_s3_buckets, config=s3_config, s3_client=aio_aws_s3_client
+    )
     assert result
     for bucket in aio_s3_buckets:
         assert result[bucket] is True
@@ -243,16 +253,20 @@ async def test_aio_s3_object_head(
     resp = await aio_aws_s3_client.head_object(Bucket=s3_parts.bucket, Key=s3_parts.key)
     assert response_success(resp)
 
-    head = await aio_s3_object_head(aio_s3_uri, config=s3_config)
+    head = await aio_s3_object_head(
+        aio_s3_uri, config=s3_config, s3_client=aio_aws_s3_client
+    )
     assert response_success(head)
     assert resp == head
 
 
 @pytest.mark.asyncio
-async def test_aio_s3_object_head_for_missing_object(aio_s3_bucket, s3_config):
+async def test_aio_s3_object_head_for_missing_object(
+    aio_s3_bucket, aio_aws_s3_client, s3_config
+):
     with pytest.raises(botocore.exceptions.ClientError) as err:
         s3_uri = f"s3://{aio_s3_bucket}/missing_key"
-        await aio_s3_object_head(s3_uri, config=s3_config)
+        await aio_s3_object_head(s3_uri, config=s3_config, s3_client=aio_aws_s3_client)
 
     msg = err.value.args[0]
     assert "HeadObject operation" in msg
