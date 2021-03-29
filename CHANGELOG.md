@@ -77,3 +77,8 @@ Focus on aio-aws
 - Add create-client args and kwargs options
 - Fix hyperlinks for sphinx docs
 
+
+0.9.0 (2021-03-29)
+------------------
+- Revise lambda.invoke to return lambda
+
