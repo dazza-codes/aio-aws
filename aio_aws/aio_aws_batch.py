@@ -247,7 +247,9 @@ from aio_aws.aio_aws_config import AioAWSConfig
 from aio_aws.aio_aws_config import delay
 from aio_aws.aio_aws_config import jitter
 from aio_aws.aio_aws_config import response_success
-from aio_aws.logger import LOGGER
+from aio_aws.logger import get_logger
+
+LOGGER = get_logger(__name__)
 
 #: batch job startup pause (seconds)
 BATCH_STARTUP_PAUSE: float = 30

@@ -70,7 +70,6 @@ using an :py:class:`.AsyncioExecutor`
 import asyncio
 import concurrent.futures
 import inspect
-import logging
 import random
 import threading
 import time
@@ -84,8 +83,9 @@ from typing import Iterator
 from typing import Optional
 from typing import Union
 
-LOGGER = logging.getLogger("async_executor")
-LOGGER.setLevel(logging.INFO)
+from aio_aws.logger import get_logger
+
+LOGGER = get_logger(__name__)
 
 
 def loop_mgr(loop: asyncio.AbstractEventLoop):
