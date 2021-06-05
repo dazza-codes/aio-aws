@@ -30,6 +30,9 @@ from aio_aws import aio_aws_lambda
 from aio_aws.aio_aws_config import AioAWSConfig
 from aio_aws.aio_aws_config import response_success
 from aio_aws.aio_aws_lambda import AWSLambdaFunction
+from aio_aws.logger import get_logger
+
+LOGGER = get_logger(__name__)
 
 
 def test_async_aws_lambda():
@@ -92,7 +95,7 @@ async def lambda_iam_role(lambda_config):
     return iam
 
 
-def _process_lambda(func_str) -> bytes:
+def _zip_lambda(func_str) -> bytes:
     zip_output = io.BytesIO()
     zip_file = zipfile.ZipFile(zip_output, "w", zipfile.ZIP_DEFLATED)
     zip_file.writestr("lambda_function.py", func_str)
@@ -101,14 +104,38 @@ def _process_lambda(func_str) -> bytes:
     return zip_output.read()
 
 
+def lambda_handler(event, context):
+    import json
+    import sys
+
+    print(f"event: {event}")
+    action = event.get("action")
+    if action == "too-large":
+        x = ["xxx" for x in range(10 ** 6)]
+        assert sys.getsizeof(x) > 6291556
+        return {"statusCode": 200, "body": json.dumps(x)}
+    if action == "runtime-error":
+        raise RuntimeError(action)
+    return {"statusCode": 200, "body": json.dumps(event)}
+
+
 @pytest.fixture
 def aws_lambda_zip() -> bytes:
     lambda_src = """
+import sys
+
 def lambda_handler(event, context):
     print(f"event: {event}")
+    action = event.get("action")
+    if action == "too-large":
+        x = ["xxx" for x in range(10 ** 6)]
+        assert sys.getsizeof(x) > 6291556
+        return {"statusCode": 200, "body": x}
+    if action == "runtime-error":
+        raise RuntimeError(action)
     return {"statusCode": 200, "body": event}
 """
-    return _process_lambda(lambda_src)
+    return _zip_lambda(lambda_src)
 
 
 @pytest.fixture
@@ -116,14 +143,12 @@ async def aws_lambda_func(
     aws_lambda_zip, lambda_config, lambda_iam_role
 ) -> AWSLambdaFunction:
 
-    event = {"i": 1}
-    payload = json.dumps(event).encode()
-    func = AWSLambdaFunction(name="lambda_dev", payload=payload)
+    func = AWSLambdaFunction(name="lambda_dev")
 
     async with lambda_config.create_client("lambda") as client:
         response = await client.create_function(
             FunctionName=func.name,
-            Runtime="python3.6",
+            Runtime="python3.7",
             Handler="lambda_function.lambda_handler",
             Code={"ZipFile": aws_lambda_zip},
             Role=lambda_iam_role,
@@ -139,13 +164,14 @@ async def aws_lambda_func(
 
 # see also https://github.com/spulec/moto/blob/master/tests/test_awslambda/test_lambda.py
 # https://github.com/spulec/moto/issues/2886
-# @pytest.mark.skip("https://github.com/aio-libs/aiobotocore/issues/793")
 @pytest.mark.asyncio
-async def test_async_lambda_invoke(
-    aws_lambda_zip, aws_lambda_func, lambda_iam_role, lambda_config
-):
+async def test_async_lambda_invoke_success(aws_lambda_func, lambda_config):
 
     func: AWSLambdaFunction = aws_lambda_func
+
+    event = {"action": "success"}
+    payload = json.dumps(event).encode()
+    func.payload = payload
 
     async with lambda_config.create_client("lambda") as lambda_client:
 
@@ -159,4 +185,57 @@ async def test_async_lambda_invoke(
             assert lambda_func.content
 
         # since this function should work, test the response data
-        assert lambda_func.content == {"statusCode": 200, "body": {"i": 1}}
+        assert lambda_func.content == {"statusCode": 200, "body": event}
+
+
+@pytest.mark.skip("https://github.com/spulec/moto/issues/3988")
+@pytest.mark.asyncio
+async def test_async_lambda_invoke_too_large(aws_lambda_func, lambda_config):
+
+    func: AWSLambdaFunction = aws_lambda_func
+
+    event = {"action": "too-large"}
+    func.payload = json.dumps(event).encode()
+
+    lambda_error = {
+        "errorMessage": "Response payload size exceeded maximum allowed payload size (6291556 bytes).",
+        "errorType": "Function.ResponseSizeTooLarge",
+    }
+
+    async with lambda_config.create_client("lambda") as lambda_client:
+
+        lambda_func = await func.invoke(lambda_config, lambda_client)
+        assert id(lambda_func) == id(func)
+        assert not response_success(lambda_func.response)
+        assert lambda_func.content is None
+        assert lambda_func.error == lambda_error
+
+
+@pytest.mark.asyncio
+async def test_async_lambda_invoke_error(aws_lambda_func, lambda_config):
+
+    func: AWSLambdaFunction = aws_lambda_func
+
+    event = {"action": "runtime-error"}
+    func.payload = json.dumps(event).encode()
+    lambda_config.retries = 0
+
+    async with lambda_config.create_client("lambda") as lambda_client:
+
+        lambda_func = await func.invoke(lambda_config, lambda_client)
+        assert id(lambda_func) == id(func)
+        assert response_success(lambda_func.response)
+        assert lambda_func.content is None
+        assert lambda_func.error  # == lambda_error
+        assert isinstance(lambda_func.error, str)
+        LOGGER.info(lambda_func.error)
+        LOGGER.info(lambda_func.data)
+        # TODO: should the error be like the following:
+        # {
+        #     "errorType": "RuntimeError",
+        #     "errorMessage": "Unknown action",
+        #     "stackTrace": [
+        #         "File \"/var/task/lambda_function.py\", line 14, in lambda_handler\\n" \
+        #         " raise RuntimeError(\"Unknown action\")\\n"
+        #     ]
+        # }

@@ -56,10 +56,13 @@ minimal billing period, so it's as cheap as it can be and could fit within a mon
 
 import asyncio
 import base64
+import concurrent.futures
 import json
 import os
 import time
 from dataclasses import dataclass
+from functools import partial
+from json import JSONDecodeError
 from typing import Any
 from typing import Dict
 from typing import List
@@ -71,7 +74,11 @@ from aio_aws.aio_aws_config import AioAWSConfig
 from aio_aws.aio_aws_config import jitter
 from aio_aws.aio_aws_config import MAX_POOL_CONNECTIONS
 from aio_aws.aio_aws_config import response_success
-from aio_aws.logger import LOGGER
+from aio_aws.logger import get_logger
+
+LOGGER = get_logger(__name__)
+
+MAXIMUM_PAYLOAD_SIZE = 6291556
 
 
 @dataclass
@@ -105,6 +112,7 @@ class AWSLambdaFunction:
     payload: bytes = b""  # or a file
     qualifier: str = None
     response: Dict = None
+    data: Any = None
     content: Any = None
     error: Any = None
     logs: Any = None
@@ -157,7 +165,7 @@ class AWSLambdaFunction:
         """
         async with config.semaphore:
             tries = 0
-            while tries < config.retries:
+            while tries <= config.retries:
                 tries += 1
                 try:
                     LOGGER.debug("AWS Lambda params: %s", self.params)
@@ -169,27 +177,30 @@ class AWSLambdaFunction:
                     if response_success(response):
                         await self.read_response()  # updates self.content
                         if self.content:
-                            LOGGER.info("AWS Lambda (%s) invoked OK", self.name)
+                            LOGGER.info("AWS Lambda invoked OK: %s", self.name)
                         elif self.error:
                             LOGGER.error(
-                                "AWS Lambda (%s) error: ", self.name, self.error
+                                "AWS Lambda error: %s, %s", self.name, self.error
                             )
                     else:
                         # TODO: are there some failures that could be recovered here?
-                        LOGGER.error("AWS Lambda (%s) invoke failure.", self.name)
+                        LOGGER.error("AWS Lambda invoke failure: %s", self.name)
 
                     return self
 
                 except botocore.exceptions.ClientError as err:
-                    error = err.response.get("Error", {})
+                    response = err.response
+                    LOGGER.error("AWS Lambda client error: %s, %s", self.name, response)
+                    error = response.get("Error", {})
                     if error.get("Code") == "TooManyRequestsException":
-                        if tries < config.retries:
-                            # add an extra random sleep period to avoid API throttle
+                        if tries <= config.retries:
                             await jitter(
-                                "lambda-invoke", config.min_jitter, config.max_jitter
+                                "lambda-retry", config.min_jitter, config.max_jitter
                             )
                         continue  # allow it to retry, if possible
                     else:
+                        self.response = response
+                        self.error = error
                         raise
             else:
                 raise RuntimeError("AWS Lambda invoke exceeded retries")
@@ -212,14 +223,22 @@ class AWSLambdaFunction:
             if response_payload:
 
                 async with response_payload as stream:
-                    data = await stream.read()
+                    self.data = await stream.read()
 
-                body = data.decode()
+                body = self.data.decode()
 
                 if self.response.get("FunctionError"):
                     self.error = body
+                    try:
+                        self.error = json.loads(body)
+                    except JSONDecodeError:
+                        pass
                 else:
-                    self.content = json.loads(body)
+                    self.content = body
+                    try:
+                        self.content = json.loads(body)
+                    except JSONDecodeError:
+                        pass
 
 
 async def run_lambda_functions(lambda_functions: List[AWSLambdaFunction]):
@@ -241,6 +260,7 @@ async def run_lambda_functions(lambda_functions: List[AWSLambdaFunction]):
         results of any lambda response in func.response
     """
     config = AioAWSConfig(
+        retries=0,
         aws_region=os.getenv("AWS_DEFAULT_REGION", "us-west-2"),
         min_jitter=0.2,
         max_jitter=0.8,
@@ -254,6 +274,40 @@ async def run_lambda_functions(lambda_functions: List[AWSLambdaFunction]):
         await asyncio.gather(*lambda_tasks)
 
 
+async def run_lambda_function_thread_pool(
+    lambda_functions: List[AWSLambdaFunction], n_tasks: int = 4
+):
+    config = AioAWSConfig(
+        retries=0,
+        aws_region=os.getenv("AWS_DEFAULT_REGION", "us-west-2"),
+        min_jitter=0.2,
+        max_jitter=0.8,
+        max_pool_connections=MAX_POOL_CONNECTIONS,
+    )
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        loop = asyncio.get_running_loop()
+        lambda_tasks = []
+
+        async with config.create_client("lambda") as lambda_client:
+            for lambda_func in lambda_functions:
+                func = partial(
+                    lambda_func.invoke,
+                    config=config,
+                    lambda_client=lambda_client,
+                )
+                lambda_task = await loop.run_in_executor(executor=executor, func=func)
+                lambda_tasks.append(lambda_task)
+
+                # Limit concurrency to some extent
+                if len(lambda_tasks) == n_tasks:
+                    await asyncio.gather(*lambda_tasks)
+                    lambda_tasks = []
+
+            # collect any remaining tasks in the context of the thread pool
+            await asyncio.gather(*lambda_tasks)
+
+
 if __name__ == "__main__":
 
     print()
@@ -264,23 +318,29 @@ if __name__ == "__main__":
     lambda_funcs = []
     for i in range(N_lambdas):
         event = {"i": i}
+        # event = {"action": "too-large"}
         payload = json.dumps(event).encode()
         func = AWSLambdaFunction(name="lambda_dev", payload=payload)
         lambda_funcs.append(func)
 
     asyncio.run(run_lambda_functions(lambda_funcs))
+    # # Note: a thread pool executor may not be more efficient than asyncio alone
+    # asyncio.run(run_lambda_function_thread_pool(lambda_funcs, n_tasks=N_lambdas))
 
     for func in lambda_funcs:
         assert response_success(func.response)
         # TODO: parse and gather all responses
         if N_lambdas < 5:
             print()
+            print("Params:")
             print(func.params)
-            print()
+            print("Response:")
             print(func.response)
-            print()
+            print("Content:")
             print(func.content)
-            print()
+            print("Error:")
+            print(func.error)
+            print("Logs")
             print(func.logs)
 
     end = time.perf_counter() - start
