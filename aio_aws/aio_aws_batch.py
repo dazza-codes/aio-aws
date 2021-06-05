@@ -757,7 +757,7 @@ async def aio_batch_job_submit(job: AWSBatchJob, config: AWSBatchConfig = None) 
 
     async with config.create_batch_client() as batch_client:
         tries = 0
-        while tries < config.retries:
+        while tries <= config.retries:
             tries += 1
             try:
                 params = job.params
@@ -790,7 +790,7 @@ async def aio_batch_job_submit(job: AWSBatchJob, config: AWSBatchConfig = None) 
             except botocore.exceptions.ClientError as err:
                 error = err.response.get("Error", {})
                 if error.get("Code") == "TooManyRequestsException":
-                    if tries < config.retries:
+                    if tries <= config.retries:
                         # add an extra random sleep period to avoid API throttle
                         await jitter(
                             "batch-job-submit", config.min_jitter, config.max_jitter
@@ -818,14 +818,14 @@ async def aio_batch_job_status(
 
     async with config.create_batch_client() as batch_client:
         tries = 0
-        while tries < config.retries:
+        while tries <= config.retries:
             tries += 1
             try:
                 return await batch_client.describe_jobs(jobs=jobs)
             except botocore.exceptions.ClientError as err:
                 error = err.response.get("Error", {})
                 if error.get("Code") == "TooManyRequestsException":
-                    if tries < config.retries:
+                    if tries <= config.retries:
                         # add an extra random sleep period to avoid API throttle
                         await jitter(
                             "batch-job-status", config.min_jitter, config.max_jitter
@@ -870,7 +870,7 @@ async def aio_batch_job_logs(
 
     async with config.create_logs_client() as logs_client:
         tries = 0
-        while tries < config.retries:
+        while tries <= config.retries:
             tries += 1
             try:
                 log_events = []
@@ -921,7 +921,7 @@ async def aio_batch_job_logs(
             except botocore.exceptions.ClientError as err:
                 error = err.response.get("Error", {})
                 if error.get("Code") == "TooManyRequestsException":
-                    if tries < config.retries:
+                    if tries <= config.retries:
                         # add an extra random sleep period to avoid API throttle
                         await jitter(
                             "batch-job-logs", config.min_jitter, config.max_jitter
@@ -951,7 +951,7 @@ async def aio_batch_job_terminate(
     async with config.create_batch_client() as batch_client:
 
         tries = 0
-        while tries < config.retries:
+        while tries <= config.retries:
             tries += 1
             try:
                 LOGGER.info("AWS Batch job to terminate: %s, %s", job_id, reason)
@@ -962,7 +962,7 @@ async def aio_batch_job_terminate(
             except botocore.exceptions.ClientError as err:
                 error = err.response.get("Error", {})
                 if error.get("Code") == "TooManyRequestsException":
-                    if tries < config.retries:
+                    if tries <= config.retries:
                         # add an extra random sleep period to avoid API throttle
                         await jitter(
                             "batch-job-terminate", config.min_jitter, config.max_jitter
