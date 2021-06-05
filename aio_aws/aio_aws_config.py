@@ -49,7 +49,9 @@ import aiobotocore.session
 import botocore.client
 import botocore.endpoint
 
-from aio_aws.logger import LOGGER
+from aio_aws.logger import get_logger
+
+LOGGER = get_logger(__name__)
 
 #: max_pool_connections for AWS clients (10 by default)
 MAX_POOL_CONNECTIONS = botocore.endpoint.MAX_POOL_CONNECTIONS
