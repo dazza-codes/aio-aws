@@ -49,7 +49,9 @@ import aiobotocore.session
 import botocore.client
 import botocore.endpoint
 
-from aio_aws.logger import LOGGER
+from aio_aws.logger import get_logger
+
+LOGGER = get_logger(__name__)
 
 #: max_pool_connections for AWS clients (10 by default)
 MAX_POOL_CONNECTIONS = botocore.endpoint.MAX_POOL_CONNECTIONS
@@ -192,7 +194,7 @@ class AioAWSConfig:
     #: an optional AWS region name
     aws_region: str = None
     #: a number of retries for an AWS client request/response
-    retries: int = 5
+    retries: int = 4
     #: an asyncio.sleep for ``random.uniform(min_pause, max_pause)``
     min_pause: float = MIN_PAUSE
     #: an asyncio.sleep for ``random.uniform(min_pause, max_pause)``
