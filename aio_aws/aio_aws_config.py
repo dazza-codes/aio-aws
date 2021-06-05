@@ -194,7 +194,7 @@ class AioAWSConfig:
     #: an optional AWS region name
     aws_region: str = None
     #: a number of retries for an AWS client request/response
-    retries: int = 5
+    retries: int = 4
     #: an asyncio.sleep for ``random.uniform(min_pause, max_pause)``
     min_pause: float = MIN_PAUSE
     #: an asyncio.sleep for ``random.uniform(min_pause, max_pause)``
