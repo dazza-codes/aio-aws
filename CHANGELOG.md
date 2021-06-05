@@ -82,3 +82,10 @@ Focus on aio-aws
 ------------------
 - Revise lambda.invoke to return lambda
 
+
+0.10.0 (2021-06-04)
+-------------------
+- Revise lambda logging and error handling
+- Revise default retries and checks
+- Modify aio-aws logger as a function
+
