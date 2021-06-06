@@ -1,6 +1,6 @@
 
-About
-=====
+Contributing
+============
 
 See https://github.com/dazza-codes/aio-aws
 
