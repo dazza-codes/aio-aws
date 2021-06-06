@@ -23,7 +23,6 @@ The following setup assumes that
 
     git clone https://github.com/dazza-codes/aio-aws
     cd aio-aws
-    conda create -n aio-aws python=3.6
+    conda create -n aio-aws python=3.7
     conda activate aio-aws
     make init  # calls poetry install
-
