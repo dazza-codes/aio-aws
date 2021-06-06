@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.abspath(".."))
 # -- Project information -----------------------------------------------------
 
 project = "aio-aws"
-copyright = "2019-2020, Darren Weber"
+copyright = "2019-2021, Darren Weber"
 author = "Darren Weber"
 
 # The short X.Y version
@@ -43,6 +43,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx.ext.doctest",
+    "sphinx.ext.githubpages",
     "sphinx.ext.todo",
     "sphinx.ext.coverage",
     "sphinx.ext.mathjax",
