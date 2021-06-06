@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.com/dazza-codes/aio-aws.svg?branch=master)](https://travis-ci.com/dazza-codes/aio-aws)
+[![Documentation Status](https://readthedocs.org/projects/aio-aws/badge/?version=latest)](https://aio-aws.readthedocs.io/en/latest/?badge=latest)
 
 # aio-aws
 
@@ -10,34 +11,7 @@ For general client solutions, see
 [aiobotocore](https://github.com/aio-libs/aiobotocore), which wrap
 [botocore](https://botocore.amazonaws.com/v1/documentation/api/latest/index.html)
 
-The API documentation is published as github pages at:
-- http://dazza-codes.github.io/aio-aws
-
-# Getting Started
-
-To use the source code, it can be cloned directly. To
-contribute to the project, first fork it and clone the forked repository.
-
-The following setup assumes that
-[miniconda3](https://docs.conda.io/en/latest/miniconda.html) and
-[poetry](https://python-poetry.org/docs/) are installed already
-(and `make` 4.x).
-
-- https://docs.conda.io/en/latest/miniconda.html
-    - recommended for creating virtual environments with required versions of python
-    - see https://github.com/dazza-codes/conda_container/blob/master/conda_venv.sh
-- https://python-poetry.org/docs/
-    - recommended for managing a python project with pip dependencies for
-      both the project itself and development dependencies
-
-```shell
-git clone https://github.com/dazza-codes/aio-aws
-cd aio-aws
-conda create -n aio-aws python=3.7
-conda activate aio-aws
-make init  # calls poetry install
-make test
-```
+The API documentation is at [readthedocs](https://aio-aws.readthedocs.io/)
 
 # Install
 
@@ -51,8 +25,6 @@ to patch it with features for async coroutines using
 
 This project is alpha-status with a 0.x.y API version that could break.
 There is no promise to support or develop it extensively, at this time.
-For the curious, it can be used directly from a github tag.  Note that
-any 0.x releases are likely to have breaking API changes.
 
 ## pip
 
@@ -86,10 +58,36 @@ aio-aws = ["aio-aws"]
 
 ```
 
+# Contributing
+
+To use the source code, it can be cloned directly. To
+contribute to the project, first fork it and clone the forked repository.
+
+The following setup assumes that
+[miniconda3](https://docs.conda.io/en/latest/miniconda.html) and
+[poetry](https://python-poetry.org/docs/) are installed already
+(and `make` 4.x).
+
+- https://docs.conda.io/en/latest/miniconda.html
+    - recommended for creating virtual environments with required versions of python
+    - see https://github.com/dazza-codes/conda_container/blob/master/conda_venv.sh
+- https://python-poetry.org/docs/
+    - recommended for managing a python project with pip dependencies for
+      both the project itself and development dependencies
+
+```shell
+git clone https://github.com/dazza-codes/aio-aws
+cd aio-aws
+conda create -n aio-aws python=3.7
+conda activate aio-aws
+make init  # calls poetry install
+make test
+```
+
 # License
 
 ```text
-Copyright 2019-2020 Darren Weber
+Copyright 2019-2021 Darren Weber
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -106,7 +104,7 @@ limitations under the License.
 
 # Notices
 
-This project is inspired by and uses various open source projects that use
+Inspiration for this project comes from various open source projects that use
 the Apache 2 license, including but not limited to:
 - Apache Airflow: https://github.com/apache/airflow
 - aiobotocore: https://github.com/aio-libs/aiobotocore
