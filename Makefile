@@ -22,9 +22,6 @@ docs: clean
 	@poetry run doc8
 	@echo -e "\033[95m\n\nBuild successful! View the docs homepage at docs/_build/html/index.html.\n\033[0m"
 
-pages: docs
-	cp -r docs/_build/html/* pages/
-
 flake8: clean
 	@poetry run flake8 --ignore=E501 $(LIB)
 
