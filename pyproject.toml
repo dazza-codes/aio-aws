@@ -61,10 +61,11 @@ aioredis = {version = "^1.3", optional = true}
 databases = {extras = ["postgresql", "mysql", "sqlite"], version = "*", optional = true}
 
 # Optional docs pages for readthedocs builds
-Sphinx = {version = "~=3.2", optional = true}
-sphinx-autoapi = {version = "~=1.5", optional = true}
-sphinx-autodoc-typehints = {version = "~=1.11", optional = true}
-sphinx-rtd-theme = {version = "~=0.5.0", optional = true}
+Sphinx = {version = "^3.2", optional = true}
+sphinx-autoapi = {version = "^1.5", optional = true}
+sphinx-autodoc-typehints = {version = "^1.11", optional = true}
+sphinx-rtd-theme = {version = "^0.5.0", optional = true}
+ipython = {version = "^7.24.1", optional = true}
 
 [tool.poetry.extras]
 
@@ -86,6 +87,7 @@ docs = [
     "sphinx-autoapi",
     "sphinx-autodoc-typehints",
     "sphinx-rtd-theme",
+    "ipython"
 ]
 
 [tool.poetry.dev-dependencies]
