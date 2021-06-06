@@ -98,3 +98,8 @@ Focus on aio-aws
   - Add readthedocs
   - Enable travis deployment for github pages
 
+
+0.11.1 (2021-06-06)
+-------------------
+- Fix read-the-docs builds
+
