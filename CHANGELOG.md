@@ -89,3 +89,12 @@ Focus on aio-aws
 - Revise default retries and checks
 - Modify aio-aws logger as a function
 
+
+0.11.0 (2021-06-06)
+-------------------
+- Provide s3-client for s3-coroutines
+- Update dependencies for boto3, botocore and aiobotocore
+- Update docs
+  - Add readthedocs
+  - Enable travis deployment for github pages
+
