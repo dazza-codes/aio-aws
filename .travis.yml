@@ -16,16 +16,6 @@ jobs:
     - source $HOME/.poetry/env
     - make test
 
-before_deploy:
-  - make pages
-
-deploy:
-  provider: pages:git
-  token:
-    secure: FIr8Ghx0f2ZOm9T+j/cJLjA0KGOTllr0DZfcLHH+Un7WdUF5kzfwpcAGj6p7Fr0THIIaN4keR3yeq1FoSdr9ojsiw66LmDQdFcoRQC3wSDeZHbHxvyEkUnYw0F5FzpwcTx8wsRUtmSglBxuAe4QGgGHWOJEZVUeqzUMdJ8D7RG8IK4bK1s1iU2QGxcYZKb/qL/Uhobsn61PwfsMOph2FE0V4KXkBH7qC+QkRf0QrYCVtkfjdbehpYYCXdltTb2G/9Zi3VSltZU/VeKogZ8n87rmHr3piHvTYzvd70+n5DSAI1gqDarO7nHPMSlB7BXKjOsSLBkda+N4emyPkHwFAkgfFzpK90mQLW5KZSoJAjSgczd9zOdmH9ku3evXCSyGJKVlotK8Cj21fAeHy7JGzUviisHSfZJpqXHij2u5QagL3Lqvpt+3llxKRV3sa4+kboYQ+RDxR+2QFBtsHil9eBtKyp3cd5scu9gk6I/0efnXrDAYnP/jbPoSTftWH8icMc9K6rTFvAJkCnzgrbQm1JWQmoHYOGmXhkZSBHX1ZnwS0HGTpCEB9TPje0a6B/bGMp4qoF60Lx9MQgzpqg3BHDfC4FqZqVe48RmTzLlTzE24J/qTqWpf/OxHcRtGkx40/UwLH9b6HXkj1yr8etqZNz/ce6eKXyIf3SvzlIksmcgs=
-  edge: true
-  local_dir: pages
-
 notifications:
   email:
     on_failure: never
