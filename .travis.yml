@@ -4,8 +4,10 @@ python:
 - '3.7'
 
 install:
-- make init
-- source $HOME/.poetry/env
+  - python3 -m pip install -U pip
+  - curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python -
+  - source $HOME/.poetry/env
+  - make init
 
 jobs:
   include:

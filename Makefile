@@ -32,7 +32,6 @@ format: clean
 	@poetry run black $(LIB) tests docs *.py
 
 init: poetry
-	@source "$(HOME)/.poetry/env"
 	@poetry run pip install --upgrade pip
 	@poetry install -v --no-interaction --extras all
 
@@ -60,12 +59,12 @@ package-check: package
 	@poetry run twine check dist/*
 
 publish: package-check
-	# derivative projects can enable this
-	# poetry run twine upload dist/$(LIB)-*.whl
+	@poetry publish
 
 poetry:
 	@if ! command -v poetry > /dev/null; then \
-		curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python; \
+		curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python - ; \
+		source "$(HOME)/.poetry/env" ; \
 	fi
 
 poetry-export:
