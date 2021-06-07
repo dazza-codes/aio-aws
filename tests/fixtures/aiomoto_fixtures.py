@@ -34,7 +34,7 @@ import aiobotocore.client
 import aiobotocore.config
 import pytest
 
-from tests.aiomoto_services import MotoService
+from tests.fixtures.aiomoto_services import MotoService
 from tests.utils import AWS_ACCESS_KEY_ID
 from tests.utils import AWS_REGION
 from tests.utils import AWS_SECRET_ACCESS_KEY

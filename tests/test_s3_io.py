@@ -2,10 +2,8 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Dict
-from typing import List
 
 import boto3
-import pytest
 
 from aio_aws.s3_io import geojson_s3_dump
 from aio_aws.s3_io import geojson_s3_load
@@ -17,47 +15,12 @@ from aio_aws.s3_io import json_s3_dump
 from aio_aws.s3_io import json_s3_load
 from aio_aws.s3_io import s3_file_info
 from aio_aws.s3_io import s3_files_info
-from aio_aws.s3_uri import S3Info
 from aio_aws.s3_io import yaml_s3_dump
 from aio_aws.s3_io import yaml_s3_load
+from aio_aws.s3_uri import S3Info
 from aio_aws.s3_uri import S3URI
-from tests.aws_fixtures import assert_bucket_200
-from tests.aws_fixtures import assert_object_200
-
-
-@pytest.fixture
-def geojson_feature_collection() -> Dict:
-    return {
-        "type": "FeatureCollection",
-        "features": [
-            {
-                "type": "Feature",
-                "geometry": {"type": "Point", "coordinates": [170.50251, -45.874003]},
-                "properties": {"cityName": "Dunedin", "countryName": "New Zealand"},
-            },
-            {
-                "type": "Feature",
-                "geometry": {
-                    "type": "Point",
-                    "coordinates": [
-                        -74.013402,
-                        40.705619,
-                    ],
-                },
-                "properties": {"cityName": "New York", "countryName": "USA"},
-            },
-        ],
-    }
-
-
-@pytest.fixture
-def geojson_features(geojson_feature_collection) -> List[Dict]:
-    return geojson_feature_collection["features"]
-
-
-@pytest.fixture
-def geojson_feature(geojson_features) -> Dict:
-    return geojson_features[0]
+from tests.fixtures.aws_fixtures import assert_bucket_200
+from tests.fixtures.aws_fixtures import assert_object_200
 
 
 def test_s3_file_info(aws_s3_client, s3_uri_object, s3_object_text, mocker):
