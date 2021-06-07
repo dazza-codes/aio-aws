@@ -1,3 +1,12 @@
+"""
+S3 IO
+=====
+
+These functions provide blocking serialization to files
+and s3 for GeoJSON, GeoJSONSeq, JSON, and YAML.
+
+"""
+
 import concurrent.futures
 import json
 import os

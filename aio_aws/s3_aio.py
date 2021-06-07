@@ -1,3 +1,12 @@
+"""
+S3 AIO
+======
+
+These functions provide non-blocking serialization to files
+and s3 for GeoJSON, GeoJSONSeq, JSON, and YAML.
+
+"""
+
 import asyncio
 import json
 import os
