@@ -113,13 +113,17 @@ def has_moto_mocks(client, event_name):
 
 
 @pytest.fixture
-def aws_host():
-    return os.getenv("AWS_HOST", AWS_HOST)
+def aws_host(monkeypatch):
+    host = os.getenv("AWS_HOST", AWS_HOST)
+    monkeypatch.setenv("AWS_HOST", host)
+    yield
 
 
 @pytest.fixture
-def aws_port():
-    return os.getenv("AWS_PORT", AWS_PORT)
+def aws_port(monkeypatch):
+    port = os.getenv("AWS_PORT", AWS_PORT)
+    monkeypatch.setenv("AWS_PORT", port)
+    yield
 
 
 @pytest.fixture
@@ -129,16 +133,16 @@ def aws_proxy(aws_host, aws_port, monkeypatch):
     monkeypatch.setenv("HTTPS_PROXY", f"http://{aws_host}:{aws_port}")
 
 
-@pytest.fixture(scope="session")
-def aws_region():
-    return AWS_REGION
+@pytest.fixture
+def aws_region(monkeypatch):
+    monkeypatch.setenv("AWS_DEFAULT_REGION", AWS_REGION)
+    yield AWS_REGION
 
 
 @pytest.fixture
 def aws_credentials(aws_region, monkeypatch):
     """Mocked AWS Credentials for moto."""
     boto3.DEFAULT_SESSION = None
-    monkeypatch.setenv("AWS_DEFAULT_REGION", aws_region)
     # monkeypatch.setenv("AWS_DEFAULT_PROFILE", "testing")
     # monkeypatch.setenv("AWS_PROFILE", "testing")
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", AWS_ACCESS_KEY_ID)
