@@ -10,7 +10,7 @@ This project has a very limited focus.  For general client solutions, see
 `aioboto3`_ and `aiobotocore`_.
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 3
     :caption: Contents
 
     aio_aws
