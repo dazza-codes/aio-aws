@@ -109,3 +109,13 @@ Focus on aio-aws
 - Add lambda accessors using response and data properties
 - Update docs
 
+
+0.13.0 (2021-06-07)
+-------------------
+- Update docs with s3-io and s3-aio
+- Add non-blocking s3-aio functions
+- Add blocking s3-io functions
+- Update aiofiles as a required dependency
+- Consolidate fixtures into tests.fixtures
+- Collect response parsing in aio_aws.utils
+
