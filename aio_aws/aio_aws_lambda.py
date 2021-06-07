@@ -34,9 +34,10 @@ Manually create a 'lambda_dev' function with simple code like:
             'body': json.dumps(csv)
         }
 
-The `aio_aws_lambda.py` module has a main script to call this simple lambda function.  This
-lambda function easily runs within a 128 Mb memory allocation and it runs in less time than the
-minimal billing period, so it's as cheap as it can be and could fit within a monthly free quota.
+The `aio_aws_lambda.py` module has a main script to call this simple lambda function.
+This lambda function easily runs within a 128 Mb memory allocation and it runs in
+less time than the minimal billing period, so it's as cheap as it can be and could
+fit within a monthly free quota.
 
 .. seealso::
     - https://aws.amazon.com/lambda/pricing/
@@ -63,9 +64,9 @@ import time
 from dataclasses import dataclass
 from functools import partial
 from json import JSONDecodeError
-from typing import Any
 from typing import Dict
 from typing import List
+from typing import Optional
 
 import aiobotocore.client
 import botocore.exceptions
@@ -112,10 +113,7 @@ class AWSLambdaFunction:
     payload: bytes = b""  # or a file
     qualifier: str = None
     response: Dict = None
-    data: Any = None
-    content: Any = None
-    error: Any = None
-    logs: Any = None
+    data: bytes = None
 
     TYPES = ["RequestResponse", "Event", "DryRun"]
     LOG_TYPES = ["None", "Tail"]
@@ -133,6 +131,71 @@ class AWSLambdaFunction:
             raise ValueError(
                 f"The log_type ({self.log_type}) must be one of {self.LOG_TYPES}"
             )
+
+    @property
+    def response_metadata(self) -> Optional[Dict]:
+        if self.response:
+            return self.response.get("ResponseMetadata")
+
+    @property
+    def response_headers(self) -> Optional[Dict]:
+        metadata = self.response_metadata
+        if metadata:
+            return metadata.get("HTTPHeaders")
+
+    @property
+    def content_type(self) -> Optional[str]:
+        headers = self.response_headers
+        if headers:
+            return headers.get("content-type")
+
+    @property
+    def content_length(self) -> Optional[int]:
+        headers = self.response_headers
+        if headers:
+            return int(headers.get("content-length"))
+
+    @property
+    def status_code(self) -> Optional[int]:
+        if self.response:
+            return self.response.get("StatusCode")
+
+    @property
+    def error(self):
+        """This could be a lambda function error or a client error"""
+        if self.response:
+            if self.response.get("FunctionError"):
+                # lambda function error
+                if self.data:
+                    error = self.data.decode()
+                    try:
+                        error = json.loads(error)
+                    except JSONDecodeError:
+                        pass
+                    return error
+
+            if self.response.get("Error"):
+                # boto3 client error
+                return self.response.get("Error")
+
+    @property
+    def text(self):
+        if self.response and not self.error:
+            if self.data:
+                return self.data.decode()
+
+    @property
+    def json(self):
+        text = self.text
+        if text:
+            return json.loads(text)
+
+    @property
+    def logs(self):
+        if self.response:
+            log_result = self.response.get("LogResult")
+            if log_result:
+                return base64.b64decode(log_result)
 
     @property
     def params(self):
@@ -164,24 +227,23 @@ class AWSLambdaFunction:
         :raises: botocore.exceptions.ClientError, botocore.exceptions.ParamValidationError
         """
         async with config.semaphore:
-            tries = 0
-            while tries <= config.retries:
-                tries += 1
+            for tries in range(config.retries + 1):
                 try:
                     LOGGER.debug("AWS Lambda params: %s", self.params)
                     response = await lambda_client.invoke(**self.params)
-                    LOGGER.debug("AWS Lambda response: %s", response)
-
                     self.response = response
+                    LOGGER.debug("AWS Lambda response: %s", self.response)
 
-                    if response_success(response):
-                        await self.read_response()  # updates self.content
-                        if self.content:
+                    if response_success(self.response):
+                        await self.read_response()  # updates self.data
+                        if self.data:
                             LOGGER.info("AWS Lambda invoked OK: %s", self.name)
-                        elif self.error:
-                            LOGGER.error(
-                                "AWS Lambda error: %s, %s", self.name, self.error
-                            )
+                        else:
+                            error = self.error
+                            if error:
+                                LOGGER.error(
+                                    "AWS Lambda error: %s, %s", self.name, error
+                                )
                     else:
                         # TODO: are there some failures that could be recovered here?
                         LOGGER.error("AWS Lambda invoke failure: %s", self.name)
@@ -193,52 +255,29 @@ class AWSLambdaFunction:
                     LOGGER.error("AWS Lambda client error: %s, %s", self.name, response)
                     error = response.get("Error", {})
                     if error.get("Code") == "TooManyRequestsException":
-                        if tries <= config.retries:
+                        if tries < config.retries:
                             await jitter(
                                 "lambda-retry", config.min_jitter, config.max_jitter
                             )
                         continue  # allow it to retry, if possible
                     else:
                         self.response = response
-                        self.error = error
                         raise
-            else:
-                raise RuntimeError("AWS Lambda invoke exceeded retries")
+
+            raise RuntimeError("AWS Lambda invoke exceeded retries")
 
     async def read_response(self):
         """
         Asynchronous coroutine to read a lambda response; this
-        updates the ``content`` or the ``error`` values.
+        updates the ``data`` attribute.
 
         :raises: botocore.exceptions.ClientError, botocore.exceptions.ParamValidationError
         """
-
         if self.response and response_success(self.response):
-
-            log_result = self.response.get("LogResult")
-            if log_result:
-                self.logs = base64.b64decode(log_result)
-
             response_payload = self.response.get("Payload")
             if response_payload:
-
                 async with response_payload as stream:
                     self.data = await stream.read()
-
-                body = self.data.decode()
-
-                if self.response.get("FunctionError"):
-                    self.error = body
-                    try:
-                        self.error = json.loads(body)
-                    except JSONDecodeError:
-                        pass
-                else:
-                    self.content = body
-                    try:
-                        self.content = json.loads(body)
-                    except JSONDecodeError:
-                        pass
 
 
 async def run_lambda_functions(lambda_functions: List[AWSLambdaFunction]):
@@ -257,7 +296,7 @@ async def run_lambda_functions(lambda_functions: List[AWSLambdaFunction]):
             assert response_success(func.response)
 
     :return: it returns nothing, the lambda function will contain the
-        results of any lambda response in func.response
+        results of any lambda response in func.response and func.data
     """
     config = AioAWSConfig(
         retries=0,
@@ -310,6 +349,13 @@ async def run_lambda_function_thread_pool(
 
 if __name__ == "__main__":
 
+    # This __main__ code can be useful to test against AWS Lambda
+    # because the moto pytest suite is not an exact replica.  This
+    # requires a few minutes to setup a live AWS Lambda function
+    # called 'lambda_dev' - see the test suite for a sample handler.
+
+    from pprint import pprint
+
     print()
     print("Test async lambda functions")
     start = time.perf_counter()
@@ -319,29 +365,39 @@ if __name__ == "__main__":
     for i in range(N_lambdas):
         event = {"i": i}
         # event = {"action": "too-large"}
+        # event = {"action": "runtime-error"}
         payload = json.dumps(event).encode()
         func = AWSLambdaFunction(name="lambda_dev", payload=payload)
         lambda_funcs.append(func)
 
     asyncio.run(run_lambda_functions(lambda_funcs))
-    # # Note: a thread pool executor may not be more efficient than asyncio alone
+    # # Note: a thread pool executor is not faster than asyncio alone
     # asyncio.run(run_lambda_function_thread_pool(lambda_funcs, n_tasks=N_lambdas))
 
+    responses = []
     for func in lambda_funcs:
         assert response_success(func.response)
-        # TODO: parse and gather all responses
-        if N_lambdas < 5:
+        if N_lambdas < 3:
             print()
             print("Params:")
-            print(func.params)
+            pprint(func.params)
             print("Response:")
-            print(func.response)
-            print("Content:")
-            print(func.content)
+            pprint(func.response)
+            print("Data:")
+            pprint(func.data)
+            print("JSON:")
+            pprint(func.json)
             print("Error:")
-            print(func.error)
+            pprint(func.error)
             print("Logs")
-            print(func.logs)
+            pprint(func.logs)
+        elif N_lambdas < 20:
+            responses.append(func.json)
+
+    if responses:
+        # print(json.dumps(responses, indent=2))
+        pprint(responses)
 
     end = time.perf_counter() - start
+    print()
     print(f"{N_lambdas} lambdas finished in {end:0.2f} seconds.\n")
