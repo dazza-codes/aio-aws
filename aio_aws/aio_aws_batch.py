@@ -246,7 +246,7 @@ import tinydb
 from aio_aws.aio_aws_config import AioAWSConfig
 from aio_aws.aio_aws_config import delay
 from aio_aws.aio_aws_config import jitter
-from aio_aws.aio_aws_config import response_success
+from aio_aws.utils import response_success
 from aio_aws.logger import get_logger
 
 LOGGER = get_logger(__name__)
