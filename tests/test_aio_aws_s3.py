@@ -22,7 +22,7 @@ import botocore.exceptions
 import pytest
 
 from aio_aws.aio_aws_config import AioAWSConfig
-from aio_aws.aio_aws_config import response_success
+from aio_aws.utils import response_success
 from aio_aws.aio_aws_s3 import aio_s3_bucket_access
 from aio_aws.aio_aws_s3 import aio_s3_bucket_head
 from aio_aws.aio_aws_s3 import aio_s3_buckets_access
