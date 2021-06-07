@@ -105,7 +105,6 @@ def _zip_lambda(func_str) -> bytes:
 
 
 def lambda_handler(event, context):
-    import json
     import sys
 
     print(f"event: {event}")
@@ -113,10 +112,10 @@ def lambda_handler(event, context):
     if action == "too-large":
         x = ["xxx" for x in range(10 ** 6)]
         assert sys.getsizeof(x) > 6291556
-        return {"statusCode": 200, "body": json.dumps(x)}
+        return {"statusCode": 200, "body": x}
     if action == "runtime-error":
         raise RuntimeError(action)
-    return {"statusCode": 200, "body": json.dumps(event)}
+    return {"statusCode": 200, "body": event}
 
 
 @pytest.fixture
@@ -169,7 +168,7 @@ async def test_async_lambda_invoke_success(aws_lambda_func, lambda_config):
 
     func: AWSLambdaFunction = aws_lambda_func
 
-    event = {"action": "success"}
+    event = {"i": 0}
     payload = json.dumps(event).encode()
     func.payload = payload
 
@@ -179,13 +178,18 @@ async def test_async_lambda_invoke_success(aws_lambda_func, lambda_config):
         assert id(lambda_func) == id(func)
         assert response_success(lambda_func.response)
         # A successful response could have handled errors
-        if lambda_func.content is None:
+        if lambda_func.data is None:
             assert lambda_func.error
         else:
-            assert lambda_func.content
+            assert lambda_func.data
 
         # since this function should work, test the response data
-        assert lambda_func.content == {"statusCode": 200, "body": event}
+        assert lambda_func.json == {"statusCode": 200, "body": event}
+        # # moto is returning html content type, should be JSON
+        # # https://github.com/spulec/moto/issues/3991
+        # assert lambda_func.content_type == "application/json"
+        assert lambda_func.content_length > 0
+        assert lambda_func.status_code == 200
 
 
 @pytest.mark.skip("https://github.com/spulec/moto/issues/3988")
@@ -207,7 +211,7 @@ async def test_async_lambda_invoke_too_large(aws_lambda_func, lambda_config):
         lambda_func = await func.invoke(lambda_config, lambda_client)
         assert id(lambda_func) == id(func)
         assert not response_success(lambda_func.response)
-        assert lambda_func.content is None
+        assert lambda_func.json is None
         assert lambda_func.error == lambda_error
 
 
@@ -224,12 +228,16 @@ async def test_async_lambda_invoke_error(aws_lambda_func, lambda_config):
 
         lambda_func = await func.invoke(lambda_config, lambda_client)
         assert id(lambda_func) == id(func)
+        # Note that Lambda still has a 200 response code for errors
+        assert lambda_func.status_code == 200
         assert response_success(lambda_func.response)
-        assert lambda_func.content is None
+        assert lambda_func.json is None
         assert lambda_func.error  # == lambda_error
         assert isinstance(lambda_func.error, str)
+        assert lambda_func.content_length > 0
         LOGGER.info(lambda_func.error)
         LOGGER.info(lambda_func.data)
+
         # TODO: should the error be like the following:
         # {
         #     "errorType": "RuntimeError",
