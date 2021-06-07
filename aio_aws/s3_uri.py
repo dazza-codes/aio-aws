@@ -2,10 +2,12 @@
 S3URI
 -----
 """
-
-import datetime
+import json
 import re
+from dataclasses import dataclass
+from datetime import datetime
 from pathlib import PurePosixPath
+from typing import Dict
 from typing import Iterable
 from typing import Pattern
 from typing import Union
@@ -13,7 +15,6 @@ from typing import Union
 import boto3
 import botocore
 import botocore.exceptions
-from dataclasses import dataclass
 
 from aio_aws.logger import get_logger
 
@@ -332,7 +333,7 @@ class S3URI(S3Paths):
 
         return {}
 
-    def s3_last_modified(self) -> Union[datetime.datetime, None]:
+    def s3_last_modified(self) -> Union[datetime, None]:
         try:
             return self.s3_object_summary().last_modified
 
@@ -388,3 +389,27 @@ class S3URI(S3Paths):
             LOGGER.error("Access denied, %s for %s", errcode, self.s3_uri)
         else:
             LOGGER.exception("Error in request, %s for %s", errcode, self.s3_uri)
+
+
+@dataclass
+class S3Info:
+    s3_uri: S3URI
+    s3_size: int = None
+    last_modified: datetime = None
+
+    @property
+    def iso8601(self):
+        if self.last_modified:
+            return self.last_modified.isoformat()
+
+    @property
+    def dict(self) -> Dict:
+        return {
+            "s3_uri": str(self.s3_uri),
+            "s3_size": self.s3_size,
+            "last_modified": self.iso8601,
+        }
+
+    @property
+    def json(self) -> str:
+        return json.dumps(self.dict)
