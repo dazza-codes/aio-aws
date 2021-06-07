@@ -1,4 +1,5 @@
 import tempfile
+from datetime import datetime
 from pathlib import Path
 from typing import Dict
 from typing import List
@@ -14,6 +15,9 @@ from aio_aws.s3_io import geojsons_s3_load
 from aio_aws.s3_io import get_s3_content
 from aio_aws.s3_io import json_s3_dump
 from aio_aws.s3_io import json_s3_load
+from aio_aws.s3_io import s3_file_info
+from aio_aws.s3_io import s3_files_info
+from aio_aws.s3_uri import S3Info
 from aio_aws.s3_io import yaml_s3_dump
 from aio_aws.s3_io import yaml_s3_load
 from aio_aws.s3_uri import S3URI
@@ -54,6 +58,39 @@ def geojson_features(geojson_feature_collection) -> List[Dict]:
 @pytest.fixture
 def geojson_feature(geojson_features) -> Dict:
     return geojson_features[0]
+
+
+def test_s3_file_info(aws_s3_client, s3_uri_object, s3_object_text, mocker):
+    assert_bucket_200(s3_uri_object.bucket, aws_s3_client)
+    assert_object_200(s3_uri_object.bucket, s3_uri_object.key, aws_s3_client)
+    spy_client = mocker.spy(boto3, "client")
+    spy_resource = mocker.spy(boto3, "resource")
+    s3_info = s3_file_info(s3_uri_object.s3_uri)
+    assert isinstance(s3_info, S3Info)
+    s3_dict = s3_info.dict
+    assert isinstance(s3_dict, Dict)
+    assert s3_dict["s3_uri"] == s3_uri_object.s3_uri
+    assert s3_dict["s3_size"] == len(s3_object_text)
+    # last-modified is an iso8601 string
+    assert isinstance(s3_dict["last_modified"], str)
+    last_modified = datetime.fromisoformat(s3_dict["last_modified"])
+    assert isinstance(last_modified, datetime)
+    # the s3 client is used once to get the s3 object data
+    assert spy_client.call_count == 1
+    assert spy_resource.call_count == 0
+
+
+def test_s3_files_info(aws_s3_client, s3_uri_object, s3_object_text, mocker):
+    assert_bucket_200(s3_uri_object.bucket, aws_s3_client)
+    assert_object_200(s3_uri_object.bucket, s3_uri_object.key, aws_s3_client)
+    spy_client = mocker.spy(boto3, "client")
+    spy_resource = mocker.spy(boto3, "resource")
+    s3_files = s3_files_info([s3_uri_object.s3_uri])
+    for s3_info in s3_files:
+        assert isinstance(s3_info, S3Info)
+    # the s3 client is used once to get the s3 object data
+    assert spy_client.call_count == 1
+    assert spy_resource.call_count == 0
 
 
 def test_get_s3_content(aws_s3_client, s3_uri_object, s3_object_text, mocker):
