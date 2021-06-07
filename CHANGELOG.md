@@ -103,3 +103,9 @@ Focus on aio-aws
 -------------------
 - Fix read-the-docs builds
 
+
+0.12.0 (2021-06-06)
+-------------------
+- Add lambda accessors using response and data properties
+- Update docs
+
