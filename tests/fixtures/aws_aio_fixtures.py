@@ -15,13 +15,11 @@ from itertools import chain
 import aiobotocore
 import aiobotocore.config
 import aiohttp
-
-# Third Party
 import pytest
 from aiobotocore.config import AioConfig
 
-from tests.aiomoto_services import CONNECT_TIMEOUT
-from tests.aiomoto_services import HOST
+from tests.fixtures.aiomoto_services import CONNECT_TIMEOUT
+from tests.fixtures.aiomoto_services import HOST
 
 
 @pytest.fixture(

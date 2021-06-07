@@ -23,12 +23,12 @@ import os
 
 from botocore.client import BaseClient
 
-from tests.aws_fixtures import AWS_ACCESS_KEY_ID
-from tests.aws_fixtures import AWS_REGION
-from tests.aws_fixtures import AWS_SECRET_ACCESS_KEY
-from tests.aws_fixtures import AwsBatchClients
-from tests.aws_fixtures import has_moto_mocks
-from tests.aws_fixtures import response_success
+from tests.fixtures.aws_fixtures import AWS_ACCESS_KEY_ID
+from tests.fixtures.aws_fixtures import AWS_REGION
+from tests.fixtures.aws_fixtures import AWS_SECRET_ACCESS_KEY
+from tests.fixtures.aws_fixtures import AwsBatchClients
+from tests.fixtures.aws_fixtures import has_moto_mocks
+from tests.fixtures.aws_fixtures import response_success
 
 
 def test_aws_credentials(aws_credentials):
