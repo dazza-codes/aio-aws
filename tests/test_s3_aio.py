@@ -16,6 +16,7 @@ from aio_aws.s3_aio import json_s3_dump
 from aio_aws.s3_aio import json_s3_load
 from aio_aws.s3_aio import s3_file_info
 from aio_aws.s3_aio import s3_files_info
+from aio_aws.s3_aio import yaml_dump
 from aio_aws.s3_aio import yaml_s3_dump
 from aio_aws.s3_aio import yaml_s3_load
 from aio_aws.s3_uri import S3Info
@@ -113,6 +114,15 @@ async def test_aio_geojsons_dump(geojson_features):
     with tempfile.NamedTemporaryFile() as tmp_file:
         tmp_path = Path(tmp_file.name)
         dump_path = await geojsons_dump(geojson_features, tmp_path)
+        assert dump_path == tmp_path
+        assert tmp_path.exists()
+
+
+@pytest.mark.asyncio
+async def test_aio_yaml_dump(geojson_features):
+    with tempfile.NamedTemporaryFile() as tmp_file:
+        tmp_path = Path(tmp_file.name)
+        dump_path = await yaml_dump(geojson_features, tmp_path)
         assert dump_path == tmp_path
         assert tmp_path.exists()
 

@@ -21,6 +21,16 @@ AioAws
    :undoc-members:
    :show-inheritance:
 
+.. automodule:: aio_aws.s3_aio
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: aio_aws.s3_io
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. _aioboto3: https://github.com/terrycain/aioboto3
 .. _aiobotocore: https://github.com/aio-libs/aiobotocore
 .. _aiohttp: https://aiohttp.readthedocs.io/en/latest/
