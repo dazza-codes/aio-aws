@@ -65,6 +65,14 @@ async def s3_file_info(s3_uri: Union[S3URI, str], s3_client: AioBaseClient) -> S
 async def s3_files_info(
     s3_uris: List[Union[S3URI, str]], s3_client: AioBaseClient
 ) -> List[S3Info]:
+    """
+    Collect data from S3 HEAD requests for many S3URI
+
+    :param s3_uris: a list of S3URI
+    :param s3_client: a required aiobotocore.client.AioBaseClient for s3
+    :return: a list of S3Info object with HEAD data on success;
+        on failure the S3Info object has no HEAD data
+    """
     s3_files = []
     s3_futures = []
     for s3_uri in s3_uris:
@@ -83,9 +91,9 @@ async def s3_files_info(
 
 async def get_s3_content(s3_uri: str, s3_client: AioBaseClient):
     """
-    Read an s3 URI
+    Read an s3 object
 
-    :param s3_uri: a fully qualified S3 URI for the s3 object to read
+    :param s3_uri: a fully qualified S3 URI for an s3 object
     :param s3_client: a required aiobotocore.client.AioBaseClient for s3
     :return: the data from the s3 object
     """
@@ -98,7 +106,7 @@ async def get_s3_content(s3_uri: str, s3_client: AioBaseClient):
         file_content = await content_object["Body"].read()
         return file_content.decode("utf-8")
     except ClientError as err:
-        LOGGER.error("Failed S3 PUT to: %s", s3_uri)
+        LOGGER.error("Failed S3 GET for: %s", s3_uri)
         LOGGER.error(err)
 
 
@@ -106,18 +114,19 @@ async def put_s3_content(
     data_file: str, s3_uri: str, s3_client: AioBaseClient
 ) -> Optional[str]:
     """
-    Write a file to an s3 URI
+    Write a file to an s3 object
 
     :param data_file: a data file
-    :param s3_uri: a fully qualified S3 URI for the s3 object to write
+    :param s3_uri: a fully qualified S3 URI for an s3 object
     :param s3_client: a required aiobotocore.client.AioBaseClient for s3
     :return: the s3 URI on success
     """
     s3_uri = S3URI(s3_uri)
     try:
-        with open(data_file, "rb") as fd:
+        async with aiofiles.open(data_file, "rb") as fd:
+            file_bytes = await fd.read()
             response = await s3_client.put_object(
-                Bucket=s3_uri.bucket, Key=s3_uri.key, Body=fd
+                Bucket=s3_uri.bucket, Key=s3_uri.key, Body=file_bytes
             )
             success = response_success(response)
             if success:
@@ -131,6 +140,8 @@ async def put_s3_content(
 
 async def json_dump(data: Any, file: Union[Path, str]) -> Optional[Union[Path, str]]:
     """
+    Write JSON to a file
+
     :param data: any data compatible with json.dumps
     :param file: a file path to write
     :return: if the dump succeeds, return the file, or None
@@ -142,7 +153,7 @@ async def json_dump(data: Any, file: Union[Path, str]) -> Optional[Union[Path, s
     if file_path.is_file() and file_path.stat().st_size > 0:
         LOGGER.info("Saved JSON to %s", file)
         return file
-    LOGGER.error("Failed to save GeoJSONSeq to %s", file)
+    LOGGER.error("Failed to save JSON to %s", file)
 
 
 async def json_s3_dump(
@@ -185,9 +196,9 @@ async def json_s3_dump(
 
 async def json_s3_load(s3_uri: str, s3_client: AioBaseClient) -> Any:
     """
-    Load JSON from an s3 URI
+    Read JSON data from an s3 object
 
-    :param s3_uri: a fully qualified S3 URI for the s3 object to read
+    :param s3_uri: a fully qualified S3 URI for an s3 object
     :param s3_client: a required aiobotocore.client.AioBaseClient for s3
     :return: data from the json load
     """
@@ -200,7 +211,7 @@ async def geojson_s3_load(s3_uri: str, s3_client: AioBaseClient) -> Dict:
     """
     Read GeoJSON data from an s3 object
 
-    :param s3_uri: a fully qualified S3 URI for the s3 object to read
+    :param s3_uri: a fully qualified S3 URI for an s3 object
     :param s3_client: a required aiobotocore.client.AioBaseClient for s3
     :return: geojson data
     """
@@ -216,7 +227,7 @@ async def geojson_s3_dump(
     Write GeoJSON to an s3 URI
 
     :param geojson_data: an object to json.dump
-    :param s3_uri: a fully qualified S3 URI for the s3 object to write
+    :param s3_uri: a fully qualified S3 URI for an s3 object
     :param s3_client: a required aiobotocore.client.AioBaseClient for s3
     :return: the s3 URI on success
     """
@@ -229,7 +240,7 @@ async def geojsons_s3_load(s3_uri: str, s3_client: AioBaseClient) -> List[Dict]:
     """
     Read GeoJSON Text Sequence data from an s3 object
 
-    :param s3_uri: a fully qualified S3 URI for the s3 object to read
+    :param s3_uri: a fully qualified S3 URI for an s3 object
     :param s3_client: a required aiobotocore.client.AioBaseClient for s3
     :return: geojson features
 
@@ -270,7 +281,7 @@ async def geojsons_s3_dump(
 
     :param geojson_features: a list of geojson features; from any
         feature collection, this is geojson_collection["features"]
-    :param s3uri: a fully qualified S3 URI for the s3 object to write
+    :param s3uri: a fully qualified S3 URI for an s3 object
     :param s3_client: a required aiobotocore.client.AioBaseClient for s3
     :return: the s3 URI on success
     """
@@ -306,6 +317,8 @@ async def geojsons_dump(
     geojson_features: List[Dict], geojsons_file: Union[Path, str]
 ) -> Optional[Union[Path, str]]:
     """
+    Write a GeoJSON Text Sequence file
+
     :param geojson_features: a list of geojson features; from any
         feature collection, this is geojson_collection["features"]
     :param geojsons_file: a file path to write
@@ -329,7 +342,7 @@ async def yaml_s3_dump(
     Write YAML to an s3 URI
 
     :param yaml_data: an object to yaml.dump
-    :param s3_uri: a fully qualified S3 URI for the s3 object to write
+    :param s3_uri: a fully qualified S3 URI for an s3 object
     :param s3_client: a required aiobotocore.client.AioBaseClient for s3
     :return: the s3 URI on success
     """
@@ -362,12 +375,30 @@ async def yaml_s3_dump(
 
 async def yaml_s3_load(s3_uri: str, s3_client: AioBaseClient) -> Any:
     """
-    Load YAML from an s3 URI
+    Read YAML data from an s3 object
 
-    :param s3_uri: a fully qualified S3 URI for the s3 object to write
+    :param s3_uri: a fully qualified S3 URI for an s3 object
     :param s3_client: a required aiobotocore.client.AioBaseClient for s3
     :return: data from the yaml load
     """
     file_content = await get_s3_content(s3_uri, s3_client=s3_client)
     yaml_data = yaml.safe_load(file_content)
     return yaml_data
+
+
+async def yaml_dump(data: Any, file: Union[Path, str]) -> Optional[Union[Path, str]]:
+    """
+    Write YAML to a file
+
+    :param data: any data compatible with yaml.safe_dump
+    :param file: a file path to write
+    :return: if the dump succeeds, return the file, or None
+    """
+    dump = yaml.safe_dump(data)
+    async with aiofiles.open(file, mode="w") as dst:
+        await dst.write(dump)
+    file_path = Path(file)
+    if file_path.is_file() and file_path.stat().st_size > 0:
+        LOGGER.info("Saved YAML to %s", file)
+        return file
+    LOGGER.error("Failed to save YAML to %s", file)
