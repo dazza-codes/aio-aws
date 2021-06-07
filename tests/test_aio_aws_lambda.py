@@ -28,9 +28,9 @@ import pytest
 
 from aio_aws import aio_aws_lambda
 from aio_aws.aio_aws_config import AioAWSConfig
-from aio_aws.utils import response_success
 from aio_aws.aio_aws_lambda import AWSLambdaFunction
 from aio_aws.logger import get_logger
+from aio_aws.utils import response_success
 
 LOGGER = get_logger(__name__)
 

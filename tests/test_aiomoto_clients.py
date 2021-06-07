@@ -29,7 +29,7 @@ from aiobotocore.client import AioBaseClient
 from aiobotocore.session import AioSession
 
 from aio_aws.utils import response_success
-from tests.aiomoto_fixtures import AioAwsBatchClients
+from tests.fixtures.aiomoto_fixtures import AioAwsBatchClients
 from tests.utils import AWS_ACCESS_KEY_ID
 from tests.utils import AWS_REGION
 from tests.utils import AWS_SECRET_ACCESS_KEY

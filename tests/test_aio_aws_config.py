@@ -17,22 +17,21 @@ Test the aio_aws.aio_aws_config module
 """
 from types import ModuleType
 
-import pytest
-
 import aiobotocore.client
 import aiobotocore.config
 import aiobotocore.session
 import botocore.client
 import botocore.config
 import botocore.session
+import pytest
 
 from aio_aws.aio_aws_config import aio_aws_client
 from aio_aws.aio_aws_config import aio_aws_default_config
+from aio_aws.aio_aws_config import aio_aws_default_session
 from aio_aws.aio_aws_config import aio_aws_session
+from aio_aws.aio_aws_config import AioAWSConfig
 from aio_aws.aio_aws_config import delay
 from aio_aws.aio_aws_config import jitter
-from aio_aws.aio_aws_config import AioAWSConfig
-from aio_aws.aio_aws_config import aio_aws_default_session
 from aio_aws.aio_aws_config import MAX_JITTER
 from aio_aws.aio_aws_config import MAX_PAUSE
 from aio_aws.aio_aws_config import MIN_JITTER
