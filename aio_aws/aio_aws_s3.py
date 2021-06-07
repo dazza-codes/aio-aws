@@ -137,7 +137,6 @@ import time
 from dataclasses import dataclass
 from typing import Dict
 from typing import List
-from typing import Optional
 from typing import Tuple
 
 from aiobotocore.client import AioBaseClient
@@ -149,7 +148,8 @@ from botocore.exceptions import ClientError
 from aio_aws.aio_aws_config import aio_aws_session
 from aio_aws.aio_aws_config import AioAWSConfig
 from aio_aws.aio_aws_config import jitter
-from aio_aws.aio_aws_config import response_success
+from aio_aws.utils import handle_head_error_code
+from aio_aws.utils import response_success
 from aio_aws.logger import get_logger
 
 LOGGER = get_logger(__name__)
@@ -178,20 +178,6 @@ class S3Parts:
         key = S3Parts.DELIMITER.join(uri_paths)
 
         return S3Parts(bucket, key)
-
-
-def handle_head_error_code(error: ClientError, item: str = None) -> Optional[bool]:
-    err_code = error.response.get("Error", {}).get("Code")
-    if err_code == "401":
-        LOGGER.debug("GET HEAD 401: invalid credentials: %s", item)
-        return False
-    if err_code == "403":
-        LOGGER.debug("GET HEAD 403: permission denied: %s", item)
-        return False
-    if err_code == "404":
-        LOGGER.debug("GET HEAD 404: object missing: %s", item)
-        return False
-    return None
 
 
 def aws_s3_bucket_access(bucket_name: str, s3_client: BaseClient) -> bool:
