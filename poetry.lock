@@ -2239,7 +2239,7 @@ docs = ["Sphinx", "sphinx-autoapi", "sphinx-autodoc-typehints", "sphinx-rtd-them
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "6cdc2d663bb0e2f02ad30cd4fc67680574d79dcc3da660f2a3c9a4cea254f47a"
+content-hash = "56fb9a6278ebc8952d793dc2c07f6f2cd3f4f2fc05586088d9830226de79f5ee"
 
 [metadata.files]
 aiobotocore = [
