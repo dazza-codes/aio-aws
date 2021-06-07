@@ -325,15 +325,3 @@ async def jitter(
     """
     jit = await delay(task_id, min_jitter, max_jitter)
     return jit
-
-
-def response_code(response) -> int:
-    return int(response.get("ResponseMetadata", {}).get("HTTPStatusCode"))
-
-
-def response_success(response) -> bool:
-    code = response_code(response)
-    if code:
-        return 200 <= code < 300
-    else:
-        return False

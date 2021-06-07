@@ -28,7 +28,7 @@ according to the moto license (Apache-2.0).
 
 import pytest
 
-from aio_aws.aio_aws_config import response_success
+from aio_aws.utils import response_success
 from tests.aws_fixtures import AwsBatchClients
 from tests.aws_fixtures import AwsBatchInfrastructure
 from tests.aws_fixtures import batch_infrastructure
