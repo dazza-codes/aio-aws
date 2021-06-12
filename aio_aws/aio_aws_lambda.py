@@ -252,15 +252,26 @@ class AWSLambdaFunction:
 
                 except botocore.exceptions.ClientError as err:
                     response = err.response
-                    LOGGER.error("AWS Lambda client error: %s, %s", self.name, response)
+                    LOGGER.warning(
+                        "AWS Lambda client error: %s, %s", self.name, response
+                    )
                     error = response.get("Error", {})
                     if error.get("Code") == "TooManyRequestsException":
                         if tries < config.retries:
                             await jitter(
                                 "lambda-retry", config.min_jitter, config.max_jitter
                             )
-                        continue  # allow it to retry, if possible
+                            continue  # allow it to retry, if possible
+                        else:
+                            LOGGER.error(
+                                "AWS Lambda too many retries: %s, %s",
+                                self.name,
+                                response,
+                            )
                     else:
+                        LOGGER.error(
+                            "AWS Lambda client error: %s, %s", self.name, response
+                        )
                         self.response = response
                         raise
 
