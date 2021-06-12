@@ -120,3 +120,9 @@ Focus on aio-aws
 - Collect response parsing in aio_aws.utils
 
 
+
+0.13.2 (2021-06-11)
+-------------------
+- Revise aio_aws_lambda logging
+- poetry update
+
