@@ -16,6 +16,7 @@ from aio_aws.s3_aio import json_s3_dump
 from aio_aws.s3_aio import json_s3_load
 from aio_aws.s3_aio import s3_file_info
 from aio_aws.s3_aio import s3_files_info
+from aio_aws.s3_aio import s3_load_files
 from aio_aws.s3_aio import yaml_dump
 from aio_aws.s3_aio import yaml_s3_dump
 from aio_aws.s3_aio import yaml_s3_load
@@ -155,3 +156,88 @@ async def test_s3_aio_yaml_io(
     assert result == s3_uri.s3_uri
     data = await yaml_s3_load(str(s3_uri), s3_client=aio_aws_s3_client)
     assert data == geojson_features
+
+
+@pytest.mark.asyncio
+async def test_s3_aio_json_files(
+    geojson_features,
+    aio_aws_s3_client,
+    aio_s3_bucket,
+):
+    s3_uris = [
+        S3URI(f"s3://{aio_s3_bucket}/tmp_{i:03d}.json").s3_uri for i in range(10)
+    ]
+    for s3_uri in s3_uris:
+        result = await json_s3_dump(
+            geojson_features, s3_uri, s3_client=aio_aws_s3_client
+        )
+        assert result == s3_uri
+
+    data = await s3_load_files(s3_uris, s3_client=aio_aws_s3_client)
+    assert sorted(data.keys()) == s3_uris
+    for s3_uri, s3_data in data.items():
+        assert s3_data == geojson_features
+
+
+@pytest.mark.asyncio
+async def test_s3_aio_geojson_files(
+    geojson_features,
+    aio_aws_s3_client,
+    aio_s3_bucket,
+):
+    s3_uris = [
+        S3URI(f"s3://{aio_s3_bucket}/tmp_{i:03d}.geojson").s3_uri for i in range(10)
+    ]
+    for s3_uri in s3_uris:
+        result = await geojson_s3_dump(
+            geojson_features, s3_uri, s3_client=aio_aws_s3_client
+        )
+        assert result == s3_uri
+
+    data = await s3_load_files(s3_uris, s3_client=aio_aws_s3_client)
+    assert sorted(data.keys()) == s3_uris
+    for s3_uri, s3_data in data.items():
+        assert s3_data == geojson_features
+
+
+@pytest.mark.asyncio
+async def test_s3_aio_geojsons_files(
+    geojson_features,
+    aio_aws_s3_client,
+    aio_s3_bucket,
+):
+    s3_uris = [
+        S3URI(f"s3://{aio_s3_bucket}/tmp_{i:03d}.geojsons").s3_uri for i in range(10)
+    ]
+    for s3_uri in s3_uris:
+        result = await geojsons_s3_dump(
+            geojson_features, s3_uri, s3_client=aio_aws_s3_client
+        )
+        assert result == s3_uri
+
+    data = await s3_load_files(s3_uris, s3_client=aio_aws_s3_client)
+    assert sorted(data.keys()) == s3_uris
+    for s3_uri, s3_data in data.items():
+        assert s3_data == geojson_features
+
+
+@pytest.mark.asyncio
+async def test_s3_aio_yaml_files(
+    geojson_features,
+    aio_aws_s3_client,
+    aio_s3_bucket,
+):
+    # Since JSON is a subset of YAML, using GeoJSON features should work
+    s3_uris = [
+        S3URI(f"s3://{aio_s3_bucket}/tmp_{i:03d}.yaml").s3_uri for i in range(10)
+    ]
+    for s3_uri in s3_uris:
+        result = await yaml_s3_dump(
+            geojson_features, s3_uri, s3_client=aio_aws_s3_client
+        )
+        assert result == s3_uri
+
+    data = await s3_load_files(s3_uris, s3_client=aio_aws_s3_client)
+    assert sorted(data.keys()) == s3_uris
+    for s3_uri, s3_data in data.items():
+        assert s3_data == geojson_features
