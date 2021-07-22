@@ -16,6 +16,7 @@ from typing import Any
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Tuple
 from typing import Union
 
 import aiofiles
@@ -108,7 +109,7 @@ async def get_s3_content(s3_uri: str, s3_client: AioBaseClient):
     """
     try:
         s3_uri = S3URI(s3_uri)
-        LOGGER.info("Read s3-uri: %s", s3_uri.s3_uri)
+        LOGGER.info("Read S3URI: %s", s3_uri.s3_uri)
         content_object = await s3_client.get_object(
             Bucket=s3_uri.bucket, Key=s3_uri.key
         )
@@ -411,3 +412,64 @@ async def yaml_dump(data: Any, file: Union[Path, str]) -> Optional[Union[Path, s
         LOGGER.info("Saved YAML to %s", file)
         return file
     LOGGER.error("Failed to save YAML to %s", file)
+
+
+async def s3_load_file(
+    s3_uri: str, s3_client: AioBaseClient
+) -> Tuple[str, Optional[Any]]:
+    """
+    Load various file types from s3; it supports files with a
+    known file suffix, such as ".json", ".geojson", ".geojsons",
+    ".yaml", ".yml"
+
+    :param s3_uri: a fully qualified S3 URI for an s3 object
+    :param s3_client: a required aiobotocore.client.AioBaseClient for s3
+    :return: a Tuple[s3_uri, Optional[s3_data]] where the s3_data could
+        be None if the file type is not recognized or a file read fails
+    """
+    data = None
+    suffix = Path(s3_uri).suffix
+    if suffix == ".json":
+        data = await json_s3_load(s3_uri, s3_client)
+    elif suffix == ".geojson":
+        data = await geojson_s3_load(s3_uri, s3_client)
+    elif suffix == ".geojsons":
+        data = await geojsons_s3_load(s3_uri, s3_client)
+    elif suffix in [".yaml", ".yml"]:
+        data = await yaml_s3_load(s3_uri, s3_client)
+    else:
+        LOGGER.error("Unknown file type: %s", s3_uri)
+    # This loader is required to return a tuple that
+    # associates an s3 URI with it's data, which is required by
+    # s3_load_files because futures cannot be used as dict keys
+    # when using asyncio.as_completed
+    return s3_uri, data
+
+
+async def s3_load_files(
+    s3_uris: List[str], s3_client: AioBaseClient = None
+) -> Dict[str, Optional[Any]]:
+    """
+    Collect data from S3 files in JSON or YAML formats
+
+    :param s3_uris: a list of S3 URIs
+    :param s3_client: an optional aiobotocore.client.AioBaseClient for s3
+    :return: a Dict[s3_uri: s3_data] for all the s3 URIs
+        that can be read successfully
+    """
+    s3_files = {}
+    s3_futures = []
+
+    if s3_client is None:
+        s3_client = await s3_aio_client()
+
+    for s3_uri in s3_uris:
+        s3_files[s3_uri] = None
+        s3_future = asyncio.ensure_future(s3_load_file(s3_uri, s3_client))
+        s3_futures.append(s3_future)
+
+    for future in asyncio.as_completed(s3_futures):
+        s3_uri, s3_data = await future
+        s3_files[s3_uri] = s3_data
+
+    return s3_files
