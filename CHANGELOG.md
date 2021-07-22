@@ -126,3 +126,8 @@ Focus on aio-aws
 - Revise aio_aws_lambda logging
 - poetry update
 
+
+0.13.3 (2021-07-21)
+-------------------
+- Add s3 aio-reader for multiple files
+
