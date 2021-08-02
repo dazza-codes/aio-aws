@@ -12,6 +12,7 @@ import json
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
+from threading import Thread
 from typing import Any
 from typing import Dict
 from typing import List
@@ -447,7 +448,7 @@ async def s3_load_file(
 
 
 async def s3_load_files(
-    s3_uris: List[str], s3_client: AioBaseClient = None
+    s3_uris: List[str], *args, s3_client: AioBaseClient = None, **kwargs
 ) -> Dict[str, Optional[Any]]:
     """
     Collect data from S3 files in JSON or YAML formats
@@ -457,19 +458,48 @@ async def s3_load_files(
     :return: a Dict[s3_uri: s3_data] for all the s3 URIs
         that can be read successfully
     """
-    s3_files = {}
-    s3_futures = []
+
+    async def _collect_content(_s3_uris, _s3_client):
+        s3_files = {}
+        s3_futures = []
+
+        for s3_uri in _s3_uris:
+            s3_files[s3_uri] = None
+            s3_future = asyncio.ensure_future(s3_load_file(s3_uri, _s3_client))
+            s3_futures.append(s3_future)
+
+        for future in asyncio.as_completed(s3_futures):
+            s3_uri, s3_data = await future
+            s3_files[s3_uri] = s3_data
+
+        return s3_files
 
     if s3_client is None:
-        s3_client = await s3_aio_client()
+        async with s3_aio_client(*args, **kwargs) as s3_client:
+            return await _collect_content(s3_uris, s3_client)
+    else:
+        return await _collect_content(s3_uris, s3_client)
 
-    for s3_uri in s3_uris:
-        s3_files[s3_uri] = None
-        s3_future = asyncio.ensure_future(s3_load_file(s3_uri, s3_client))
-        s3_futures.append(s3_future)
 
-    for future in asyncio.as_completed(s3_futures):
-        s3_uri, s3_data = await future
-        s3_files[s3_uri] = s3_data
+def run_s3_load_files(s3_uris: List[str], *args, **kwargs) -> Dict[str, Optional[Any]]:
+    """
+    Collect data from S3 files in JSON or YAML formats
 
-    return s3_files
+    :param s3_uris: a list of S3 URIs
+    :return: a Dict[s3_uri: s3_data] for all the s3 URIs
+        that can be read successfully
+    """
+
+    def async_thread(*args, **kwargs):
+        # Use asyncio.run on a clean thread to avoid
+        # conflict with any existing event loop
+        _result = kwargs.pop("result")
+        dict_result = asyncio.run(s3_load_files(s3_uris, *args, **kwargs))
+        _result.update(dict_result)
+
+    result = {}
+    kwargs["result"] = result
+    thread = Thread(target=async_thread, args=args, kwargs=kwargs)
+    thread.start()
+    thread.join()
+    return result
