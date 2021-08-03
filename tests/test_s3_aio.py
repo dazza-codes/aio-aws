@@ -1,10 +1,14 @@
+import asyncio
 import tempfile
 from datetime import datetime
+from functools import partial
 from pathlib import Path
 from typing import Dict
 
 import pytest
 
+from aio_aws.aio_aws_config import aio_aws_client
+from aio_aws.aio_aws_config import aio_aws_default_config
 from aio_aws.s3_aio import geojson_s3_dump
 from aio_aws.s3_aio import geojson_s3_load
 from aio_aws.s3_aio import geojsons_dump
@@ -14,6 +18,7 @@ from aio_aws.s3_aio import get_s3_content
 from aio_aws.s3_aio import json_dump
 from aio_aws.s3_aio import json_s3_dump
 from aio_aws.s3_aio import json_s3_load
+from aio_aws.s3_aio import run_s3_load_files
 from aio_aws.s3_aio import s3_file_info
 from aio_aws.s3_aio import s3_files_info
 from aio_aws.s3_aio import s3_load_files
@@ -174,6 +179,54 @@ async def test_s3_aio_json_files(
         assert result == s3_uri
 
     data = await s3_load_files(s3_uris, s3_client=aio_aws_s3_client)
+    assert sorted(data.keys()) == s3_uris
+    for s3_uri, s3_data in data.items():
+        assert s3_data == geojson_features
+
+
+@pytest.mark.asyncio
+async def test_s3_aio_json_files_without_test_s3_client(
+    geojson_features,
+    aio_aws_s3_client,
+    aio_s3_bucket,
+):
+    s3_uris = [
+        S3URI(f"s3://{aio_s3_bucket}/tmp_{i:03d}.json").s3_uri for i in range(10)
+    ]
+    for s3_uri in s3_uris:
+        result = await json_s3_dump(
+            geojson_features, s3_uri, s3_client=aio_aws_s3_client
+        )
+        assert result == s3_uri
+
+    # This must create a new aio-s3-client that must use the same
+    # mock s3 endpoint used by aio_aws_s3_client above
+    data = await s3_load_files(s3_uris, endpoint_url=aio_aws_s3_client._endpoint.host)
+    assert sorted(data.keys()) == s3_uris
+    for s3_uri, s3_data in data.items():
+        assert s3_data == geojson_features
+
+
+@pytest.mark.asyncio
+async def test_run_s3_aio_json_files(
+    geojson_features,
+    aio_aws_s3_client,
+    aio_s3_bucket,
+):
+    s3_uris = [
+        S3URI(f"s3://{aio_s3_bucket}/tmp_{i:03d}.json").s3_uri for i in range(10)
+    ]
+    for s3_uri in s3_uris:
+        result = await json_s3_dump(
+            geojson_features, s3_uri, s3_client=aio_aws_s3_client
+        )
+        assert result == s3_uri
+
+    # This will have to run it's own event loop on a new thread to avoid conflict
+    # with the event loop already running for pytest-asyncio; and
+    # this must create a new aio-s3-client that must use the same
+    # mock s3 endpoint used by aio_aws_s3_client above
+    data = run_s3_load_files(s3_uris, endpoint_url=aio_aws_s3_client._endpoint.host)
     assert sorted(data.keys()) == s3_uris
     for s3_uri, s3_data in data.items():
         assert s3_data == geojson_features
