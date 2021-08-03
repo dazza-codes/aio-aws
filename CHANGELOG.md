@@ -131,3 +131,9 @@ Focus on aio-aws
 -------------------
 - Add s3 aio-reader for multiple files
 
+
+0.13.4 (2021-08-02)
+-------------------
+- Add a wrapper to run aio-s3 file readers
+  as a synchronous collection
+
