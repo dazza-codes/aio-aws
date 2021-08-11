@@ -137,3 +137,9 @@ Focus on aio-aws
 - Add a wrapper to run aio-s3 file readers
   as a synchronous collection
 
+
+0.13.5 (2021-08-11)
+-------------------
+- Add option to set s3 endpoint from S3_ENDPOINT_URL env-var
+- Add utilities into the moto test fixtures
+
