@@ -43,6 +43,13 @@ async def s3_aio_client(*args, **kwargs) -> AioBaseClient:
 
     :return: a aiobotocore.client.AioBaseClient for s3
     """
+    if kwargs.get("endpoint_url") is None:
+        # To make it easier to use alternative s3 endpoints,
+        # especially for unit testing, check for an env-var.
+        s3_endpoint_url = os.getenv("S3_ENDPOINT_URL")
+        if s3_endpoint_url:
+            kwargs["endpoint_url"] = s3_endpoint_url
+
     async with aio_aws_client("s3", *args, **kwargs) as s3_client:
         yield s3_client
 
