@@ -143,3 +143,8 @@ Focus on aio-aws
 - Add option to set s3 endpoint from S3_ENDPOINT_URL env-var
 - Add utilities into the moto test fixtures
 
+
+0.13.6 (2021-08-24)
+-------------------
+- Avoid breaking changes in aiobotocore >= 1.4.x
+
