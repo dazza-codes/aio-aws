@@ -148,3 +148,8 @@ Focus on aio-aws
 -------------------
 - Avoid breaking changes in aiobotocore >= 1.4.x
 
+
+0.14.0 (2021-08-24)
+-------------------
+- Use relaxed versions for botocore with aio-botocore
+
