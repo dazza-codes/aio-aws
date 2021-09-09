@@ -96,6 +96,7 @@ moto = {version = "~1.3.16", extras = ["server"]}
 # py-dev-deps is used as a common denominator for many
 # development dependencies
 py-dev-deps = "^0.2"
+pytest-redis = "^2.1.1"
 
 
 [build-system]
