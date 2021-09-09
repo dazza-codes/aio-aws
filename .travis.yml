@@ -1,7 +1,14 @@
 language: python
 cache: pip
-python:
-- '3.7'
+
+jobs:
+  include:
+    - name: "Python 3.8 on Focal"
+      python: 3.8
+      dist: focal
+
+services:
+  - redis-server
 
 install:
   - python3 -m pip install -U pip
@@ -9,12 +16,9 @@ install:
   - source $HOME/.poetry/env
   - make init
 
-jobs:
-  include:
-  - stage: test
-    script:
-    - source $HOME/.poetry/env
-    - make test
+script:
+  - source $HOME/.poetry/env
+  - make test
 
 notifications:
   email:
