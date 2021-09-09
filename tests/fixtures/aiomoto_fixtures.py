@@ -33,8 +33,8 @@ from typing import Optional
 import aiobotocore.client
 import aiobotocore.config
 import pytest
-
 from moto.core.models import BotocoreStubber
+
 from tests.fixtures.aiomoto_services import MotoService
 
 AWS_REGION = "us-west-2"
