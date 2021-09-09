@@ -42,7 +42,7 @@ from aio_aws.aio_aws_batch import aio_batch_job_terminate
 from aio_aws.aio_aws_batch import aio_batch_job_waiter
 from aio_aws.aio_aws_batch import aio_batch_run_jobs
 from aio_aws.aio_aws_batch import AWSBatchConfig
-from aio_aws.aio_aws_batch import AWSBatchJob
+from aio_aws.aws_batch_models import AWSBatchJob
 from aio_aws.utils import response_success
 from tests.fixtures.aiomoto_fixtures import aio_batch_infrastructure
 from tests.fixtures.aiomoto_fixtures import AioAwsBatchClients

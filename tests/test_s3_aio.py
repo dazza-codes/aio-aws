@@ -1,14 +1,10 @@
-import asyncio
 import tempfile
 from datetime import datetime
-from functools import partial
 from pathlib import Path
 from typing import Dict
 
 import pytest
 
-from aio_aws.aio_aws_config import aio_aws_client
-from aio_aws.aio_aws_config import aio_aws_default_config
 from aio_aws.s3_aio import geojson_s3_dump
 from aio_aws.s3_aio import geojson_s3_load
 from aio_aws.s3_aio import geojsons_dump

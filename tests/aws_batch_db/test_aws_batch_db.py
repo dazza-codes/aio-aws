@@ -15,70 +15,10 @@
 """
 Test AWS Batch TinyDB
 """
-
-import pytest
 import tinydb
 
 from aio_aws.aio_aws_batch import AWSBatchJob
-from aio_aws.aio_aws_batch import jobs_to_run
-
-
-@pytest.fixture
-def aws_batch_job() -> AWSBatchJob:
-    job_data = {
-        "job_id": "1aac2eab-897a-4b89-9eb3-08986fbb7144",
-        "job_name": "sleep-1-job",
-        "job_queue": "arn:aws:batch:us-west-2:123456789012:job-queue/moto_test_job_queue",
-        "job_submission": {
-            "ResponseMetadata": {
-                "HTTPHeaders": {
-                    "content-length": "75",
-                    "content-type": "text/html; " "charset=utf-8",
-                    "date": "Mon, 23 Mar " "2020 " "15:29:33 GMT",
-                    "server": "amazon.com",
-                },
-                "HTTPStatusCode": 200,
-                "RetryAttempts": 0,
-            },
-            "jobId": "1aac2eab-897a-4b89-9eb3-08986fbb7144",
-            "jobName": "sleep-1-job",
-        },
-        "job_tries": ["1aac2eab-897a-4b89-9eb3-08986fbb7144"],
-        "max_tries": 4,
-        "num_tries": 1,
-        "status": "SUCCEEDED",
-        "command": ["/bin/sh", "-c", "echo Hello && sleep 0.2 && echo Bye"],
-        "container_overrides": {
-            "command": ["/bin/sh", "-c", "echo Hello && sleep 0.2 && echo Bye"]
-        },
-        "depends_on": [],
-        "job_definition": "arn:aws:batch:us-west-2:123456789012:job-definition/moto_test_job_definition:1",
-        "job_description": {
-            "container": {
-                "command": [
-                    '/bin/sh -c "for a in `seq 1 '
-                    "10`; do echo Hello World; "
-                    'sleep 1; done"'
-                ],
-                "logStreamName": "moto_test_job_definition/default/1aac2eab-897a-4b89-9eb3-08986fbb7144",
-                "privileged": False,
-                "readonlyRootFilesystem": False,
-                "ulimits": [],
-                "vcpus": 1,
-                "volumes": [],
-            },
-            "dependsOn": [],
-            "jobDefinition": "arn:aws:batch:us-west-2:123456789012:job-definition/moto_test_job_definition:1",
-            "jobId": "1aac2eab-897a-4b89-9eb3-08986fbb7144",
-            "jobName": "sleep-1-job",
-            "jobQueue": "arn:aws:batch:us-west-2:123456789012:job-queue/moto_test_job_queue",
-            "createdAt": 1584977374,  # https://github.com/spulec/moto/issues/2829
-            "startedAt": 1584977376,
-            "status": "SUCCEEDED",
-            "stoppedAt": 1584977386,
-        },
-    }
-    return AWSBatchJob(**job_data)
+from aio_aws.uuid_utils import valid_uuid4
 
 
 def test_batch_job(aws_batch_job):
@@ -88,6 +28,7 @@ def test_batch_job(aws_batch_job):
     assert isinstance(job.job_description, dict)
     assert isinstance(job.job_tries, list)
     assert job.job_tries == [job.job_id]
+    assert valid_uuid4(job.job_id)
 
     assert job.created == 1584977374
     assert job.started == 1584977376
@@ -179,7 +120,7 @@ def test_batch_job_db_find_jobs_to_run_empty(test_jobs_db, aws_batch_job):
 def test_batch_job_db_filter_jobs_to_run(test_jobs_db, aws_batch_job):
     job = aws_batch_job
     job.status = "SUBMITTED"  # this job can be 'recovered'
-    jobs = jobs_to_run([job], test_jobs_db)
+    jobs = test_jobs_db.jobs_to_run([job])
     assert isinstance(jobs, list)
     assert len(jobs) == 1
     assert isinstance(jobs[0], AWSBatchJob)
@@ -188,7 +129,7 @@ def test_batch_job_db_filter_jobs_to_run(test_jobs_db, aws_batch_job):
 def test_batch_job_db_jobs_to_run_empty(test_jobs_db, aws_batch_job):
     job = aws_batch_job
     assert job.status == "SUCCEEDED"
-    jobs = jobs_to_run([job], test_jobs_db)
+    jobs = test_jobs_db.jobs_to_run([job])
     assert isinstance(jobs, list)
     assert len(jobs) == 0  # successful jobs are done
 
@@ -198,7 +139,7 @@ def test_batch_job_db_saved_filter_jobs_to_run(test_jobs_db, aws_batch_job):
     job.status = "SUBMITTED"  # this job can be 'recovered'
     job_docs = test_jobs_db.save_job(job)
     assert job_docs == [1]
-    jobs = jobs_to_run([job], test_jobs_db)
+    jobs = test_jobs_db.jobs_to_run([job])
     assert isinstance(jobs, list)
     assert len(jobs) == 1
     assert isinstance(jobs[0], AWSBatchJob)
@@ -209,7 +150,7 @@ def test_batch_job_db_saved_filter_jobs_to_run_empty(test_jobs_db, aws_batch_job
     assert job.status == "SUCCEEDED"
     job_docs = test_jobs_db.save_job(job)
     assert job_docs == [1]
-    jobs = jobs_to_run([job], test_jobs_db)
+    jobs = test_jobs_db.jobs_to_run([job])
     assert isinstance(jobs, list)
     assert len(jobs) == 0  # successful jobs are done
 
@@ -220,13 +161,13 @@ def test_batch_job_db_saved_filter_jobs_to_run_for_recovery(
     job = aws_batch_job
     assert job.status == "SUCCEEDED"
     job_docs = test_jobs_db.save_job(job)
-    jobs = jobs_to_run([job], test_jobs_db)
+    jobs = test_jobs_db.jobs_to_run([job])
     assert len(jobs) == 0  # successful jobs are done
     # Assume the job is recreated and needs to be recovered from the db
     job.reset()
     assert job.job_id is None
     assert job.job_name  # used to recover the job from the db
-    jobs = jobs_to_run([job], test_jobs_db)
+    jobs = test_jobs_db.jobs_to_run([job])
     assert isinstance(jobs, list)
     assert len(jobs) == 0  # the job.job_name is used to recover the job
 
@@ -262,7 +203,7 @@ def test_batch_job_db_saved_filter_jobs_to_run_with_duplicate(
     job.status = job.job_description["status"]
     test_jobs_db.save_job(job)
 
-    jobs = jobs_to_run([job], test_jobs_db)
+    jobs = test_jobs_db.jobs_to_run([job])
     assert len(jobs) == 1  # failed jobs could be run again (if reset)
 
     # Fake another submission of the same job-name
@@ -276,5 +217,5 @@ def test_batch_job_db_saved_filter_jobs_to_run_with_duplicate(
     job.job_description["stoppedAt"] += 5
     test_jobs_db.save_job(job)
 
-    jobs = jobs_to_run([job], test_jobs_db)
+    jobs = test_jobs_db.jobs_to_run([job])
     assert len(jobs) == 0  # successful jobs are done
