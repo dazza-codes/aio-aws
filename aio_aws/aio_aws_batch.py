@@ -147,8 +147,6 @@ after everything is done.
     from aio_aws.aio_aws_batch import AWSBatchConfig
     from aio_aws.aio_aws_batch import AWSBatchDB
     from aio_aws.aio_aws_batch import AWSBatchJob
-    from aio_aws.aio_aws_batch import jobs_recovery
-    from aio_aws.aio_aws_batch import jobs_to_run
     from aio_aws.aio_aws_batch import aio_batch_run_jobs
     from aio_aws.aio_aws_batch import aio_batch_get_logs
 
@@ -184,9 +182,8 @@ after everything is done.
         jobs_db_file="/tmp/aio_batch_jobs.json",
         logs_db_file="/tmp/aio_batch_logs.json",
     )
-
-    batch_jobs = jobs_recovery(jobs=batch_jobs, jobs_db=batch_jobs_db)
-    batch_jobs = jobs_to_run(jobs=batch_jobs, jobs_db=batch_jobs_db)
+    batch_jobs = batch_jobs_db.jobs_recovery(jobs=batch_jobs)
+    batch_jobs = batch_jobs_db.jobs_to_run(jobs=batch_jobs)
     if batch_jobs:
 
         # Create an event loop for the aio processing
@@ -234,6 +231,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Dict
 from typing import List
+from typing import Iterable
 from typing import Optional
 
 import aiobotocore.client  # type: ignore
@@ -246,6 +244,8 @@ import tinydb
 from aio_aws.aio_aws_config import AioAWSConfig
 from aio_aws.aio_aws_config import delay
 from aio_aws.aio_aws_config import jitter
+from aio_aws.aws_batch_db import AWSBatchDB
+from aio_aws.aws_batch_models import AWSBatchJob
 from aio_aws.utils import response_success
 from aio_aws.logger import get_logger
 
@@ -253,436 +253,6 @@ LOGGER = get_logger(__name__)
 
 #: batch job startup pause (seconds)
 BATCH_STARTUP_PAUSE: float = 30
-
-
-@dataclass
-class AWSBatchJobDescription:
-    jobName: str = None
-    jobId: str = None
-    jobQueue: str = None
-    status: str = None
-    attempts: List[Dict] = None
-    statusReason: str = None
-    createdAt: int = None
-    startedAt: int = None
-    stoppedAt: int = None
-    dependsOn: List[str] = None
-    jobDefinition: str = None
-    parameters: Dict = None
-    container: Dict = None
-    timeout: Dict = None
-
-
-@dataclass
-class AWSBatchJob:
-    """
-    AWS Batch job
-
-    Creating an AWSBatchJob instance does not run anything, it's simply
-    a dataclass to retain and track job attributes.  There are no instance
-    methods to run a job, the instances are passed to async coroutine functions.
-
-    Replace 'command' with 'container_overrides' dict for more options;
-    do not use 'command' together with 'container_overrides', or understand
-    that the construction will update the `container_overrides['command']`
-    when the `command is not None`.
-
-    :param job_name: A job jobName (truncated to 128 characters).
-    :param job_definition: A job job_definition.
-    :param job_queue: A batch queue.
-    :param command: A container command.
-    :param depends_on: list of dictionaries like:
-
-        .. code-block::
-
-            [
-              {'jobId': 'abc123', ['type': 'N_TO_N' | 'SEQUENTIAL'] },
-            ]
-
-        type is optional, used only for job arrays
-
-    :param container_overrides: a dictionary of container overrides.
-        Overrides include 'vcpus', 'memory', 'instanceType',
-        'environment', and 'resourceRequirements'. If the `command`
-        parameter is defined, it overrides the `container_overrides['command']`
-
-    :param max_tries: an optional limit to the number of job retries, which
-        can apply in the job-manager function to any job with a SPOT failure
-        only and it applies regardless of the job-definition settings.
-
-    .. seealso::
-        https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/batch.html
-    """
-
-    STATUSES = [
-        "SUBMITTED",
-        "PENDING",
-        "RUNNABLE",
-        "STARTING",
-        "RUNNING",
-        "SUCCEEDED",
-        "FAILED",
-    ]
-
-    job_name: str
-    job_queue: str
-    job_definition: str
-    command: List[str] = None
-    depends_on: List[Dict] = None
-    container_overrides: Dict = None
-    job_id: Optional[str] = None
-    status: Optional[str] = None
-    job_tries: List[str] = None
-    num_tries: int = 0
-    max_tries: int = 4
-    job_submission: Optional[Dict] = None
-    job_description: Optional[Dict] = None
-    logs: Optional[List[Dict]] = None
-
-    def __post_init__(self):
-
-        self.job_name = self.job_name[:128]
-
-        if self.job_tries is None:
-            self.job_tries = []
-
-        if self.depends_on is None:
-            self.depends_on = []
-
-        if self.container_overrides is None:
-            self.container_overrides = {}
-
-        if self.command:
-            self.container_overrides.update({"command": self.command})
-
-    @property
-    def params(self):
-        """AWS Batch parameters for job submission"""
-        return {
-            "jobName": self.job_name,
-            "jobQueue": self.job_queue,
-            "jobDefinition": self.job_definition,
-            "containerOverrides": self.container_overrides,
-            "dependsOn": self.depends_on,
-        }
-
-    @property
-    def db_data(self) -> Dict:
-        """AWS Batch job data for state machine persistence"""
-        # The job.logs are NOT included here, by design.
-        return {
-            "job_id": self.job_id,
-            "job_name": self.job_name,
-            "job_queue": self.job_queue,
-            "job_definition": self.job_definition,
-            "job_submission": self.job_submission,
-            "job_description": self.job_description,
-            "container_overrides": self.container_overrides,
-            "command": self.command,
-            "depends_on": self.depends_on,
-            "status": self.status,
-            "job_tries": self.job_tries,
-            "num_tries": self.num_tries,
-            "max_tries": self.max_tries,
-        }
-
-    @property
-    def db_logs_data(self) -> Optional[Dict]:
-        """AWS Batch job with logs persistence"""
-        if self.logs:
-            data = self.db_data
-            data["logs"] = self.logs
-            return data
-
-    def reset(self):
-        """Clear the job_id and all related job data"""
-        self.job_id = None
-        self.job_description = None
-        self.job_submission = None
-        self.status = None
-        self.logs = None
-
-    @property
-    def created(self) -> Optional[int]:
-        if self.job_description:
-            return self.job_description.get("createdAt")
-
-    @property
-    def started(self) -> Optional[int]:
-        if self.job_description:
-            return self.job_description.get("startedAt")
-
-    @property
-    def stopped(self) -> Optional[int]:
-        if self.job_description:
-            return self.job_description.get("stoppedAt")
-
-    @property
-    def elapsed(self) -> Optional[int]:
-        created = self.created
-        stopped = self.stopped
-        if stopped and created:
-            return stopped - created
-
-    @property
-    def runtime(self) -> Optional[int]:
-        started = self.started
-        stopped = self.stopped
-        if started and stopped:
-            return stopped - started
-
-    @property
-    def spinup(self) -> Optional[int]:
-        created = self.created
-        started = self.started
-        if started and created:
-            return started - created
-
-
-@dataclass
-class AWSBatchDB:
-    """
-    AWS Batch job databases
-
-    The jobs and logs are kept in separate DBs so
-    that performance on the jobs_db is not compromised
-    by too much data from job logs.  This makes it possible
-    to use the jobs_db without capturing logs as well.
-
-    .. seealso:: https://tinydb.readthedocs.io/en/latest/
-    """
-
-    #: a file used for :py:class::`TinyDB(jobs_db_file)`
-    jobs_db_file: str = "/tmp/aws_batch_jobs.json"
-
-    #: a file used for :py:class::`TinyDB(logs_db_file)`
-    logs_db_file: str = "/tmp/aws_batch_logs.json"
-
-    def __post_init__(self):
-
-        tinydb.TinyDB.DEFAULT_TABLE = "aws-batch-jobs"
-        tinydb.TinyDB.DEFAULT_TABLE_KWARGS = {"cache_size": 0}
-
-        # the jobs and logs are kept in separate DBs so
-        # that performance on the jobs_db is not compromised
-        # by too much data from job logs.
-        self.jobs_db = tinydb.TinyDB(self.jobs_db_file)
-        self.logs_db = tinydb.TinyDB(self.logs_db_file)
-        LOGGER.info("Using batch-jobs-db file: %s", self.jobs_db_file)
-        LOGGER.info("Using batch-logs-db file: %s", self.logs_db_file)
-
-        # Lazy init for any asyncio instances
-        self._db_sem = None
-
-    @property
-    def db_semaphore(self) -> asyncio.Semaphore:
-        """A semaphore to limit requests to the db"""
-        if self._db_sem is None:
-            self._db_sem = asyncio.Semaphore()
-        return self._db_sem
-
-    def find_by_job_id(self, job_id: str) -> Optional[tinydb.database.Document]:
-        """
-        Find one job by the jobId
-
-        :param job_id: a batch jobId
-        :return: the :py:meth:`AWSBatchJob.job_data` or None
-        """
-        if job_id:
-            job_query = tinydb.Query()
-            db_result = self.jobs_db.get(job_query.job_id == job_id)
-            if db_result:
-                return db_result
-
-    def find_by_job_name(self, job_name: str) -> List[tinydb.database.Document]:
-        """
-        Find any jobs matching the jobName
-
-        :param job_name: a batch jobName
-        :return: a list of documents containing :py:meth:`AWSBatchJob.job_data`
-        """
-        if job_name:
-            job_query = tinydb.Query()
-            return self.jobs_db.search(job_query.job_name == job_name)
-
-    def find_latest_job_name(self, job_name: str) -> AWSBatchJob:
-        """
-        Find the latest job matching the jobName,
-        based on the "createdAt" time stamp.
-
-        :param job_name: a batch jobName
-        :return: the latest job record available
-        """
-        jobs_saved = self.find_by_job_name(job_name)
-        if jobs_saved:
-            db_jobs = [AWSBatchJob(**job_doc) for job_doc in jobs_saved]
-            db_jobs = sorted(db_jobs, key=lambda j: j.created)
-            db_job = db_jobs[-1]
-            return db_job
-
-    def remove_by_job_id(self, job_id: str) -> Optional[tinydb.database.Document]:
-        """
-        Remove any job matching the jobId
-
-        :param job_id: a batch jobId
-        :return: a deleted document
-        """
-        if job_id:
-            job = self.find_by_job_id(job_id)
-            if job:
-                self.jobs_db.remove(doc_ids=[job.doc_id])
-                return job
-
-    def remove_by_job_name(self, job_name: str) -> List[tinydb.database.Document]:
-        """
-        Remove any jobs matching the jobName
-
-        :param job_name: a batch jobName
-        :return: a list of deleted documents
-        """
-        if job_name:
-            jobs_found = self.find_by_job_name(job_name)
-            if jobs_found:
-                docs = [doc.doc_id for doc in jobs_found]
-                self.jobs_db.remove(doc_ids=docs)
-            return jobs_found
-
-    def save_job(self, job: AWSBatchJob) -> List[int]:
-        """
-        Insert or update a job (if it has a job_id)
-
-        :param job: an AWSBatchJob
-        :return: a List[tinydb.database.Document.doc_id]
-        """
-        if job.job_id:
-            job_query = tinydb.Query()
-            return self.jobs_db.upsert(job.db_data, job_query.job_id == job.job_id)
-        else:
-            LOGGER.error("FAIL to save_job without job_id")
-
-    def find_job_logs(self, job_id: str) -> Optional[tinydb.database.Document]:
-        """
-        Find job logs by job_id
-
-        :param job_id: str
-        :return: a tinydb.database.Document with job logs
-        """
-        if job_id:
-            log_query = tinydb.Query()
-            db_result = self.logs_db.get(log_query.job_id == job_id)
-            if db_result:
-                return db_result
-        else:
-            LOGGER.error("FAIL to find_job_logs without job_id")
-
-    def save_job_logs(self, job: AWSBatchJob) -> List[int]:
-        """
-        Insert or update job logs (if the job has a job_id)
-
-        :param job: an AWSBatchJob
-        :return: a List[tinydb.database.Document.doc_id]
-        """
-        if job.job_id:
-            log_query = tinydb.Query()
-            return self.logs_db.upsert(job.db_logs_data, log_query.job_id == job.job_id)
-        else:
-            LOGGER.error("FAIL to save_job_logs without job_id")
-
-    def find_jobs_to_run(self) -> List[AWSBatchJob]:
-        """
-        Find all jobs that have not SUCCEEDED.  Note that any jobs handled
-        by the job-manager will not re-run if they have a job.job_id, those
-        jobs will be monitored until complete.
-        """
-        jobs = [AWSBatchJob(**job_doc) for job_doc in self.jobs_db.all()]
-        jobs_outstanding = []
-        for job in jobs:
-            LOGGER.info(
-                "AWS Batch job (%s:%s) has db status: %s",
-                job.job_name,
-                job.job_id,
-                job.status,
-            )
-            if job.job_id and job.status == "SUCCEEDED":
-                LOGGER.debug(job.job_description)
-                continue
-
-            jobs_outstanding.append(job)
-
-        return jobs_outstanding
-
-
-def jobs_to_run(jobs: List[AWSBatchJob], jobs_db: AWSBatchDB) -> List[AWSBatchJob]:
-    """
-    Use the job.job_name to find any jobs_db records and check the job status
-    on the latest submission of any job matching the job-name.  For any job that
-    has a matching job-name in the jobs_db, check whether the job has already run and
-    SUCCEEDED.  Any jobs that have already run and SUCCEEDED are not returned.
-
-    Return all jobs that have not run yet or have not SUCCEEDED.  Note that any
-    jobs subsequently input to the job-manager will not re-run if they already
-    have a job.job_id, those jobs will be monitored until complete.  To re-run
-    jobs that are returned from this filter function, first use `job.reset()`
-    before passing the jobs to the job-manager.
-
-    .. note::
-        The input jobs are not modified in any way in this function, i.e. there
-        are no updates from the jobs_db applied to the input jobs.
-
-        To recover jobs from the jobs_db, use
-        - :py:meth:`AWSBatchDB.find_jobs_to_run()`
-        - :py:meth:`AWSBatchDB.jobs_db.all()`
-    """
-    jobs_outstanding = []
-    for job in jobs:
-        # Avoid side-effects in this function:
-        # - treat the job as a read-only object
-        # - treat any jobs_db records as read-only objects
-        # - if a job is not saved, don't save it to jobs_db
-
-        # First check the job itself before checking the jobs_db
-        if job.job_id and job.status == "SUCCEEDED":
-            LOGGER.debug(job.job_description)
-            continue
-
-        db_job = jobs_db.find_latest_job_name(job.job_name)
-        if db_job:
-            LOGGER.info(
-                "AWS Batch job (%s:%s) has db status: %s",
-                db_job.job_name,
-                db_job.job_id,
-                db_job.status,
-            )
-
-            if db_job.job_id and db_job.status == "SUCCEEDED":
-                LOGGER.debug(db_job.job_description)
-                continue
-
-        jobs_outstanding.append(job)
-
-    return jobs_outstanding
-
-
-def jobs_recovery(jobs: List[AWSBatchJob], jobs_db: AWSBatchDB) -> List[AWSBatchJob]:
-    """
-    Use the job.job_name to find any jobs_db records to recover job data.
-    """
-    jobs_recovered = []
-    for job in jobs:
-
-        db_job = jobs_db.find_latest_job_name(job.job_name)
-        if db_job:
-            LOGGER.info(
-                "AWS Batch job (%s:%s) recovered from db with status: %s",
-                db_job.job_name,
-                db_job.job_id,
-                db_job.status,
-            )
-            jobs_recovered.append(db_job)
-        else:
-            jobs_recovered.append(job)
-
-    return jobs_recovered
 
 
 @dataclass
@@ -1122,6 +692,37 @@ async def aio_batch_job_manager(
         return job.job_description
 
 
+async def aio_batch_submit_jobs(jobs: Iterable[AWSBatchJob], config: AWSBatchConfig):
+    # Each job maintains state, so this function returns nothing.
+    tasks = []
+    for job in jobs:
+        # jobs with an existing job.job_id should skip submission
+        # to avoid resubmission for the same job
+        if job.job_id is None:
+            if job.num_tries < job.max_tries:
+                # the job submission can update the job data and jobs-db
+                task = asyncio.create_task(aio_batch_job_submit(job=job, config=config))
+                tasks.append(task)
+            else:
+                LOGGER.warning(
+                    "AWS Batch job (%s) exceeds retries: %d of %d",
+                    job.job_name,
+                    job.num_tries,
+                    job.max_tries,
+                )
+    await asyncio.gather(*tasks)
+
+
+async def aio_batch_monitor_jobs(jobs: Iterable[AWSBatchJob], config: AWSBatchConfig):
+    # Each job maintains state, so this function returns nothing.
+    await asyncio.gather(
+        *[
+            asyncio.create_task(aio_batch_job_manager(job=job, config=config))
+            for job in jobs
+        ]
+    )
+
+
 async def handle_tasks_as_completed(tasks, loop=None):
     for task in asyncio.as_completed(tasks, loop=loop):
         job_desc = await task
@@ -1129,7 +730,7 @@ async def handle_tasks_as_completed(tasks, loop=None):
 
 
 async def aio_batch_run_jobs(
-    jobs: List[AWSBatchJob], config: AWSBatchConfig, loop: AbstractEventLoop = None
+    jobs: Iterable[AWSBatchJob], config: AWSBatchConfig, loop: AbstractEventLoop = None
 ):
     if loop is None:
         # Ensure that an event loop is running in this thread
@@ -1157,7 +758,7 @@ async def aio_batch_run_jobs(
 
 
 async def aio_batch_get_logs(
-    jobs: List[AWSBatchJob], config: AWSBatchConfig, loop: AbstractEventLoop = None
+    jobs: Iterable[AWSBatchJob], config: AWSBatchConfig, loop: AbstractEventLoop = None
 ):
     if loop is None:
         loop = asyncio.get_event_loop()
@@ -1207,9 +808,8 @@ if __name__ == "__main__":
     batch_jobs_db = AWSBatchDB(
         jobs_db_file="/tmp/aio_batch_jobs.json", logs_db_file="/tmp/aio_batch_logs.json"
     )
-
-    batch_jobs = jobs_recovery(jobs=batch_jobs, jobs_db=batch_jobs_db)
-    batch_jobs = jobs_to_run(jobs=batch_jobs, jobs_db=batch_jobs_db)
+    batch_jobs = batch_jobs_db.jobs_recovery(jobs=batch_jobs)
+    batch_jobs = batch_jobs_db.jobs_to_run(jobs=batch_jobs)
     if batch_jobs:
 
         # Create an event loop for the aio processing

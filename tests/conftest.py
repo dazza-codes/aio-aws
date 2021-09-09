@@ -19,7 +19,7 @@ AioAWS test fixtures
 
 import pytest
 
-from aio_aws.aio_aws_batch import AWSBatchDB
+from aio_aws.aws_batch_db import AWSBatchDB
 
 pytest_plugins = [
     "tests.fixtures.aws_fixtures",
