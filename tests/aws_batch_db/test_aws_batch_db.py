@@ -17,7 +17,7 @@ Test AWS Batch TinyDB
 """
 import tinydb
 
-from aio_aws.aio_aws_batch import AWSBatchJob
+from aio_aws.aws_batch_models import AWSBatchJob
 from aio_aws.uuid_utils import valid_uuid4
 
 
