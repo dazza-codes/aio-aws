@@ -32,9 +32,6 @@ from aio_aws.logger import get_logger
 
 LOGGER = get_logger(__name__)
 
-#: batch job startup pause (seconds)
-BATCH_STARTUP_PAUSE: float = 30
-
 
 @dataclass
 class AWSBatchDB:
@@ -47,6 +44,30 @@ class AWSBatchDB:
     to use the jobs_db without capturing logs as well.
 
     .. seealso:: https://tinydb.readthedocs.io/en/latest/
+
+    The batch data is a `TinyDB`_ json file, e.g.
+
+    .. code-block::
+
+        >>> import json
+        >>> jobs_db_file = '/tmp/aio_batch_jobs.json'
+        >>> logs_db_file = '/tmp/aio_batch_logs.json'
+
+        >>> with open(jobs_db_file) as job_file:
+        ...     batch_data = json.load(job_file)
+        ...
+        >>> len(batch_data['aws-batch-jobs'])
+        5
+
+        >>> import tinydb
+        >>> tinydb.TinyDB.DEFAULT_TABLE = "aws-batch-jobs"
+        >>> tinydb.TinyDB.DEFAULT_TABLE_KWARGS = {"cache_size": 0}
+        >>> # the jobs and logs are kept in separate DBs so
+        >>> # that performance on the jobs_db is not compromised
+        >>> # by too much data from job logs.
+        >>> jobs_db = tinydb.TinyDB(jobs_db_file)
+        >>> logs_db = tinydb.TinyDB(logs_db_file)
+
     """
 
     #: a file used for :py:class::`TinyDB(jobs_db_file)`

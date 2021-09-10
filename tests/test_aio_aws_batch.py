@@ -73,7 +73,7 @@ async def aio_aws_batch_infrastructure(
 
 @pytest.fixture
 def batch_config(
-    aio_aws_session, aio_aws_batch_server, aio_aws_logs_server, test_jobs_db
+    aio_aws_session, aio_aws_batch_server, aio_aws_logs_server, test_aio_jobs_db
 ) -> AWSBatchConfig:
     class TestBatchConfig(AWSBatchConfig):
         session = aio_aws_session
@@ -93,7 +93,7 @@ def batch_config(
                 yield client
 
     config = TestBatchConfig(
-        batch_db=test_jobs_db,
+        aio_batch_db=test_aio_jobs_db,
         start_pause=0.2,
         min_pause=0.2,
         max_pause=0.6,
@@ -338,8 +338,8 @@ async def test_async_batch_job_manager(aws_batch_sleep1_job, batch_config):
     assert job.logs is None  # leave logs retrieval to aio_batch_get_logs
     # confirm that job data is persisted, but it can't use `find_latest_job_name`
     # due to a bug in moto, see https://github.com/spulec/moto/issues/2829
-    jobs_db = batch_config.get_batch_db()
-    job_docs = jobs_db.find_by_job_name(job.job_name)
+    jobs_db = batch_config.aio_batch_db
+    job_docs = await jobs_db.find_by_job_name(job.job_name)
     assert len(job_docs) == 1
     assert job_docs[0] == job.db_data
 
@@ -398,8 +398,8 @@ async def test_async_batch_job_db(aws_batch_sleep1_job, batch_config):
     assert job.status in AWSBatchJob.STATUSES
     assert job.status == "SUCCEEDED"
 
-    jobs_db = batch_config.get_batch_db()
-    job_data = jobs_db.find_by_job_id(job.job_id)
+    jobs_db = batch_config.aio_batch_db
+    job_data = await jobs_db.find_by_job_id(job.job_id)
     assert job_data
     assert job_data["status"] == job.status
     # use the data to re-construct an AWSBatchJob
@@ -430,11 +430,11 @@ async def test_async_batch_run_jobs(aws_batch_sleep1_job, batch_config, event_lo
     job = aws_batch_sleep1_job
     batch_jobs = [job]
 
-    await aio_batch_run_jobs(jobs=batch_jobs, config=batch_config, loop=event_loop)
+    await aio_batch_run_jobs(jobs=batch_jobs, config=batch_config)
 
-    jobs_db = batch_config.get_batch_db()
+    jobs_db = batch_config.aio_batch_db
     assert job.job_id
-    job_data = jobs_db.find_by_job_id(job.job_id)
+    job_data = await jobs_db.find_by_job_id(job.job_id)
     assert job_data
     assert job_data["job_id"] == job.job_id
     assert job_data["status"] == job.status
@@ -447,18 +447,18 @@ async def test_async_batch_get_logs(aws_batch_sleep1_job, batch_config, event_lo
     job = aws_batch_sleep1_job
     batch_jobs = [job]
 
-    await aio_batch_run_jobs(jobs=batch_jobs, config=batch_config, loop=event_loop)
+    await aio_batch_run_jobs(jobs=batch_jobs, config=batch_config)
     await asyncio.sleep(4)  # wait for logs to propagate to cloud watch service
-    await aio_batch_get_logs(jobs=batch_jobs, config=batch_config, loop=event_loop)
+    await aio_batch_get_logs(jobs=batch_jobs, config=batch_config)
 
-    jobs_db = batch_config.get_batch_db()
+    jobs_db = batch_config.aio_batch_db
     assert job.job_id
-    job_data = jobs_db.find_by_job_id(job.job_id)
+    job_data = await jobs_db.find_by_job_id(job.job_id)
     assert job_data["job_id"] == job.job_id
     assert job_data["status"] == job.status
 
     assert job.logs
-    logs_data = jobs_db.find_job_logs(job.job_id)
+    logs_data = await jobs_db.find_job_logs(job.job_id)
     assert logs_data
     assert logs_data["job_id"] == job.job_id
     assert logs_data["status"] == job.status
