@@ -74,6 +74,7 @@ import botocore.exceptions
 from aio_aws.aio_aws_config import AioAWSConfig
 from aio_aws.aio_aws_config import jitter
 from aio_aws.aio_aws_config import MAX_POOL_CONNECTIONS
+from aio_aws.aio_aws_config import RETRY_EXCEPTIONS
 from aio_aws.utils import response_success
 from aio_aws.logger import get_logger
 
@@ -256,7 +257,7 @@ class AWSLambdaFunction:
                         "AWS Lambda client error: %s, %s", self.name, response
                     )
                     error = response.get("Error", {})
-                    if error.get("Code") == "TooManyRequestsException":
+                    if error.get("Code") in RETRY_EXCEPTIONS:
                         if tries < config.retries:
                             await jitter(
                                 "lambda-retry", config.min_jitter, config.max_jitter
