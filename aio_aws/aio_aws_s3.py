@@ -148,6 +148,7 @@ from botocore.exceptions import ClientError
 from aio_aws.aio_aws_config import aio_aws_session
 from aio_aws.aio_aws_config import AioAWSConfig
 from aio_aws.aio_aws_config import jitter
+from aio_aws.aio_aws_config import RETRY_EXCEPTIONS
 from aio_aws.utils import handle_head_error_code
 from aio_aws.utils import response_success
 from aio_aws.logger import get_logger
@@ -255,8 +256,8 @@ async def aio_s3_bucket_head(
 
         except ClientError as err:
             LOGGER.debug("AWS S3 bucket HEAD error: %s", err.response)
-            err_code = err.response.get("Error", {}).get("Code")
-            if err_code == "TooManyRequestsException":
+            error = err.response.get("Error", {})
+            if error.get("Code") in RETRY_EXCEPTIONS:
                 if tries < config.retries:
                     await jitter("s3-bucket-head", config.min_jitter, config.max_jitter)
             else:
@@ -305,8 +306,8 @@ async def aio_s3_buckets_list(config: AioAWSConfig, s3_client: AioBaseClient) ->
 
         except ClientError as err:
             LOGGER.debug("AWS S3 buckets list error: %s", err.response)
-            err_code = err.response.get("Error", {}).get("Code")
-            if err_code == "TooManyRequestsException":
+            error = err.response.get("Error", {})
+            if error.get("Code") in RETRY_EXCEPTIONS:
                 if tries < config.retries:
                     await jitter("s3-bucket-list", config.min_jitter, config.max_jitter)
             else:
@@ -367,8 +368,8 @@ async def aio_s3_object_head(
 
         except ClientError as err:
             LOGGER.debug("AWS S3 object HEAD error: %s", err.response)
-            err_code = err.response.get("Error", {}).get("Code")
-            if err_code == "TooManyRequestsException":
+            error = err.response.get("Error", {})
+            if error.get("Code") in RETRY_EXCEPTIONS:
                 if tries < config.retries:
                     await jitter("s3-object-head", config.min_jitter, config.max_jitter)
                 continue  # allow it to retry, if possible
@@ -470,8 +471,8 @@ async def aio_s3_objects_list(
 
         except ClientError as err:
             LOGGER.debug("AWS S3 list objects error: %s", err.response)
-            err_code = err.response.get("Error", {}).get("Code")
-            if err_code == "TooManyRequestsException":
+            error = err.response.get("Error", {})
+            if error.get("Code") in RETRY_EXCEPTIONS:
                 if tries < config.retries:
                     await jitter(
                         "s3-list-objects", config.min_jitter, config.max_jitter
