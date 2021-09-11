@@ -244,6 +244,7 @@ import tinydb
 from aio_aws.aio_aws_config import AioAWSConfig
 from aio_aws.aio_aws_config import delay
 from aio_aws.aio_aws_config import jitter
+from aio_aws.aio_aws_config import RETRY_EXCEPTIONS
 from aio_aws.aws_batch_db import AWSBatchDB
 from aio_aws.aws_batch_models import AWSBatchJob
 from aio_aws.utils import response_success
@@ -359,7 +360,7 @@ async def aio_batch_job_submit(job: AWSBatchJob, config: AWSBatchConfig = None) 
 
             except botocore.exceptions.ClientError as err:
                 error = err.response.get("Error", {})
-                if error.get("Code") == "TooManyRequestsException":
+                if error.get("Code") in RETRY_EXCEPTIONS:
                     if tries <= config.retries:
                         # add an extra random sleep period to avoid API throttle
                         await jitter(
@@ -394,7 +395,7 @@ async def aio_batch_job_status(
                 return await batch_client.describe_jobs(jobs=jobs)
             except botocore.exceptions.ClientError as err:
                 error = err.response.get("Error", {})
-                if error.get("Code") == "TooManyRequestsException":
+                if error.get("Code") in RETRY_EXCEPTIONS:
                     if tries <= config.retries:
                         # add an extra random sleep period to avoid API throttle
                         await jitter(
@@ -490,7 +491,7 @@ async def aio_batch_job_logs(
 
             except botocore.exceptions.ClientError as err:
                 error = err.response.get("Error", {})
-                if error.get("Code") == "TooManyRequestsException":
+                if error.get("Code") in RETRY_EXCEPTIONS:
                     if tries <= config.retries:
                         # add an extra random sleep period to avoid API throttle
                         await jitter(
@@ -531,7 +532,7 @@ async def aio_batch_job_terminate(
 
             except botocore.exceptions.ClientError as err:
                 error = err.response.get("Error", {})
-                if error.get("Code") == "TooManyRequestsException":
+                if error.get("Code") in RETRY_EXCEPTIONS:
                     if tries <= config.retries:
                         # add an extra random sleep period to avoid API throttle
                         await jitter(

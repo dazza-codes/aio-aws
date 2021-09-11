@@ -68,6 +68,9 @@ MIN_JITTER: float = 1
 #: Maximum API request jitter
 MAX_JITTER: float = 10
 
+#: Common exception codes that are retried
+RETRY_EXCEPTIONS = ["TooManyRequestsException", "ThrottlingException"]
+
 
 def asyncio_default_semaphore() -> asyncio.Semaphore:
     """
