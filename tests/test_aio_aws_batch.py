@@ -112,7 +112,7 @@ def aws_batch_sleep1_job(aio_aws_batch_infrastructure: AioAwsBatchInfrastructure
         job_name="sleep-1-job",
         job_definition=aio_aws_batch_infrastructure.job_definition_arn,
         job_queue=aio_aws_batch_infrastructure.job_queue_arn,
-        command=["/bin/sh", "-c", "echo Hello && sleep 0.2 && echo Bye"],
+        command=["/bin/sh", "-c", "echo Hello && sleep 1 && echo Bye"],
     )
 
 
