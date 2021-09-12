@@ -153,3 +153,11 @@ Focus on aio-aws
 -------------------
 - Use relaxed versions for botocore with aio-botocore
 
+
+0.15.0 (2021-09-11)
+-------------------
+- Update docs
+- refactor aio-batch-db as optional integration
+- add aio-redis option for batch-db
+- Refactor common retry exception codes
+
