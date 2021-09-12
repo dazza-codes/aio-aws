@@ -71,12 +71,12 @@ from typing import Optional
 import aiobotocore.client
 import botocore.exceptions
 
-from aio_aws.aio_aws_config import AioAWSConfig
-from aio_aws.aio_aws_config import jitter
 from aio_aws.aio_aws_config import MAX_POOL_CONNECTIONS
 from aio_aws.aio_aws_config import RETRY_EXCEPTIONS
-from aio_aws.utils import response_success
+from aio_aws.aio_aws_config import AioAWSConfig
+from aio_aws.aio_aws_config import jitter
 from aio_aws.logger import get_logger
+from aio_aws.utils import response_success
 
 LOGGER = get_logger(__name__)
 
