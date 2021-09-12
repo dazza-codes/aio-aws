@@ -23,11 +23,11 @@ import yaml
 from botocore.client import BaseClient
 from botocore.config import Config
 from botocore.exceptions import ClientError
-from aio_aws.s3_uri import S3Info
 
-from aio_aws.utils import response_success
 from aio_aws.logger import get_logger
 from aio_aws.s3_uri import S3URI
+from aio_aws.s3_uri import S3Info
+from aio_aws.utils import response_success
 
 LOGGER = get_logger(__name__)
 

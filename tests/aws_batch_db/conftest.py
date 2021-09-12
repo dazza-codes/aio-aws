@@ -1,6 +1,6 @@
 import pytest
 
-from aio_aws.aio_aws_batch import AWSBatchJob
+from aio_aws.aws_batch_models import AWSBatchJob
 
 
 @pytest.fixture
