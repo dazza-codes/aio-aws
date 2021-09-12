@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 # pylint: disable=bad-continuation
 
-# Copyright 2020 Darren Weber
+# Copyright 2019-2021 Darren Weber
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -57,69 +57,6 @@ approach uses a client connection limiter, based on ``asyncio.Semaphore(20)``.
 
     Checking equality of collections for aio-aws vs. aws-sync
     The collections for aio-aws vs. aws-sync match OK
-
-
-Getting Started
-***************
-
-The example above uses code similar to the following.
-Using asyncio for AWS services requires the `aiobotocore`_ library, which wraps a
-release of `botocore`_ to patch it with features for async coroutines using
-`asyncio`_ and `aiohttp`_.  To avoid issuing too many concurrent requests (DOS attack),
-the async approach should use a client connection limiter, based on ``asyncio.Semaphore()``.
-It's recommended to use a single session and a single client with a connection pool.
-Although there are context manager patterns, it's also possible to manage closing the client
-after everything is done.
-
-.. code-block::
-
-    # python 3.7
-
-    import asyncio
-    import aiobotocore.config
-    import time
-
-    from aio_aws.aio_aws_config import AioAWSConfig
-    from aio_aws.aio_aws_s3 import aio_s3_objects_list
-
-    # Use a single session with a larger connection pool.
-    # The AioAWSConfig can provide clients on-demand with
-    # a context manager pattern.
-    aio_session = aio_aws_session()
-    aio_config = AioAWSConfig(
-        max_pool_connections=40,
-        session=aio_session,
-        min_pause=0.2,
-        max_pause=0.6,
-        min_jitter=0.2,
-        max_jitter=0.8,
-    )
-
-    main_loop = asyncio.get_event_loop()
-
-    try:
-        # https://registry.opendata.aws/noaa-goes/
-        noaa_goes_bucket = "noaa-goes16"
-        noaa_prefix = "ABI-L2-ADPC/2019"  # use a prior year for stable results
-
-        print("aio-aws collection of all objects in a bucket-prefix.")
-        start = time.perf_counter()
-        aio_s3_objects = main_loop.run_until_complete(
-            aio_s3_objects_list(
-                bucket_name=noaa_goes_bucket,
-                bucket_prefix=noaa_prefix,
-                config=aio_config
-            )
-        )
-        aio_s3_uris = [f"s3://{noaa_goes_bucket}/{obj['Key']}" for obj in aio_s3_objects]
-        print(f"found {len(aio_s3_uris)} s3 objects")
-        end = time.perf_counter() - start
-        print(f"finished in {end:0.2f} seconds.")
-
-    finally:
-        main_loop.run_until_complete(main_loop.shutdown_asyncgens())
-        main_loop.stop()
-        main_loop.close()
 
 
 .. seealso::

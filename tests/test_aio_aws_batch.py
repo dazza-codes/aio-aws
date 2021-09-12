@@ -1,4 +1,4 @@
-# Copyright 2020 Darren Weber
+# Copyright 2019-2021 Darren Weber
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,6 +33,7 @@ import botocore.exceptions
 import pytest
 
 from aio_aws import aio_aws_batch
+from aio_aws.aio_aws_batch import AWSBatchConfig
 from aio_aws.aio_aws_batch import aio_batch_get_logs
 from aio_aws.aio_aws_batch import aio_batch_job_logs
 from aio_aws.aio_aws_batch import aio_batch_job_manager
@@ -41,12 +42,11 @@ from aio_aws.aio_aws_batch import aio_batch_job_submit
 from aio_aws.aio_aws_batch import aio_batch_job_terminate
 from aio_aws.aio_aws_batch import aio_batch_job_waiter
 from aio_aws.aio_aws_batch import aio_batch_run_jobs
-from aio_aws.aio_aws_batch import AWSBatchConfig
 from aio_aws.aws_batch_models import AWSBatchJob
 from aio_aws.utils import response_success
-from tests.fixtures.aiomoto_fixtures import aio_batch_infrastructure
 from tests.fixtures.aiomoto_fixtures import AioAwsBatchClients
 from tests.fixtures.aiomoto_fixtures import AioAwsBatchInfrastructure
+from tests.fixtures.aiomoto_fixtures import aio_batch_infrastructure
 
 
 def test_async_aws_batch():
