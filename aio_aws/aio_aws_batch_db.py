@@ -16,6 +16,7 @@ import abc
 import asyncio
 import json
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -551,6 +552,13 @@ class AioAWSBatchTinyDB(AioAWSBatchDB):
 
         # Lazy init for any asyncio instances
         self._db_sem = None
+
+    @classmethod
+    def get_paged_batch_db(cls, db_path: Path, offset: int, limit: int):
+        db_page = f"{offset:06d}_{offset + limit:06d}"
+        jobs_db_file = str(db_path / f"aio_batch_jobs_{db_page}.json")
+        logs_db_file = str(db_path / f"aio_batch_logs_{db_page}.json")
+        return cls(jobs_db_file=jobs_db_file, logs_db_file=logs_db_file)
 
     @property
     def db_semaphore(self) -> asyncio.Semaphore:

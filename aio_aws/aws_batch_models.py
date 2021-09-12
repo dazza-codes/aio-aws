@@ -23,7 +23,9 @@ Batch Job metadata models.
 
 """
 
+import enum
 from dataclasses import dataclass
+from functools import total_ordering
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -31,6 +33,22 @@ from typing import Optional
 from aio_aws.logger import get_logger
 
 LOGGER = get_logger(__name__)
+
+
+@total_ordering
+class AWSBatchJobStatuses(enum.Enum):
+    SUBMITTED = 1
+    PENDING = 2
+    RUNNABLE = 3
+    STARTING = 4
+    RUNNING = 5
+    SUCCEEDED = 6
+    FAILED = 7
+
+    def __lt__(self, other):
+        if self.__class__ is other.__class__:
+            return self.value < other.value
+        return NotImplemented
 
 
 @dataclass
@@ -171,6 +189,30 @@ class AWSBatchJob:
             data = self.db_data
             data["logs"] = self.logs
             return data
+
+    def allow_submit_job(self) -> bool:
+        """
+        - jobs with an existing job.job_id should skip
+        submission to avoid resubmission for the same job
+
+        - jobs with too many tries cannot be resubmitted
+
+        The :py:meth:`AWSBatchJob.reset()` can be applied
+        in order to resubmit any job that is no allowed.
+
+        :return: True if it is allowed
+        """
+        if self.job_id is None:
+            if self.num_tries < self.max_tries:
+                return True
+            else:
+                LOGGER.warning(
+                    "AWS Batch job (%s) exceeds retries: %d of %d",
+                    self.job_name,
+                    self.num_tries,
+                    self.max_tries,
+                )
+        return False
 
     def reset(self):
         """Clear the job_id and all related job data"""
