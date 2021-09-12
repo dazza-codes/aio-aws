@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 # pylint: disable=bad-continuation
 
-# Copyright 2020 Darren Weber
+# Copyright 2019-2021 Darren Weber
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -97,102 +97,6 @@ test suite uses much faster polling on mock batch jobs to speed up the unit test
     )
 
 
-Getting Started
-***************
-
-The example above uses code similar to the following.  The following code appears
-to work like regular synchronous code; behind the scenes, it wraps asyncio coroutines
-and event loops.
-
-To fully understand it, look at the module code directly.  For custom solutions, use
-an event loop and some of the coroutines available.  Note that using
-asyncio for AWS services requires the `aiobotocore`_ library, which wraps a
-release of `botocore`_ to patch it with features for async coroutines using
-`asyncio`_ and `aiohttp`_.  To avoid issuing too many concurrent requests (DOS attack),
-the async approach should use a client connection limiter, based on ``asyncio.Semaphore()``.
-It's recommended to use a single session and a single client with a connection pool.
-Although there are context manager patterns, it's also possible to manage closing the client
-after everything is done.
-
-.. code-block::
-
-    # python 3.6
-
-    import asyncio
-
-    from aio_aws.aio_aws_batch import AWSBatchConfig
-    from aio_aws.aio_aws_batch import AWSBatchDB
-    from aio_aws.aio_aws_batch import AWSBatchJob
-    from aio_aws.aio_aws_batch import aio_batch_run_jobs
-    from aio_aws.aio_aws_batch import aio_batch_get_logs
-
-    # For the `aws_region` where batch will run:
-    # - create a `batch-dev` compute environment
-    # - create a `batch-dev` batch queue
-    # - create a `batch-dev` job definition using alpine:latest
-
-    job_command = "for a in `seq 1 10`; do echo Hello $a; sleep 0.5; done"
-
-    # Create a list of AWSBatchJob objects, which are simple wrappers
-    # on AWS Batch job data.  These objects are simple, by design, to
-    # allow them to be used in either synchronous or asynchronous code.
-    batch_jobs = []
-    for i in range(20):
-        job_name = f"test-logs-job-{i:04d}"
-
-        # Creating an AWSBatchJob instance does not run anything, it's simply
-        # a dataclass to retain and track job attributes.
-        # Replace 'command' with 'container_overrides' dict for more options;
-        # do not use 'command' together with 'container_overrides'.
-        batch_job = AWSBatchJob(
-            job_name=job_name,
-            job_definition="batch-dev",
-            job_queue="batch-dev",
-            command=["/bin/sh", "-c", job_command],
-        )
-        batch_jobs.append(batch_job)
-
-    # The AWSBatchDB wraps TinyDB data stores; it can be
-    # used in either synchronous or asynchronous code.
-    batch_jobs_db = AWSBatchDB(
-        jobs_db_file="/tmp/aio_batch_jobs.json",
-        logs_db_file="/tmp/aio_batch_logs.json",
-    )
-    batch_jobs = batch_jobs_db.jobs_recovery(jobs=batch_jobs)
-    batch_jobs = batch_jobs_db.jobs_to_run(jobs=batch_jobs)
-    if batch_jobs:
-
-        # Create an event loop for the aio processing
-        loop = asyncio.get_event_loop()
-        loop.set_debug(enabled=True)
-        try:
-
-            # for polling frequency of 10-30 seconds, with 30-60 second job starts;
-            # use lower frequency polling for long running jobs
-            aio_config = AWSBatchConfig(
-                max_pool_connections=10,
-                aws_region="us-west-2",
-                batch_db=batch_jobs_db,
-                min_pause=10,
-                max_pause=30,
-                start_pause=30,
-            )
-
-            loop.run_until_complete(aio_batch_run_jobs(jobs=batch_jobs, config=aio_config))
-
-            complete_jobs = []
-            for job in batch_jobs:
-                if job.status in ["SUCCEEDED", "FAILED"]:
-                    complete_jobs.append(job)
-
-            loop.run_until_complete(aio_batch_get_logs(jobs=complete_jobs, config=aio_config))
-
-        finally:
-            loop.run_until_complete(loop.shutdown_asyncgens())
-            loop.stop()
-            loop.close()
-
-
 .. seealso::
     - https://aiobotocore.readthedocs.io/en/latest/
     - https://botocore.amazonaws.com/v1/documentation/api/latest/index.html
@@ -233,9 +137,11 @@ BATCH_STARTUP_PAUSE: float = 30
 
 @dataclass
 class AWSBatchConfig(AioAWSConfig):
+
     #: a batch job startup pause, ``random.uniform(start_pause, start_pause * 2)``;
     #: this applies when the job status is in ["SUBMITTED", "PENDING", "RUNNABLE"]
     start_pause: float = BATCH_STARTUP_PAUSE
+
     #: an optional AioAWSBatchDB
     aio_batch_db: Optional[AioAWSBatchDB] = None
 
