@@ -145,13 +145,13 @@ from botocore import UNSIGNED
 from botocore.client import BaseClient
 from botocore.exceptions import ClientError
 
-from aio_aws.aio_aws_config import aio_aws_session
-from aio_aws.aio_aws_config import AioAWSConfig
-from aio_aws.aio_aws_config import jitter
 from aio_aws.aio_aws_config import RETRY_EXCEPTIONS
+from aio_aws.aio_aws_config import AioAWSConfig
+from aio_aws.aio_aws_config import aio_aws_session
+from aio_aws.aio_aws_config import jitter
+from aio_aws.logger import get_logger
 from aio_aws.utils import handle_head_error_code
 from aio_aws.utils import response_success
-from aio_aws.logger import get_logger
 
 LOGGER = get_logger(__name__)
 

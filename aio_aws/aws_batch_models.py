@@ -32,9 +32,6 @@ from aio_aws.logger import get_logger
 
 LOGGER = get_logger(__name__)
 
-#: batch job startup pause (seconds)
-BATCH_STARTUP_PAUSE: float = 30
-
 
 @dataclass
 class AWSBatchJobDescription:
