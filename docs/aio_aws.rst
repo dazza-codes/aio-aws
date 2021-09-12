@@ -6,7 +6,22 @@ AioAws
    :undoc-members:
    :show-inheritance:
 
+.. automodule:: aio_aws.aio_aws_config
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. automodule:: aio_aws.aio_aws_batch
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: aio_aws.aio_aws_batch_db
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: aio_aws.aws_batch_models
    :members:
    :undoc-members:
    :show-inheritance:
@@ -27,6 +42,21 @@ AioAws
    :show-inheritance:
 
 .. automodule:: aio_aws.s3_io
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: aio_aws.s3_uri
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: aio_aws.utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: aio_aws.uuid_utils
    :members:
    :undoc-members:
    :show-inheritance:
