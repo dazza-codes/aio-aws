@@ -28,21 +28,35 @@ according to the moto license (Apache-2.0).
 import asyncio
 import inspect
 from contextlib import asynccontextmanager
+from unittest.mock import MagicMock
 
 import botocore.exceptions
 import pytest
 
 from aio_aws import aio_aws_batch
 from aio_aws.aio_aws_batch import AWSBatchConfig
+from aio_aws.aio_aws_batch import RetryError
+from aio_aws.aio_aws_batch import aio_batch_cancel_jobs
+from aio_aws.aio_aws_batch import aio_batch_describe_jobs
 from aio_aws.aio_aws_batch import aio_batch_get_logs
+from aio_aws.aio_aws_batch import aio_batch_job_cancel
 from aio_aws.aio_aws_batch import aio_batch_job_logs
 from aio_aws.aio_aws_batch import aio_batch_job_manager
-from aio_aws.aio_aws_batch import aio_batch_job_status
 from aio_aws.aio_aws_batch import aio_batch_job_submit
 from aio_aws.aio_aws_batch import aio_batch_job_terminate
 from aio_aws.aio_aws_batch import aio_batch_job_waiter
 from aio_aws.aio_aws_batch import aio_batch_run_jobs
+from aio_aws.aio_aws_batch import aio_batch_submit_jobs
+from aio_aws.aio_aws_batch import aio_batch_terminate_jobs
+from aio_aws.aio_aws_batch import aio_batch_update_jobs
+from aio_aws.aio_aws_batch import batch_cancel_jobs
+from aio_aws.aio_aws_batch import batch_get_logs
+from aio_aws.aio_aws_batch import batch_monitor_jobs
+from aio_aws.aio_aws_batch import batch_submit_jobs
+from aio_aws.aio_aws_batch import batch_terminate_jobs
+from aio_aws.aio_aws_batch import batch_update_jobs
 from aio_aws.aws_batch_models import AWSBatchJob
+from aio_aws.aws_batch_models import AWSBatchJobStatuses
 from aio_aws.utils import response_success
 from tests.fixtures.aiomoto_fixtures import AioAwsBatchClients
 from tests.fixtures.aiomoto_fixtures import AioAwsBatchInfrastructure
@@ -136,26 +150,6 @@ def aws_batch_fail_job(aio_aws_batch_infrastructure: AioAwsBatchInfrastructure):
     )
 
 
-# THIS DOES NOT WORK - DON'T TRY IT AGAIN
-# @pytest.fixture
-# async def aws_batch_sleep1_job_submitted(
-#     aws_batch_sleep1_job, batch_config
-# ) -> AWSBatchJob:
-#     job = aws_batch_sleep1_job
-#     response = await aio_batch_job_submit(job, config=batch_config)
-#     assert response_success(response)
-#     assert response.get("jobId")
-#     # To avoid side-effects, the job-submit should not modify the job object directly
-#     assert job.job_id is None
-#     if response_success(response):
-#         # this should be whatever the job-manager does, without saving to the jobs-db
-#         job.job_id = response["jobId"]
-#         job.job_submission = response
-#         job.job_tries.append(job.job_id)
-#         job.num_tries += 1
-#         return job
-
-
 @pytest.mark.asyncio
 async def test_aws_batch_infrastructure(
     aio_aws_batch_infrastructure: AioAwsBatchInfrastructure,
@@ -238,73 +232,226 @@ async def test_aio_batch_list_jobs(
 @pytest.mark.asyncio
 async def test_async_batch_job_submit(aws_batch_sleep1_job, batch_config):
     job = aws_batch_sleep1_job
-    response = await aio_batch_job_submit(job, config=batch_config)
+    await aio_batch_job_submit(job, config=batch_config)
+    response = job.job_submission
     assert response_success(response)
     assert response.get("jobId")
     # The job-submission modifies the job object, it's authorized for side-effects
-    assert job.job_submission == response
     assert job.job_id
     assert job.job_id == response.get("jobId")
     assert job.job_id in job.job_tries
     assert job.num_tries == 1
     assert job.num_tries <= job.max_tries
+    assert job.status in AWSBatchJob.STATUSES
+    assert AWSBatchJobStatuses[job.status] == AWSBatchJobStatuses.SUBMITTED
 
 
-@pytest.mark.skip("https://github.com/aio-libs/aiobotocore/issues/781")
 @pytest.mark.asyncio
 async def test_async_batch_job_submit_retry(
-    aws_batch_sleep1_job, aio_aws_batch_client, batch_config, mocker
+    aws_batch_sleep1_job,
+    aio_aws_session,
+    aio_aws_batch_server,
+    aio_aws_logs_server,
+    aio_aws_batch_client,
+    batch_config,
+    test_aio_jobs_db,
+    mocker,
 ):
     job = aws_batch_sleep1_job
 
+    error_response = {"Error": {"Code": "TooManyRequestsException"}}
+
     exception = botocore.exceptions.ClientError(
-        error_response={"Error": {"Code": "TooManyRequestsException"}},
-        operation_name="submit_job",  # ?
+        error_response=error_response,
+        operation_name="submit_job",
     )
-    mock_client = mocker.patch.object(
-        aio_aws_batch_client, "submit_job", side_effect=exception
+
+    # monkey patch MagicMock
+    async def async_magic():
+        raise exception
+
+    MagicMock.__await__ = lambda x: async_magic().__await__()
+
+    class MockBatchConfig(AWSBatchConfig):
+        session = aio_aws_session
+
+        @asynccontextmanager
+        async def create_batch_client(self):
+            async with aio_aws_session.create_client(
+                "batch", endpoint_url=aio_aws_batch_server
+            ) as client:
+                mock_client = mocker.patch.object(client, "submit_job")
+                mock_client.__await__ = lambda x: async_magic().__await__()
+                yield mock_client
+
+        @asynccontextmanager
+        async def create_logs_client(self):
+            async with aio_aws_session.create_client(
+                "logs", endpoint_url=aio_aws_logs_server
+            ) as client:
+                yield client
+
+    mock_config = MockBatchConfig(
+        aio_batch_db=test_aio_jobs_db,
+        start_pause=0.2,
+        min_pause=0.2,
+        max_pause=0.6,
+        min_jitter=0.1,
+        max_jitter=0.2,
     )
-    response = await aio_batch_job_submit(job, client=mock_client, config=batch_config)
-    # # The job-submission modifies the job object, it's authorized for side-effects
-    # assert job.job_submission == response
-    # assert job.job_id
-    # assert job.job_id == response.get("jobId")
-    # assert job.job_id in job.job_tries
-    # assert job.num_tries == 1
-    # assert job.num_tries <= job.max_tries
-    assert False
+
+    with pytest.raises(RetryError) as err:
+        await aio_batch_job_submit(job, config=mock_config)
+
+    assert job.job_id is None
+    assert job.num_tries == 0
+    assert job.job_submission == error_response
+
+
+def test_batch_jobs_utils(aws_batch_sleep1_job, batch_config, mocker):
+    # Test convenient synchronous functions that wrap async functions
+    job1 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
+    job2 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
+    jobs = [job1, job2]
+
+    mock_config = mocker.patch("aio_aws.aio_aws_batch.AWSBatchConfig")
+    mock_config.return_value = batch_config
+
+    batch_submit_jobs(jobs=jobs)
+    for job in jobs:
+        assert AWSBatchJobStatuses[job.status] == AWSBatchJobStatuses.SUBMITTED
+
+    batch_update_jobs(jobs=jobs)
+    for job in jobs:
+        assert AWSBatchJobStatuses[job.status] >= AWSBatchJobStatuses.SUBMITTED
+
+    batch_monitor_jobs(jobs=jobs)
+    for job in jobs:
+        assert AWSBatchJobStatuses[job.status] == AWSBatchJobStatuses.SUCCEEDED
+
+    batch_get_logs(jobs=jobs)
+    for job in jobs:
+        assert job.logs
+
+
+def test_batch_jobs_cancel(aws_batch_sleep1_job, batch_config, mocker):
+    # Test convenient synchronous functions that wrap async functions
+    job1 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
+    job2 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
+    jobs = [job1, job2]
+
+    mock_config = mocker.patch("aio_aws.aio_aws_batch.AWSBatchConfig")
+    mock_config.return_value = batch_config
+
+    batch_submit_jobs(jobs=jobs)
+    for job in jobs:
+        assert AWSBatchJobStatuses[job.status] == AWSBatchJobStatuses.SUBMITTED
+
+    batch_cancel_jobs(jobs=jobs)
+    for job in jobs:
+        assert AWSBatchJobStatuses[job.status] == AWSBatchJobStatuses.FAILED
+
+
+def test_batch_jobs_terminate(aws_batch_sleep1_job, batch_config, mocker):
+    # Test convenient synchronous functions that wrap async functions
+    job1 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
+    job2 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
+    jobs = [job1, job2]
+
+    mock_config = mocker.patch("aio_aws.aio_aws_batch.AWSBatchConfig")
+    mock_config.return_value = batch_config
+
+    batch_submit_jobs(jobs=jobs)
+    for job in jobs:
+        assert AWSBatchJobStatuses[job.status] == AWSBatchJobStatuses.SUBMITTED
+
+    batch_terminate_jobs(jobs=jobs)
+    for job in jobs:
+        assert AWSBatchJobStatuses[job.status] == AWSBatchJobStatuses.FAILED
 
 
 @pytest.mark.asyncio
-async def test_async_batch_job_status(aws_batch_sleep1_job, batch_config):
-    job = aws_batch_sleep1_job
-    response = await aio_batch_job_submit(job, config=batch_config)
+async def test_async_batch_describe_jobs(aws_batch_sleep1_job, batch_config):
+    job1 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
+    job2 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
+    jobs = [job1, job2]
+    await aio_batch_submit_jobs(jobs, config=batch_config)
+    job_ids = [j.job_id for j in jobs]
+    assert all(job_ids)
+
+    response = await aio_batch_describe_jobs(job_ids=job_ids, config=batch_config)
     assert response_success(response)
-    assert job.job_id
-
-    response = await aio_batch_job_status(jobs=[job.job_id], config=batch_config)
-    assert response_success(response)
-    jobs = response.get("jobs")
-    assert len(jobs) == 1
-    job_desc = jobs[0]
-    assert job_desc["jobQueue"] == job.job_queue
-    assert job_desc["jobDefinition"] == job.job_definition
-    assert job_desc["status"] in AWSBatchJob.STATUSES
+    job_descriptions = response.get("jobs")
+    assert len(job_descriptions) == 2
+    for job_desc in job_descriptions:
+        assert job_desc["jobQueue"] == job1.job_queue
+        assert job_desc["jobDefinition"] == job1.job_definition
+        assert job_desc["status"] in AWSBatchJob.STATUSES
 
 
+@pytest.mark.asyncio
+async def test_async_batch_update_jobs(aws_batch_sleep1_job, batch_config):
+    job1 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
+    job2 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
+    jobs = [job1, job2]
+    await aio_batch_submit_jobs(jobs, config=batch_config)
+    job_ids = [j.job_id for j in jobs]
+    assert all(job_ids)
+
+    await asyncio.sleep(3.0)
+    await aio_batch_update_jobs(jobs=jobs, config=batch_config)
+    # Since update jobs can get various status conditions, depending
+    # on how advanced a job is in a lifecycle, this just tests that
+    # the job status is set
+    for job in jobs:
+        assert job.status in AWSBatchJob.STATUSES
+        assert AWSBatchJobStatuses[job.status] in AWSBatchJobStatuses
+        assert AWSBatchJobStatuses[job.status] > AWSBatchJobStatuses.SUBMITTED
+
+
+@pytest.mark.asyncio
+async def test_async_batch_cancel_jobs(aws_batch_sleep1_job, batch_config):
+    job1 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
+    job2 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
+    jobs = [job1, job2]
+    await aio_batch_submit_jobs(jobs, config=batch_config)
+    for job in jobs:
+        assert job.job_id
+        assert AWSBatchJobStatuses[job.status] == AWSBatchJobStatuses.SUBMITTED
+
+    await aio_batch_cancel_jobs(jobs=jobs, config=batch_config)
+    # The cancel jobs function should wait for it to fail and set status FAILED
+    for job in jobs:
+        assert AWSBatchJobStatuses[job.status] == AWSBatchJobStatuses.FAILED
+
+
+@pytest.mark.asyncio
+async def test_async_batch_terminate_jobs(aws_batch_sleep1_job, batch_config):
+    job1 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
+    job2 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
+    jobs = [job1, job2]
+    await aio_batch_submit_jobs(jobs, config=batch_config)
+    for job in jobs:
+        assert job.job_id
+        assert AWSBatchJobStatuses[job.status] == AWSBatchJobStatuses.SUBMITTED
+
+    await aio_batch_terminate_jobs(jobs=jobs, config=batch_config)
+    # The terminate jobs function should wait for it to fail and set status FAILED
+    for job in jobs:
+        assert AWSBatchJobStatuses[job.status] == AWSBatchJobStatuses.FAILED
+
+
+# The moto mock server indicates SUCCEEDED instead of FAILED
 @pytest.mark.skip("https://github.com/spulec/moto/issues/2829")
 @pytest.mark.asyncio
 async def test_async_batch_job_failed(aws_batch_fail_job, batch_config):
     job = aws_batch_fail_job
-    response = await aio_batch_job_submit(job, config=batch_config)
-    assert response_success(response)
+    await aio_batch_job_submit(job, config=batch_config)
     assert job.job_id
 
-    job_desc = await aio_batch_job_waiter(job=job, config=batch_config)
-    assert job_desc["status"] == "FAILED"
+    await aio_batch_job_waiter(job=job, config=batch_config)
     # The job-waiter modifies the job object, it's authorized for side-effects
-    assert job.job_description == job_desc
-    assert job.status == job_desc["status"]
+    assert job.job_description
     assert job.status in AWSBatchJob.STATUSES
     assert job.status == "FAILED"
 
@@ -312,15 +459,12 @@ async def test_async_batch_job_failed(aws_batch_fail_job, batch_config):
 @pytest.mark.asyncio
 async def test_async_batch_job_waiter(aws_batch_sleep1_job, batch_config):
     job = aws_batch_sleep1_job
-    response = await aio_batch_job_submit(job, config=batch_config)
-    assert response_success(response)
+    await aio_batch_job_submit(job, config=batch_config)
     assert job.job_id
 
-    job_desc = await aio_batch_job_waiter(job=job, config=batch_config)
-    assert job_desc["status"] == "SUCCEEDED"
+    await aio_batch_job_waiter(job=job, config=batch_config)
     # The job-waiter modifies the job object, it's authorized for side-effects
-    assert job.job_description == job_desc
-    assert job.status == job_desc["status"]
+    assert job.job_description
     assert job.status in AWSBatchJob.STATUSES
     assert job.status == "SUCCEEDED"
 
@@ -328,11 +472,10 @@ async def test_async_batch_job_waiter(aws_batch_sleep1_job, batch_config):
 @pytest.mark.asyncio
 async def test_async_batch_job_manager(aws_batch_sleep1_job, batch_config):
     job = aws_batch_sleep1_job
-    job_desc = await aio_batch_job_manager(job, config=batch_config)
+    await aio_batch_job_manager(job, config=batch_config)
     # The job-manager modifies the job object, it's authorized for side-effects
     assert job.job_id
-    assert job.job_description == job_desc
-    assert job.status == job_desc["status"]
+    assert job.job_description
     assert job.status in AWSBatchJob.STATUSES
     assert job.status == "SUCCEEDED"
     assert job.logs is None  # leave logs retrieval to aio_batch_get_logs
@@ -345,27 +488,29 @@ async def test_async_batch_job_manager(aws_batch_sleep1_job, batch_config):
 
 
 @pytest.mark.asyncio
+async def test_async_batch_job_cancel(aws_batch_sleep5_job, batch_config):
+    job = aws_batch_sleep5_job
+    await aio_batch_job_submit(job, config=batch_config)
+    assert job.job_id
+
+    reason = "test-job-cancel"  # not a SPOT failure
+    await aio_batch_job_cancel(job=job, reason=reason, config=batch_config)
+    # It waits for the job to cancel and updates the job.
+    assert job.job_description["statusReason"] == reason
+    assert job.status in AWSBatchJob.STATUSES
+    assert job.status == "FAILED"
+
+
+@pytest.mark.asyncio
 async def test_async_batch_job_terminate(aws_batch_sleep5_job, batch_config):
     job = aws_batch_sleep5_job
-    response = await aio_batch_job_submit(job, config=batch_config)
-    assert response_success(response)
+    await aio_batch_job_submit(job, config=batch_config)
     assert job.job_id
 
     reason = "test-job-termination"  # not a SPOT failure
-    response = await aio_batch_job_terminate(
-        job_id=job.job_id, reason=reason, config=batch_config
-    )
-    assert response_success(response)
-    # there are no response details to inspect
-
-    # Waiting for the job to complete is necessary; checking the job status
-    # immediately after terminating it can get a status like RUNNABLE or RUNNING.
-    job_desc = await aio_batch_job_waiter(job=job, config=batch_config)
-    assert job_desc["status"] == "FAILED"
-    assert job_desc["statusReason"] == reason
-    # The job-waiter modifies the job object, it's authorized for side-effects
-    assert job.job_description == job_desc
-    assert job.status == job_desc["status"]
+    await aio_batch_job_terminate(job=job, reason=reason, config=batch_config)
+    # It waits for the job to terminate and updates the job.
+    assert job.job_description["statusReason"] == reason
     assert job.status in AWSBatchJob.STATUSES
     assert job.status == "FAILED"
 
@@ -373,19 +518,14 @@ async def test_async_batch_job_terminate(aws_batch_sleep5_job, batch_config):
 @pytest.mark.asyncio
 async def test_async_batch_job_spot_retry(aws_batch_sleep1_job, batch_config):
     job = aws_batch_sleep1_job
-    response = await aio_batch_job_submit(job, config=batch_config)
-    assert response_success(response)
+    await aio_batch_job_submit(job, config=batch_config)
     assert job.job_id
 
     reason = "Host EC2 instance-id terminated"  # a SPOT failure
-    response = await aio_batch_job_terminate(
-        job_id=job.job_id, reason=reason, config=batch_config
-    )
-    assert response_success(response)
+    await aio_batch_job_terminate(job=job, reason=reason, config=batch_config)
+    assert job.status == "FAILED"
 
-    job_desc = await aio_batch_job_manager(job, config=batch_config)
-    assert job.job_description == job_desc
-    assert job.status == job_desc["status"]
+    await aio_batch_job_manager(job, config=batch_config)
     assert job.status in AWSBatchJob.STATUSES
     assert job.status == "SUCCEEDED"  # job manager should retry the job
 
@@ -393,8 +533,7 @@ async def test_async_batch_job_spot_retry(aws_batch_sleep1_job, batch_config):
 @pytest.mark.asyncio
 async def test_async_batch_job_db(aws_batch_sleep1_job, batch_config):
     job = aws_batch_sleep1_job
-    job_desc = await aio_batch_job_manager(job, config=batch_config)
-    assert job.status == job_desc["status"]
+    await aio_batch_job_manager(job, config=batch_config)
     assert job.status in AWSBatchJob.STATUSES
     assert job.status == "SUCCEEDED"
 
@@ -411,8 +550,7 @@ async def test_async_batch_job_db(aws_batch_sleep1_job, batch_config):
 @pytest.mark.asyncio
 async def test_async_batch_job_logs(aws_batch_sleep1_job, batch_config):
     job = aws_batch_sleep1_job
-    job_desc = await aio_batch_job_manager(job, config=batch_config)
-    assert job.status == job_desc["status"]
+    await aio_batch_job_manager(job, config=batch_config)
     assert job.status == "SUCCEEDED"
     assert job.logs is None
 
