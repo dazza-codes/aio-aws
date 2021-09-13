@@ -161,3 +161,8 @@ Focus on aio-aws
 - add aio-redis option for batch-db
 - Refactor common retry exception codes
 
+
+0.16.0 (2021-09-12)
+-------------------
+- Refactor and enhance aio-batch utility functions
+
