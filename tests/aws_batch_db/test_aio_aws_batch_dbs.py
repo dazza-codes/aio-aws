@@ -15,12 +15,19 @@
 """
 Test Aio AWS Batch DB
 """
+import asyncio
 from typing import Dict
 from typing import List
 from typing import Set
 
 import pytest
 
+from aio_aws.aio_aws_batch import aio_find_complete_jobs
+from aio_aws.aio_aws_batch import aio_find_jobs_by_status
+from aio_aws.aio_aws_batch import aio_find_running_jobs
+from aio_aws.aio_aws_batch import find_complete_jobs
+from aio_aws.aio_aws_batch import find_jobs_by_status
+from aio_aws.aio_aws_batch import find_running_jobs
 from aio_aws.aio_aws_batch_db import AioAWSBatchDB
 from aio_aws.aio_aws_batch_db import AioAWSBatchRedisDB
 from aio_aws.aio_aws_batch_db import AioAWSBatchTinyDB
@@ -42,8 +49,8 @@ def aiotiny_jobs_db(tmp_path) -> AioAWSBatchDB:
 
 @pytest.fixture
 def redis_url(redisdb) -> str:
-    redis_client = redisdb.client()
-    yield f"unix://{redis_client.connection.path}"
+    with redisdb.client() as redis_client:
+        yield f"unix://{redis_client.connection.path}"
 
 
 @pytest.fixture
@@ -58,6 +65,7 @@ async def aioredis_jobs_db(redis_url) -> AioAWSBatchDB:
         key_count += 1
     assert key_count == 0
     yield batch_jobs_db
+    await batch_jobs_db.db_close()
 
 
 @pytest.fixture
@@ -148,6 +156,177 @@ async def test_batch_job_db_remove_by_job_name(jobs_dbs, aws_batch_job):
         assert job_id is None
         job_id = await jobs_db.remove_by_job_id(job.job_id)
         assert job_id is None
+
+
+@pytest.mark.asyncio
+async def test_batch_job_db_find_jobs_by_status(jobs_dbs, aws_batch_jobs):
+
+    job_succeeded, job_failed, job_running = aws_batch_jobs
+
+    for jobs_db in jobs_dbs:
+        job_id = await jobs_db.save_job(job_succeeded)
+        assert job_id == job_succeeded.job_id
+        job_id = await jobs_db.save_job(job_failed)
+        assert job_id == job_failed.job_id
+        job_id = await jobs_db.save_job(job_running)
+        assert job_id == job_running.job_id
+
+        jobs = await jobs_db.find_by_job_status(job_states=["SUCCEEDED"])
+        assert isinstance(jobs, List)
+        assert len(jobs) == 1
+        assert jobs[0].job_id == job_succeeded.job_id
+        jobs = await jobs_db.find_by_job_status(job_states=["FAILED"])
+        assert isinstance(jobs, List)
+        assert len(jobs) == 1
+        assert jobs[0].job_id == job_failed.job_id
+        jobs = await jobs_db.find_by_job_status(job_states=["SUCCEEDED", "FAILED"])
+        assert isinstance(jobs, List)
+        assert len(jobs) == 2
+
+
+@pytest.mark.asyncio
+async def test_aio_batch_find_jobs_by_status_without_jobs_db(aws_batch_jobs):
+
+    job_succeeded, job_failed, job_running = aws_batch_jobs
+
+    # Test the AIO find functions that rely on the jobs (jobs-db optional)
+
+    async for job in aio_find_jobs_by_status(
+        jobs=aws_batch_jobs, job_states=["SUCCEEDED"]
+    ):
+        assert job.job_id == job_succeeded.job_id
+
+    async for job in aio_find_jobs_by_status(
+        jobs=aws_batch_jobs, job_states=["FAILED"]
+    ):
+        assert job.job_id == job_failed.job_id
+
+    async for job in aio_find_complete_jobs(jobs=aws_batch_jobs):
+        assert job.job_id in [job_succeeded.job_id, job_failed.job_id]
+        assert job.job_id != job_running.job_id
+
+    async for job in aio_find_running_jobs(jobs=aws_batch_jobs):
+        assert job.job_id == job_running.job_id
+
+    async for job in aio_find_running_jobs(jobs=[job_succeeded, job_failed]):
+        assert job.job_id
+        raise RuntimeError("Should not find any")
+
+
+def test_batch_find_jobs_by_status_without_jobs_db(aws_batch_jobs):
+
+    job_succeeded, job_failed, job_running = aws_batch_jobs
+
+    # Test the sync find functions that rely on the jobs (jobs-db optional)
+
+    for job in find_jobs_by_status(jobs=aws_batch_jobs, job_states=["SUCCEEDED"]):
+        assert job.job_id == job_succeeded.job_id
+
+    for job in find_jobs_by_status(jobs=aws_batch_jobs, job_states=["FAILED"]):
+        assert job.job_id == job_failed.job_id
+
+    for job in find_complete_jobs(jobs=aws_batch_jobs):
+        assert job.job_id in [job_succeeded.job_id, job_failed.job_id]
+        assert job.job_id != job_running.job_id
+
+    for job in find_running_jobs(jobs=aws_batch_jobs):
+        assert job.job_id == job_running.job_id
+
+    for job in find_running_jobs(jobs=[job_succeeded, job_failed]):
+        assert job.job_id
+        raise RuntimeError("Should not find any")
+
+
+@pytest.mark.asyncio
+async def test_aio_batch_find_jobs_by_status_with_jobs_db(jobs_dbs, aws_batch_jobs):
+
+    job_succeeded, job_failed, job_running = aws_batch_jobs
+
+    for jobs_db in jobs_dbs:
+        job_id = await jobs_db.save_job(job_succeeded)
+        assert job_id == job_succeeded.job_id
+        job_id = await jobs_db.save_job(job_failed)
+        assert job_id == job_failed.job_id
+        job_id = await jobs_db.save_job(job_running)
+        assert job_id == job_running.job_id
+
+    # Test the find functions that now check a jobs-db entry
+    job_succeeded.status = None
+    job_failed.status = None
+    job_running.status = None
+
+    for jobs_db in jobs_dbs:
+
+        async for job in aio_find_jobs_by_status(
+            jobs=aws_batch_jobs, job_states=["SUCCEEDED"], jobs_db=jobs_db
+        ):
+            assert job.job_id == job_succeeded.job_id
+
+        async for job in aio_find_jobs_by_status(
+            jobs=aws_batch_jobs, job_states=["FAILED"], jobs_db=jobs_db
+        ):
+            assert job.job_id == job_failed.job_id
+
+        async for job in aio_find_complete_jobs(jobs=aws_batch_jobs, jobs_db=jobs_db):
+            assert job.job_id in [job_succeeded.job_id, job_failed.job_id]
+            assert job.job_id != job_running.job_id
+
+        async for job in aio_find_running_jobs(jobs=aws_batch_jobs, jobs_db=jobs_db):
+            assert job.job_id == job_running.job_id
+
+        async for job in aio_find_running_jobs(
+            jobs=[job_succeeded, job_failed], jobs_db=jobs_db
+        ):
+            assert job.job_id
+            raise RuntimeError("Should not find any")
+
+
+@pytest.mark.skip("Cannot use asyncio.run with a running event loop")
+@pytest.mark.asyncio
+async def test_batch_find_jobs_by_status_with_jobs_db(jobs_dbs, aws_batch_jobs):
+
+    # Test the sync find functions that rely on the jobs-db
+
+    # TODO: Maybe these methods should use a sync jobs-db that has the
+    #       same ABC base class with sync methods?
+
+    job_succeeded, job_failed, job_running = aws_batch_jobs
+
+    for jobs_db in jobs_dbs:
+        job_id = await jobs_db.save_job(job_succeeded)
+        assert job_id == job_succeeded.job_id
+        job_id = await jobs_db.save_job(job_failed)
+        assert job_id == job_failed.job_id
+        job_id = await jobs_db.save_job(job_running)
+        assert job_id == job_running.job_id
+
+    # Test the find functions that now check a jobs-db entry
+    job_succeeded.status = None
+    job_failed.status = None
+    job_running.status = None
+
+    for jobs_db in jobs_dbs:
+
+        for job in find_jobs_by_status(
+            jobs=aws_batch_jobs, job_states=["SUCCEEDED"], jobs_db=jobs_db
+        ):
+            assert job.job_id == job_succeeded.job_id
+
+        for job in find_jobs_by_status(
+            jobs=aws_batch_jobs, job_states=["FAILED"], jobs_db=jobs_db
+        ):
+            assert job.job_id == job_failed.job_id
+
+        for job in find_complete_jobs(jobs=aws_batch_jobs, jobs_db=jobs_db):
+            assert job.job_id in [job_succeeded.job_id, job_failed.job_id]
+            assert job.job_id != job_running.job_id
+
+        for job in find_running_jobs(jobs=aws_batch_jobs, jobs_db=jobs_db):
+            assert job.job_id == job_running.job_id
+
+        for job in find_running_jobs(jobs=[job_succeeded, job_failed], jobs_db=jobs_db):
+            assert job.job_id
+            raise RuntimeError("Should not find any")
 
 
 @pytest.mark.asyncio

@@ -38,6 +38,13 @@ class AioAWSBatchDB(abc.ABC):
     """
 
     @abc.abstractmethod
+    async def all_job_ids(self) -> Set[str]:
+        """
+        Find all jobId.
+        """
+        pass
+
+    @abc.abstractmethod
     async def find_by_job_id(self, job_id: str) -> Optional[Dict]:
         """
         Find one job by the jobId
@@ -65,6 +72,18 @@ class AioAWSBatchDB(abc.ABC):
 
         :param job_name: a batch jobName
         :return: the latest job record available
+        """
+        pass
+
+    @abc.abstractmethod
+    async def find_by_job_status(self, job_states: List[str]) -> List[AWSBatchJob]:
+        """
+        Find any jobs matching any job status values
+
+        :param job_states: a list of valid job states
+        :return: a list of AWSBatchJob (could contain multiple
+            entries with the same jobName if it is run multiple times
+            with any jobStatus in the jobStatus values)
         """
         pass
 
@@ -115,13 +134,6 @@ class AioAWSBatchDB(abc.ABC):
 
         :param job: an AWSBatchJob
         :return: a List[tinydb.database.Document.doc_id]
-        """
-        pass
-
-    @abc.abstractmethod
-    async def all_job_ids(self) -> Set[str]:
-        """
-        Find all jobId keys.
         """
         pass
 
@@ -237,6 +249,10 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
         LOGGER.debug("Using batch-jobs redis-db: %s", info)
         return info
 
+    async def db_close(self):
+        await self.jobs_db.close()
+        await self.logs_db.close()
+
     async def db_save(self):
         assert await self.jobs_db.bgsave() is True
         assert await self.logs_db.bgsave() is True
@@ -286,6 +302,30 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
             db_jobs = sorted(db_jobs, key=lambda j: j.created)
             db_job = db_jobs[-1]
             return db_job
+
+    async def find_by_job_status(self, job_states: List[str]) -> List[AWSBatchJob]:
+        """
+        Find any jobs matching any jobStatus values
+
+        :param job_states: a list of valid job status values
+        :return: a list of AWSBatchJob (could contain multiple
+            entries with the same jobName if it is run multiple times
+            with any jobStatus in the jobStatus values)
+        """
+        for status in job_states:
+            assert status in AWSBatchJob.STATES
+
+        jobs = []
+        async for key in self.jobs_db.scan_iter():
+            if valid_uuid4(key):
+                # The key is a jobId that conforms to UUID
+                job_json = await self.jobs_db.get(key)
+                if job_json:
+                    job_dict = json.loads(job_json)
+                    job = AWSBatchJob(**job_dict)
+                    if job.status in job_states:
+                        jobs.append(job)
+        return jobs
 
     async def remove_by_job_id(self, job_id: str) -> Optional[Dict]:
         """
@@ -409,17 +449,18 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
         async for key in self.jobs_db.scan_iter():
             if valid_uuid4(key):
                 job_dict = await self.find_by_job_id(key)
-                LOGGER.info(
+                job = AWSBatchJob(**job_dict)
+                LOGGER.debug(
                     "AWS Batch job (%s:%s) has db status: %s",
-                    job_dict["job_name"],
-                    job_dict["job_id"],
-                    job_dict["status"],
+                    job.job_name,
+                    job.job_id,
+                    job.status,
                 )
-                if job_dict["job_id"] and job_dict["status"] == "SUCCEEDED":
-                    LOGGER.debug(job_dict["job_description"])
+                if job.job_id and job.status == "SUCCEEDED":
+                    LOGGER.debug(job.job_description)
                     continue
 
-                jobs_outstanding.append(AWSBatchJob(**job_dict))
+                jobs_outstanding.append(job)
         return jobs_outstanding
 
     async def jobs_to_run(self, jobs: List[AWSBatchJob]) -> List[AWSBatchJob]:
@@ -443,13 +484,13 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
             - :py:meth:`AWSBatchDB.find_jobs_to_run()`
             - :py:meth:`AWSBatchDB.jobs_db.all()`
         """
+        # Avoid side-effects in this function:
+        # - treat the job as a read-only object
+        # - treat any jobs_db records as read-only objects
+        # - if a job is not saved, don't save it to jobs_db
+
         jobs_outstanding = []
         for job in jobs:
-            # Avoid side-effects in this function:
-            # - treat the job as a read-only object
-            # - treat any jobs_db records as read-only objects
-            # - if a job is not saved, don't save it to jobs_db
-
             # First check the job itself before checking the jobs_db
             if job.job_id and job.status == "SUCCEEDED":
                 LOGGER.debug(job.job_description)
@@ -457,7 +498,7 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
 
             db_job = await self.find_latest_job_name(job.job_name)
             if db_job:
-                LOGGER.info(
+                LOGGER.debug(
                     "AWS Batch job (%s:%s) has db status: %s",
                     db_job.job_name,
                     db_job.job_id,
@@ -481,7 +522,7 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
 
             db_job = await self.find_latest_job_name(job.job_name)
             if db_job:
-                LOGGER.info(
+                LOGGER.debug(
                     "AWS Batch job (%s:%s) recovered from db with status: %s",
                     db_job.job_name,
                     db_job.job_id,
@@ -614,6 +655,26 @@ class AioAWSBatchTinyDB(AioAWSBatchDB):
             db_jobs = sorted(db_jobs, key=lambda j: j.created)
             db_job = db_jobs[-1]
             return db_job
+
+    async def find_by_job_status(self, job_states: List[str]) -> List[AWSBatchJob]:
+        """
+        Find any jobs matching any jobStatus values
+
+        :param job_states: a list of valid job status values
+        :return: a list of AWSBatchJob (could contain multiple
+            entries with the same jobName if it is run multiple times
+            with any jobStatus in the jobStatus values)
+        """
+        for status in job_states:
+            assert status in AWSBatchJob.STATES
+
+        jobs = []
+        async with self.db_semaphore:
+            for job_doc in self.jobs_db.all():
+                job = AWSBatchJob(**job_doc)
+                if job.status in job_states:
+                    jobs.append(job)
+        return jobs
 
     async def remove_by_job_id(self, job_id: str) -> Optional[tinydb.database.Document]:
         """
