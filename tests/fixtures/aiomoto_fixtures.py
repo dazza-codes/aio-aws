@@ -193,7 +193,7 @@ def aio_aws_session(aws_credentials, aws_region, event_loop):
 
 
 @pytest.fixture
-async def aio_aws_client(aio_aws_session):
+def aio_aws_client(aio_aws_session):
     async def _get_client(service_name):
         async with MotoService(service_name) as srv:
             async with aio_aws_session.create_client(
