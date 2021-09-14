@@ -166,3 +166,8 @@ Focus on aio-aws
 -------------------
 - Refactor and enhance aio-batch utility functions
 
+
+0.16.1 (2021-09-13)
+-------------------
+- Enhance and test batch-job filter utilities
+
