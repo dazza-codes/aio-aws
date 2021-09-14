@@ -159,7 +159,7 @@ from aio_aws.aio_aws_config import AioAWSConfig
 from aio_aws.aio_aws_config import delay
 from aio_aws.aio_aws_config import jitter
 from aio_aws.aws_batch_models import AWSBatchJob
-from aio_aws.aws_batch_models import AWSBatchJobStatuses
+from aio_aws.aws_batch_models import AWSBatchJobStates
 from aio_aws.logger import get_logger
 from aio_aws.utils import response_success
 
@@ -330,7 +330,7 @@ async def aio_batch_update_jobs(jobs: Iterable[AWSBatchJob], config: AWSBatchCon
         config = AWSBatchConfig.get_default_config()
 
     try:
-        jobs_by_id = {j.job_id: j for j in jobs}
+        jobs_by_id = {j.job_id: j for j in jobs if j.job_id}
         job_ids = list(jobs_by_id.keys())
 
         update_limit = 100  # AWS limit
@@ -671,7 +671,7 @@ async def aio_batch_job_manager(
     if config is None:
         config = AWSBatchConfig.get_default_config()
 
-    LOGGER.info(
+    LOGGER.debug(
         "AWS Batch job (%s:%s) management",
         job.job_name,
         job.job_id,
@@ -714,7 +714,14 @@ async def aio_batch_job_manager(
 
 
 async def aio_batch_run_jobs(jobs: Iterable[AWSBatchJob], config: AWSBatchConfig):
-    # Each job maintains state, so this function returns nothing.
+    """
+    Submit jobs that have not been submitted yet,
+    and monitor all jobs until they complete.
+
+    :param jobs: any AWSBatchJob
+    :param config: an AWSBatchConfig
+    :return: each job maintains state, so this function returns nothing
+    """
     tasks = [
         asyncio.create_task(aio_batch_job_manager(job=job, config=config))
         for job in jobs
@@ -728,11 +735,38 @@ async def aio_batch_run_jobs(jobs: Iterable[AWSBatchJob], config: AWSBatchConfig
 
 
 async def aio_batch_submit_jobs(jobs: Iterable[AWSBatchJob], config: AWSBatchConfig):
-    # Each job maintains state, so this function returns nothing.
+    """
+    Submit jobs that have not been submitted yet.
+
+    :param jobs: any AWSBatchJob
+    :param config: an AWSBatchConfig
+    :return: each job maintains state, so this function returns nothing
+    """
     tasks = [
         asyncio.create_task(aio_batch_job_submit(job=job, config=config))
         for job in jobs
         if job.allow_submit_job()
+    ]
+    for task in asyncio.as_completed(tasks):
+        try:
+            result = await task
+            LOGGER.debug(result)
+        except Exception as err:
+            LOGGER.error(err)
+
+
+async def aio_batch_monitor_jobs(jobs: Iterable[AWSBatchJob], config: AWSBatchConfig):
+    """
+    Monitor submitted jobs until they complete.
+
+    :param jobs: any AWSBatchJob
+    :param config: an AWSBatchConfig
+    :return: each job maintains state, so this function returns nothing
+    """
+    tasks = [
+        asyncio.create_task(aio_batch_job_manager(job=job, config=config))
+        for job in jobs
+        if job.job_id
     ]
     for task in asyncio.as_completed(tasks):
         try:
@@ -747,7 +781,13 @@ async def aio_batch_cancel_jobs(
     reason: str = "User cancelled job",
     config: AWSBatchConfig = None,
 ):
-    # Each job maintains state, so this function returns nothing;
+    """
+    Cancel jobs that can be cancelled (if they are not running or complete).
+
+    :param jobs: any AWSBatchJob
+    :param config: an AWSBatchConfig
+    :return: each job maintains state, so this function returns nothing
+    """
     tasks = [
         asyncio.create_task(aio_batch_job_cancel(job=job, reason=reason, config=config))
         for job in jobs
@@ -766,7 +806,13 @@ async def aio_batch_terminate_jobs(
     reason: str = "User terminated job",
     config: AWSBatchConfig = None,
 ):
-    # Each job maintains state, so this function returns nothing.
+    """
+    Terminate jobs that can be killed (if they are not complete).
+
+    :param jobs: any AWSBatchJob
+    :param config: an AWSBatchConfig
+    :return: each job maintains state, so this function returns nothing
+    """
     tasks = [
         asyncio.create_task(
             aio_batch_job_terminate(job=job, reason=reason, config=config)
@@ -782,22 +828,15 @@ async def aio_batch_terminate_jobs(
             LOGGER.error(err)
 
 
-async def aio_batch_monitor_jobs(jobs: Iterable[AWSBatchJob], config: AWSBatchConfig):
-    # Each job maintains state, so this function returns nothing.
-    tasks = [
-        asyncio.create_task(aio_batch_job_manager(job=job, config=config))
-        for job in jobs
-    ]
-    for task in asyncio.as_completed(tasks):
-        try:
-            result = await task
-            LOGGER.debug(result)
-        except Exception as err:
-            LOGGER.error(err)
-
-
 async def aio_batch_get_logs(jobs: Iterable[AWSBatchJob], config: AWSBatchConfig):
-    # Each job maintains state, so this function returns nothing.
+    """
+    Get job logs.  The logs should be updated in any
+    configured jobs-db.
+
+    :param jobs: any AWSBatchJob
+    :param config: an AWSBatchConfig
+    :return: each job maintains state, so this function returns nothing
+    """
     batch_tasks = [
         asyncio.create_task(aio_batch_job_logs(job=job, config=config))
         for job in jobs
@@ -811,62 +850,303 @@ async def aio_batch_get_logs(jobs: Iterable[AWSBatchJob], config: AWSBatchConfig
             LOGGER.error(err)
 
 
-async def aio_batch_filter_jobs(
+def job_for_status(job, job_states) -> Optional[AWSBatchJob]:
+    if job.job_id and job.status in job_states:
+        LOGGER.info(
+            "AWS Batch job (%s:%s) has status: %s",
+            job.job_name,
+            job.job_id,
+            job.status,
+        )
+        return job
+
+
+async def aio_find_jobs_by_status(
     jobs: Iterable[AWSBatchJob],
-    jobs_db: AioAWSBatchDB,
-    rerun_failed: bool = False,
-) -> Generator[Optional[AWSBatchJob], Any, None]:
+    job_states: List[str],
+    jobs_db: AioAWSBatchDB = None,
+):
+    """
+    Find any jobs that match job states.
+
+    This is most often used when jobs are regenerated for jobs that could
+    exist in the jobs-db; there are alternative methods on the jobs-db to
+    find all jobs matching various job states.
+
+    :param jobs: any AWSBatchJob
+    :param job_states: a list of valid job states
+    :param jobs_db: a jobs-db to check the latest
+        job status from the jobs-db, if it is not
+        available on the job (highly recommended)
+    :return: yield jobs found
+    """
     # In this function, avoid side-effects in the jobs-db
     # - treat the job as a read-only object
     # - treat any jobs_db records as read-only objects
     # - if a job is not saved, don't save it to jobs_db
 
+    LOGGER.info("Selecting job states: %s", job_states)
+
+    for job in jobs:
+
+        # First check the job itself before checking the jobs_db
+        if job_for_status(job, job_states):
+            yield job
+
+        if jobs_db:
+            db_job = await jobs_db.find_latest_job_name(job.job_name)
+            if db_job:
+                if job_for_status(db_job, job_states):
+                    yield db_job
+
+
+async def aio_find_complete_jobs(
+    jobs: Iterable[AWSBatchJob],
+    jobs_db: AioAWSBatchDB = None,
+):
+    """
+    Find any complete jobs
+
+    :param jobs: any AWSBatchJob
+    :param jobs_db: an optional jobs-db to check the latest
+        job status from the jobs-db, if it is not
+        available on the job (highly recommended)
+    :return: yield jobs found
+    """
+    async for job in aio_find_jobs_by_status(
+        jobs=jobs,
+        job_states=["SUCCEEDED", "FAILED"],
+        jobs_db=jobs_db,
+    ):
+        yield job
+
+
+async def aio_find_running_jobs(
+    jobs: Iterable[AWSBatchJob],
+    jobs_db: AioAWSBatchDB = None,
+):
+    """
+    Find any running jobs
+
+    :param jobs: any AWSBatchJob
+    :param jobs_db: an optional jobs-db to check the latest
+        job status from the jobs-db, if it is not
+        available on the job (highly recommended)
+    :return: yield jobs found
+    """
+    job_states = [s.name for s in AWSBatchJobStates if s < AWSBatchJobStates.SUCCEEDED]
+    # find_jobs_by_status should yield
+    async for job in aio_find_jobs_by_status(
+        jobs=jobs,
+        job_states=job_states,
+        jobs_db=jobs_db,
+    ):
+        yield job
+
+
+def find_jobs_by_status(
+    jobs: Iterable[AWSBatchJob],
+    job_states: List[str],
+    jobs_db: AioAWSBatchDB = None,
+):
+    """
+    Find any jobs that match job states.
+
+    This is most often used when jobs are regenerated for jobs that could
+    exist in the jobs-db; there are alternative methods on the jobs-db to
+    find all jobs matching various job states.
+
+    :param jobs: any AWSBatchJob
+    :param job_states: a list of valid job states
+    :param jobs_db: a jobs-db to check the latest
+        job status from the jobs-db, if it is not
+        available on the job (highly recommended)
+    :return: yield jobs found
+    """
+    # In this function, avoid side-effects in the jobs-db
+    # - treat the job as a read-only object
+    # - treat any jobs_db records as read-only objects
+    # - if a job is not saved, don't save it to jobs_db
+
+    LOGGER.info("Selecting job states: %s", job_states)
+
+    for job in jobs:
+
+        # First check the job itself before checking the jobs_db
+        if job_for_status(job, job_states):
+            yield job
+
+        if jobs_db:
+            db_job = asyncio.run(jobs_db.find_latest_job_name(job.job_name))
+            if db_job:
+                if job_for_status(db_job, job_states):
+                    yield db_job
+
+
+def find_complete_jobs(
+    jobs: Iterable[AWSBatchJob],
+    jobs_db: AioAWSBatchDB = None,
+):
+    """
+    Find any complete jobs
+
+    :param jobs: any AWSBatchJob
+    :param jobs_db: an optional jobs-db to check the latest
+        job status from the jobs-db, if it is not
+        available on the job (highly recommended)
+    :return: yield jobs found
+    """
+    for job in find_jobs_by_status(
+        jobs=jobs,
+        job_states=["SUCCEEDED", "FAILED"],
+        jobs_db=jobs_db,
+    ):
+        yield job
+
+
+def find_running_jobs(
+    jobs: Iterable[AWSBatchJob],
+    jobs_db: AioAWSBatchDB = None,
+):
+    """
+    Find any running jobs
+
+    :param jobs: any AWSBatchJob
+    :param jobs_db: an optional jobs-db to check the latest
+        job status from the jobs-db, if it is not
+        available on the job (highly recommended)
+    :return: yield jobs found
+    """
+    job_states = [s.name for s in AWSBatchJobStates if s < AWSBatchJobStates.SUCCEEDED]
+    # find_jobs_by_status should yield
+    for job in find_jobs_by_status(
+        jobs=jobs,
+        job_states=job_states,
+        jobs_db=jobs_db,
+    ):
+        yield job
+
+
+def find_incomplete_jobs(
+    jobs: Iterable[AWSBatchJob],
+    jobs_db: AioAWSBatchDB = None,
+    reset_failed: bool = False,
+):
+    """
+    This can find any jobs that are not complete.  It can also
+    reset FAILED jobs that could be run again.
+
+    :param jobs: any AWSBatchJob
+    :param jobs_db: an optional jobs-db to check the latest
+        job status from the jobs-db, if it is not
+        available on the job (highly recommended)
+    :param reset_failed: if enabled, any FAILED jobs
+        will be reset so they can be run again
+    :return: yield jobs found
+    """
+    # In this function, avoid side-effects in the jobs-db
+    # - treat the job as a read-only object
+    # - treat any jobs_db records as read-only objects
+    # - if a job is not saved, don't save it to jobs_db
+
+    LOGGER.info("Selecting incomplete jobs")
+
     for job in jobs:
 
         # First check the job itself before checking the jobs_db
         if job.job_id and job.status == "SUCCEEDED":
-            LOGGER.debug(job.job_description)
+            LOGGER.info(
+                "AWS Batch job (%s:%s) has status: %s",
+                job.job_name,
+                job.job_id,
+                job.status,
+            )
+            # Skip successful jobs, they are done
             continue
 
-        db_job = await jobs_db.find_latest_job_name(job.job_name)
-
-        if db_job is None:
-            if job.job_id is None:
-                LOGGER.info("AWS Batch job (%s) has no db entry", job.job_name)
+        if job.job_id and job.status == "FAILED":
+            # Reset any failed jobs, assuming they can be rerun OK.
+            if reset_failed:
+                job.reset()
+                if job.num_tries >= job.max_tries:
+                    job.max_tries += 1
+                # Don't save the job to the jobs_db here when it already ran to completion;
+                # when it is submitted for a rerun, it will create a new db entry.
+                LOGGER.info("AWS Batch job (%s) reset", job.job_name)
                 yield job
                 continue
 
-        LOGGER.info(
-            "AWS Batch job (%s:%s) has db status: %s",
-            db_job.job_name,
-            db_job.job_id,
-            db_job.status,
-        )
+        if jobs_db:
 
-        if db_job.job_id and db_job.status == "SUCCEEDED":
-            # Skip successful jobs, they are done
-            LOGGER.debug(db_job.job_description)
-            continue
+            db_job = asyncio.run(jobs_db.find_latest_job_name(job.job_name))
 
-        if db_job.job_id and db_job.status == "FAILED":
-            if rerun_failed:
-                # Rerun any failed jobs, assuming they can be rerun OK due to SPOT failures.
-                # The failures need to be manually reviewed to check for SPOT failures.  It
-                # only makes sense to rerun SPOT failures; other failures could fail again.
-                db_job.reset()
-                if db_job.num_tries >= db_job.max_tries:
-                    db_job.max_tries += 1
-                # Don't save the job to the jobs_db here when it already ran to completion;
-                # when it is submitted for a rerun, it will create a new db entry.
-                LOGGER.info("AWS Batch job (%s) reset to re-run.", db_job.job_name)
-                yield db_job
-        else:
+            if db_job is None:
+                # these jobs are new jobs
+                if job.job_id is None:
+                    LOGGER.info("AWS Batch job (%s) has no db entry", job.job_name)
+                    yield job
+                    continue
+
+            LOGGER.info(
+                "AWS Batch job (%s:%s) has db status: %s",
+                db_job.job_name,
+                db_job.job_id,
+                db_job.status,
+            )
+
+            if db_job.job_id and db_job.status == "SUCCEEDED":
+                # Skip successful jobs, they are done
+                continue
+
+            if db_job.job_id and db_job.status == "FAILED":
+                # Reset any failed jobs, assuming they can be rerun OK.
+                if reset_failed:
+                    db_job.reset()
+                    if db_job.num_tries >= db_job.max_tries:
+                        db_job.max_tries += 1
+                    # Don't save the job to the jobs_db here when it already ran to completion;
+                    # when it is submitted for a rerun, it will create a new db entry.
+                    LOGGER.info("AWS Batch job (%s) reset to re-run.", db_job.job_name)
+                    yield db_job
+                    continue
+
             # these jobs either have not started or they are still
-            # in progress and they will be monitored for completion
+            # in progress and they can be monitored for completion
             yield db_job
 
 
+def batch_run_jobs(jobs: List[AWSBatchJob], jobs_db: AioAWSBatchDB = None):
+    """
+    Submit jobs that have not been submitted yet,
+    and monitor all jobs until they complete.
+
+    :param jobs: any AWSBatchJob
+    :param jobs_db: an optional jobs-db to persist job data
+    :return: each job maintains state, so this function returns nothing
+    """
+    # The polling is kept to a minimum to avoid interference with the batch API;
+    # max_pool_connections = 1 is used because of details in aio-aws where it
+    # creates a new client for each monitoring task (that could change in new
+    # releases of aio-aws).
+    aio_batch_config = AWSBatchConfig(
+        aio_batch_db=jobs_db,
+        min_pause=10,
+        max_pause=20,
+        start_pause=60,
+        max_pool_connections=1,
+        sem=500,
+    )
+    asyncio.run(aio_batch_run_jobs(jobs=jobs, config=aio_batch_config))
+
+
 def batch_submit_jobs(jobs: List[AWSBatchJob], jobs_db: AioAWSBatchDB = None):
+    """
+    Submit jobs that have not been submitted yet.
+
+    :param jobs: any AWSBatchJob
+    :param jobs_db: an optional jobs-db to persist job data
+    :return: each job maintains state, so this function returns nothing
+    """
     # The job submission can run fairly fast (without any monitoring).
     # max_pool_connections = 1 is used because of details in aio-aws where it
     # creates a new client for each monitoring task (that could change in new
@@ -883,6 +1163,13 @@ def batch_submit_jobs(jobs: List[AWSBatchJob], jobs_db: AioAWSBatchDB = None):
 
 
 def batch_monitor_jobs(jobs: List[AWSBatchJob], jobs_db: AioAWSBatchDB = None):
+    """
+    Monitor submitted jobs until they complete.
+
+    :param jobs: any AWSBatchJob
+    :param jobs_db: an optional jobs-db to persist job data
+    :return: each job maintains state, so this function returns nothing
+    """
     # The polling is kept to a minimum to avoid interference with the batch API;
     # max_pool_connections = 1 is used because of details in aio-aws where it
     # creates a new client for each monitoring task (that could change in new
@@ -899,6 +1186,13 @@ def batch_monitor_jobs(jobs: List[AWSBatchJob], jobs_db: AioAWSBatchDB = None):
 
 
 def batch_update_jobs(jobs: List[AWSBatchJob], jobs_db: AioAWSBatchDB = None):
+    """
+    Update job descriptions.
+
+    :param jobs: any AWSBatchJob
+    :param jobs_db: an optional jobs-db to persist job data
+    :return: each job maintains state, so this function returns nothing
+    """
     # The polling is kept to a minimum to avoid interference with the batch API;
     # max_pool_connections = 1 is used because of details in aio-aws where it
     # creates a new client for each monitoring task (that could change in new
@@ -918,6 +1212,13 @@ def batch_get_logs(
     jobs: List[AWSBatchJob],
     jobs_db: AioAWSBatchDB = None,
 ):
+    """
+    Get job logs.
+
+    :param jobs: any AWSBatchJob
+    :param jobs_db: an optional jobs-db to persist job data
+    :return: each job maintains state, so this function returns nothing
+    """
     # The polling is kept to a minimum to avoid interference with the batch API;
     # max_pool_connections = 1 is used because of details in aio-aws where it
     # creates a new client for each monitoring task (that could change in new
@@ -940,6 +1241,13 @@ def batch_cancel_jobs(
     reason: str = "User cancelled job",
     jobs_db: AioAWSBatchDB = None,
 ):
+    """
+    Cancel jobs that can be cancelled (if they are not running or complete).
+
+    :param jobs: any AWSBatchJob
+    :param jobs_db: an optional jobs-db to persist job data
+    :return: each job maintains state, so this function returns nothing
+    """
     # The tasks can run fairly fast (without any monitoring).
     # max_pool_connections = 1 is used because a new client is used for each task
     aio_batch_config = AWSBatchConfig(
@@ -960,6 +1268,13 @@ def batch_terminate_jobs(
     reason: str = "User terminated job",
     jobs_db: AioAWSBatchDB = None,
 ):
+    """
+    Terminate jobs that can be killed (if they are not complete).
+
+    :param jobs: any AWSBatchJob
+    :param jobs_db: an optional jobs-db to persist job data
+    :return: each job maintains state, so this function returns nothing
+    """
     # The tasks can run fairly fast (without any monitoring).
     # max_pool_connections = 1 is used because a new client is used for each task
     aio_batch_config = AWSBatchConfig(

@@ -29,14 +29,42 @@ from functools import total_ordering
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Union
 
 from aio_aws.logger import get_logger
 
 LOGGER = get_logger(__name__)
 
 
+def gb_to_mib(gb: Union[int, float]) -> float:
+    """
+    Gigabyte (Gb) to Mebibyte (MiB)
+    :param gb: Gigabytes (Gb)
+    :return: Mebibytes (MiB)
+    """
+    return gb * 953.674
+
+
+def gb_to_gib(gb: Union[int, float]) -> float:
+    """
+    Gigabyte (Gb) to Gibibyte (GiB)
+    :param gb: Gigabytes (Gb)
+    :return: Gibibyte (GiB)
+    """
+    return gb * 1.07374
+
+
+def gib_to_mib(gib: Union[int, float]) -> float:
+    """
+    Gibibyte (GiB) to Mebibytes (GiB)
+    :param gib: Gibibyte (GiB)
+    :return: Mebibytes (MiB)
+    """
+    return gib * 1024.0
+
+
 @total_ordering
-class AWSBatchJobStatuses(enum.Enum):
+class AWSBatchJobStates(enum.Enum):
     SUBMITTED = 1
     PENDING = 2
     RUNNABLE = 3
@@ -79,9 +107,9 @@ class AWSBatchJob:
     methods to run a job, the instances are passed to async coroutine functions.
 
     Replace 'command' with 'container_overrides' dict for more options;
-    do not use 'command' together with 'container_overrides', or understand
-    that the construction will update the `container_overrides['command']`
-    when the `command is not None`.
+    do not use 'command' together with 'container_overrides'; if both are
+    given, any valid 'command' value will replace the
+    `container_overrides['command']`.
 
     :param job_name: A job jobName (truncated to 128 characters).
     :param job_definition: A job job_definition.
@@ -102,6 +130,21 @@ class AWSBatchJob:
         'environment', and 'resourceRequirements'. If the `command`
         parameter is defined, it overrides the `container_overrides['command']`
 
+        The container_overrides might not override job definition ResourceRequirement
+        values. To override VCPU and MEMORY requirements that are in the
+        ResourceRequirement in the job definition, ResourceRequirement must be
+        specified in the SubmitJob request.
+
+        vcpus (int): This parameter maps to CpuShares in the Create a container
+        section of the Docker Remote API and the --cpu-shares option to docker run.
+        Each vCPU is equivalent to 1,024 CPU shares. This parameter is supported for
+        jobs that run on EC2 resources, but isn't supported for jobs that run on
+        Fargate resources.
+
+        memory (int):  This parameter indicates the amount of memory (in MiB) that is
+        reserved for the job. This parameter is supported for jobs that run on EC2
+        resources, but isn't supported for jobs that run on Fargate resources.
+
     :param max_tries: an optional limit to the number of job retries, which
         can apply in the job-manager function to any job with a SPOT failure
         only and it applies regardless of the job-definition settings.
@@ -110,15 +153,7 @@ class AWSBatchJob:
         https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/batch.html
     """
 
-    STATUSES = [
-        "SUBMITTED",
-        "PENDING",
-        "RUNNABLE",
-        "STARTING",
-        "RUNNING",
-        "SUCCEEDED",
-        "FAILED",
-    ]
+    STATES = [state.name for state in AWSBatchJobStates]
 
     job_name: str
     job_queue: str
@@ -189,6 +224,16 @@ class AWSBatchJob:
             data = self.db_data
             data["logs"] = self.logs
             return data
+
+    def job_for_status(self, job_states: List[str]):
+        if self.job_id and self.status in job_states:
+            LOGGER.info(
+                "AWS Batch job (%s:%s) has status: %s",
+                self.job_name,
+                self.job_id,
+                self.status,
+            )
+            return self
 
     def allow_submit_job(self) -> bool:
         """
