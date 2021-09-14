@@ -202,27 +202,38 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
         # that performance on the jobs_db is not compromised
         # by too much data from job logs.
 
-        # lazy load this an optional dependency
+        # Lazy init for any asyncio instances
+        self._db_sem = None
+
+    @property
+    def jobs_db(self):
+        # lazy load this optional dependency
         import aioredis
 
-        # Redis client bound to pool of connections (auto-reconnecting).
-        self.jobs_db = aioredis.from_url(
+        # need to instanitate redis-connection on-demand to avoid
+        # Future <Future pending> attached to a different loop
+        return aioredis.from_url(
             self.redis_url,
             db=2,
             encoding="utf-8",
             decode_responses=True,
-            max_connections=10,
+            max_connections=1,
         )
-        self.logs_db = aioredis.from_url(
+
+    @property
+    def logs_db(self):
+        # lazy load this optional dependency
+        import aioredis
+
+        # need to instanitate redis-connection on-demand to avoid
+        # Future <Future pending> attached to a different loop
+        return aioredis.from_url(
             self.redis_url,
             db=4,
             encoding="utf-8",
             decode_responses=True,
-            max_connections=10,
+            max_connections=1,
         )
-
-        # Lazy init for any asyncio instances
-        self._db_sem = None
 
     @property
     def db_semaphore(self) -> asyncio.Semaphore:
@@ -416,7 +427,7 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
         if job_id:
             job_logs = await self.logs_db.get(job_id)
             if job_logs:
-                return job_logs
+                return json.loads(job_logs)
         LOGGER.error("FAIL to find_job_logs with job_id: %s", job_id)
 
     async def save_job_logs(self, job: AWSBatchJob) -> List[int]:
@@ -428,7 +439,7 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
         """
         # TODO: update return data type and content
         if job.job_id:
-            return await self.logs_db.set(job.job_id, job.db_logs_data)
+            return await self.logs_db.set(job.job_id, json.dumps(job.db_logs_data))
         LOGGER.error("FAIL to save_job_logs")
 
     async def all_job_ids(self) -> Set[str]:
