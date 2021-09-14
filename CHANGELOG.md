@@ -171,3 +171,8 @@ Focus on aio-aws
 -------------------
 - Enhance and test batch-job filter utilities
 
+
+0.16.2 (2021-09-14)
+-------------------
+- Use lazy aioredis connection
+
