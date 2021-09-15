@@ -188,7 +188,7 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
 
     """
 
-    redis_url: str = "redis://localhost"
+    redis_url: str = "redis://127.0.0.1:6379"
 
     # TODO: use files to dump redis-db?
     # #: a file used for dumping jobs-db
@@ -206,67 +206,139 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
         self._db_sem = None
 
     @property
-    def jobs_db(self):
+    async def jobs_db(self):
         # lazy load this optional dependency
         import aioredis
 
-        # need to instanitate redis-connection on-demand to avoid
+        # need to instantiate redis-connection on-demand to avoid
         # Future <Future pending> attached to a different loop
-        return aioredis.from_url(
-            self.redis_url,
-            db=2,
-            encoding="utf-8",
-            decode_responses=True,
-            max_connections=1,
-        )
+        # TODO: lean how to optimize connections to auto-close them
+
+        async with self.db_semaphore:
+            return aioredis.from_url(
+                self.redis_url,
+                db=2,
+                encoding="utf-8",
+                decode_responses=True,
+                max_connections=1,
+            )
 
     @property
-    def logs_db(self):
+    async def logs_db(self):
         # lazy load this optional dependency
         import aioredis
 
-        # need to instanitate redis-connection on-demand to avoid
+        # need to instantiate redis-connection on-demand to avoid
         # Future <Future pending> attached to a different loop
-        return aioredis.from_url(
-            self.redis_url,
-            db=4,
-            encoding="utf-8",
-            decode_responses=True,
-            max_connections=1,
-        )
+        async with self.db_semaphore:
+            return aioredis.from_url(
+                self.redis_url,
+                db=4,
+                encoding="utf-8",
+                decode_responses=True,
+                max_connections=1,
+            )
 
     @property
     def db_semaphore(self) -> asyncio.Semaphore:
         """A semaphore to limit requests to the db"""
         if self._db_sem is None:
-            self._db_sem = asyncio.Semaphore(10)
+            self._db_sem = asyncio.Semaphore(100)
         return self._db_sem
+
+    @classmethod
+    async def _is_db_alive(cls, db) -> bool:
+        try:
+            assert await db.ping() is True
+            return True
+        except AssertionError:
+            return False
+
+    @property
+    async def jobs_db_alive(self) -> "Redis":
+        for tries in range(5):
+            jobs_db = await self.jobs_db
+            db_alive = await self._is_db_alive(jobs_db)
+            if db_alive:
+                return jobs_db
+            else:
+                await asyncio.sleep(0.0001, 0.005)
+
+    @property
+    async def logs_db_alive(self) -> "Redis":
+        for tries in range(5):
+            logs_db = await self.logs_db
+            db_alive = await self._is_db_alive(logs_db)
+            if db_alive:
+                return logs_db
+            else:
+                await asyncio.sleep(0.0001, 0.005)
 
     @property
     async def db_alive(self) -> bool:
         try:
-            assert await self.jobs_db.ping() is True
-            assert await self.logs_db.ping() is True
+            assert await self.jobs_db_alive
+            assert await self.logs_db_alive
+            return True
         except AssertionError:
             return False
-        return True
 
     @property
     async def db_info(self) -> Dict:
+        jobs_db = await self.jobs_db_alive
+        logs_db = await self.logs_db_alive
         info = {
-            "jobs": await self.jobs_db.info(),
-            "logs": await self.logs_db.info(),
+            "jobs": await jobs_db.info(),
+            "logs": await logs_db.info(),
         }
         LOGGER.debug("Using batch-jobs redis-db: %s", info)
         return info
 
-    async def db_close(self):
-        await self.jobs_db.close()
-        await self.logs_db.close()
+    # async def db_close(self):
+    #     await self.jobs_db.close()
+    #     await self.logs_db.close()
 
     async def db_save(self):
-        assert await self.jobs_db.bgsave() is True
-        assert await self.logs_db.bgsave() is True
+        jobs_db = await self.jobs_db_alive
+        logs_db = await self.logs_db_alive
+        assert await jobs_db.bgsave() is True
+        assert await logs_db.bgsave() is True
+
+    @classmethod
+    async def _find_by_job_id(cls, job_id: str, jobs_db: "Redis") -> Dict:
+        """
+        Private method to find any job matching the jobId
+
+        :param job_id: a batch jobName
+        :param jobs_db: an async Redis
+        :return: the job data or None
+        """
+        if job_id:
+            job_json = await jobs_db.get(job_id)
+            if job_json:
+                return json.loads(job_json)
+
+    @classmethod
+    async def _find_by_job_name(cls, job_name: str, jobs_db: "Redis") -> List[Dict]:
+        """
+        Private method to find any jobs matching the jobName
+
+        :param job_name: a batch jobName
+        :param jobs_db: an async Redis
+        :return: a list of dictionaries containing job data
+        """
+        jobs = []
+        if job_name:
+            job_ids = await jobs_db.get(job_name)
+            if job_ids:
+                # This should be a list of batch job-ids for a job name
+                job_ids = set(json.loads(job_ids))
+                for job_id in job_ids:
+                    job_json = await jobs_db.get(job_id)
+                    if job_json:
+                        job_dict = json.loads(job_json)
+                        jobs.append(job_dict)
+        return jobs
 
     async def find_by_job_id(self, job_id: str) -> Optional[Dict]:
         """
@@ -276,9 +348,8 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
         :return: the job data or None
         """
         if job_id:
-            job_json = await self.jobs_db.get(job_id)
-            if job_json:
-                return json.loads(job_json)
+            jobs_db = await self.jobs_db_alive
+            return await self._find_by_job_id(job_id=job_id, jobs_db=jobs_db)
 
     async def find_by_job_name(self, job_name: str) -> List[Dict]:
         """
@@ -287,17 +358,9 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
         :param job_name: a batch jobName
         :return: a list of dictionaries containing job data
         """
-        jobs = []
         if job_name:
-            job_ids = await self.jobs_db.get(job_name)
-            if job_ids:
-                # This should be a list of batch job-ids for a job name
-                job_ids = set(json.loads(job_ids))
-                for job_id in job_ids:
-                    job_dict = await self.find_by_job_id(job_id)
-                    if job_dict:
-                        jobs.append(job_dict)
-        return jobs
+            jobs_db = await self.jobs_db_alive
+            return await self._find_by_job_name(job_name=job_name, jobs_db=jobs_db)
 
     async def find_latest_job_name(self, job_name: str) -> Optional[AWSBatchJob]:
         """
@@ -327,10 +390,11 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
             assert status in AWSBatchJob.STATES
 
         jobs = []
-        async for key in self.jobs_db.scan_iter():
+        jobs_db = await self.jobs_db_alive
+        async for key in jobs_db.scan_iter():
             if valid_uuid4(key):
                 # The key is a jobId that conforms to UUID
-                job_json = await self.jobs_db.get(key)
+                job_json = await jobs_db.get(key)
                 if job_json:
                     job_dict = json.loads(job_json)
                     job = AWSBatchJob(**job_dict)
@@ -345,25 +409,27 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
         :param job_id: a batch jobId
         :return: a deleted document
         """
+        # TODO: use a transaction
         if job_id:
-            job_dict = await self.find_by_job_id(job_id)
+            jobs_db = await self.jobs_db_alive
+            job_dict = await self._find_by_job_id(job_id=job_id, jobs_db=jobs_db)
             if job_dict:
-                # TODO: use a transaction
                 # First try to remove this job-id from the job-name
                 job_name = job_dict["job_name"]
-                job_ids = await self.jobs_db.get(job_name)
-                if job_ids:
+                job_name_doc = await jobs_db.get(job_name)
+                if job_name_doc:
                     # This should be a list of batch job-ids for a job name
-                    job_ids = set(json.loads(job_ids))
+                    job_ids: List = json.loads(job_name_doc)
                     if job_id in job_ids:
                         job_ids.remove(job_id)
-                        if job_ids:
-                            await self.jobs_db.set(job_name, job_ids)
-                        else:
-                            # Don't save an empty set, delete the job-name entirely
-                            await self.jobs_db.delete(job_name)
+                    if job_ids:
+                        job_name_doc = json.dumps(list(job_ids))
+                        await jobs_db.set(job_name, job_name_doc)
+                    else:
+                        # Don't save an empty set, delete the job-name entirely
+                        await jobs_db.delete(job_name)
 
-                await self.jobs_db.delete(job_id)
+                await jobs_db.delete(job_id)
                 return job_dict
 
     async def remove_by_job_name(self, job_name: str) -> Set[str]:
@@ -373,16 +439,14 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
         :param job_name: a batch jobName
         :return: a set of deleted job-ids
         """
-        job_ids = set()
         if job_name:
-            job_ids = await self.jobs_db.get(job_name)
-            if not job_ids:
-                job_ids = set()
-            else:
-                job_ids = set(json.loads(job_ids))
-            await self.jobs_db.delete(*job_ids)
-            await self.jobs_db.delete(job_name)
-        return job_ids
+            jobs_db = await self.jobs_db_alive
+            job_name_doc = await jobs_db.get(job_name)
+            if job_name_doc:
+                job_ids = set(json.loads(job_name_doc))
+                await jobs_db.delete(*job_ids)
+                await jobs_db.delete(job_name)
+                return job_ids
 
     async def save_job(self, job: AWSBatchJob) -> Optional[str]:
         """
@@ -396,26 +460,39 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
             return
 
         # TODO: use a transaction
+
+        jobs_db = await self.jobs_db_alive
         job_json = json.dumps(job.db_data)
-        response = await self.jobs_db.set(job.job_id, job_json)
-        LOGGER.debug(response)
-        if not response:
-            msg = f"FAIL to save_job with job_id: {job.job_id}"
-            LOGGER.error(msg)
-            raise RuntimeError(msg)
 
-        # Update the job-id set for the job-name
-        job_ids = await self.jobs_db.get(job.job_name)
-        if not job_ids:
-            job_ids = set()
-        else:
-            job_ids = set(json.loads(job_ids))
-        if job.job_id not in job_ids:
-            job_ids.add(job.job_id)
-            job_ids = json.dumps(list(job_ids))
-            await self.jobs_db.set(job.job_name, job_ids)
+        for tries in range(3):
+            try:
+                response = await jobs_db.set(job.job_id, job_json)
+                LOGGER.debug(response)
+                if response:
+                    LOGGER.info(
+                        "AWS batch-db (%s:%s) saved status: %s",
+                        job.job_name,
+                        job.job_id,
+                        job.status,
+                    )
 
-        return job.job_id
+                # Update the job-id set for the job-name
+                job_ids = []
+                job_name_doc = await jobs_db.get(job.job_name)
+                if job_name_doc:
+                    job_ids = json.loads(job_name_doc)
+                    if sorted(job_ids) != sorted(set(job_ids)):
+                        LOGGER.warning("jobs-db has duplicates for %s", job.job_name)
+
+                if job.job_id not in job_ids:
+                    job_ids.append(job.job_id)
+                    job_ids = json.dumps(job_ids)
+                    await jobs_db.set(job.job_name, job_ids)
+
+                return job.job_id
+
+            except Exception as err:
+                LOGGER.error(err)
 
     async def find_job_logs(self, job_id: str) -> Optional[Dict]:
         """
@@ -425,7 +502,8 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
         :return: job logs document
         """
         if job_id:
-            job_logs = await self.logs_db.get(job_id)
+            logs_db = await self.logs_db_alive
+            job_logs = await logs_db.get(job_id)
             if job_logs:
                 return json.loads(job_logs)
         LOGGER.error("FAIL to find_job_logs with job_id: %s", job_id)
@@ -439,7 +517,8 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
         """
         # TODO: update return data type and content
         if job.job_id:
-            return await self.logs_db.set(job.job_id, json.dumps(job.db_logs_data))
+            logs_db = await self.logs_db_alive
+            return await logs_db.set(job.job_id, json.dumps(job.db_logs_data))
         LOGGER.error("FAIL to save_job_logs")
 
     async def all_job_ids(self) -> Set[str]:
@@ -447,7 +526,8 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
         Find all jobId keys.
         """
         job_ids = set()
-        async for key in self.jobs_db.scan_iter():
+        jobs_db = await self.jobs_db_alive
+        async for key in jobs_db.scan_iter():
             if valid_uuid4(key):
                 job_ids.add(key)
         return job_ids
@@ -457,12 +537,13 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
         Find all jobs that have not SUCCEEDED.
         """
         jobs_outstanding = []
-        async for key in self.jobs_db.scan_iter():
+        jobs_db = await self.jobs_db_alive
+        async for key in jobs_db.scan_iter():
             if valid_uuid4(key):
-                job_dict = await self.find_by_job_id(key)
+                job_dict = await self._find_by_job_id(job_id=key, jobs_db=jobs_db)
                 job = AWSBatchJob(**job_dict)
                 LOGGER.debug(
-                    "AWS Batch job (%s:%s) has db status: %s",
+                    "AWS batch-db (%s:%s) status: %s",
                     job.job_name,
                     job.job_id,
                     job.status,
@@ -507,10 +588,12 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
                 LOGGER.debug(job.job_description)
                 continue
 
+            # TODO: use a common jobs-db instance for all these
+
             db_job = await self.find_latest_job_name(job.job_name)
             if db_job:
                 LOGGER.debug(
-                    "AWS Batch job (%s:%s) has db status: %s",
+                    "AWS batch-db (%s:%s) status: %s",
                     db_job.job_name,
                     db_job.job_id,
                     db_job.status,
@@ -534,7 +617,7 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
             db_job = await self.find_latest_job_name(job.job_name)
             if db_job:
                 LOGGER.debug(
-                    "AWS Batch job (%s:%s) recovered from db with status: %s",
+                    "AWS batch-db (%s:%s) status: %s",
                     db_job.job_name,
                     db_job.job_id,
                     db_job.status,
@@ -599,8 +682,8 @@ class AioAWSBatchTinyDB(AioAWSBatchDB):
         # by too much data from job logs.
         self.jobs_db = tinydb.TinyDB(self.jobs_db_file)
         self.logs_db = tinydb.TinyDB(self.logs_db_file)
-        LOGGER.info("Using batch-jobs-db file: %s", self.jobs_db_file)
-        LOGGER.info("Using batch-logs-db file: %s", self.logs_db_file)
+        LOGGER.info("Using jobs-db file: %s", self.jobs_db_file)
+        LOGGER.info("Using logs-db file: %s", self.logs_db_file)
 
         # Lazy init for any asyncio instances
         self._db_sem = None
@@ -779,7 +862,7 @@ class AioAWSBatchTinyDB(AioAWSBatchDB):
         jobs_outstanding = []
         for job in jobs:
             LOGGER.info(
-                "AWS Batch job (%s:%s) has db status: %s",
+                "AWS batch-db (%s:%s) status: %s",
                 job.job_name,
                 job.job_id,
                 job.status,
@@ -828,7 +911,7 @@ class AioAWSBatchTinyDB(AioAWSBatchDB):
             db_job = await self.find_latest_job_name(job.job_name)
             if db_job:
                 LOGGER.info(
-                    "AWS Batch job (%s:%s) has db status: %s",
+                    "AWS batch-db (%s:%s) status: %s",
                     db_job.job_name,
                     db_job.job_id,
                     db_job.status,
@@ -852,7 +935,7 @@ class AioAWSBatchTinyDB(AioAWSBatchDB):
             db_job = await self.find_latest_job_name(job.job_name)
             if db_job:
                 LOGGER.info(
-                    "AWS Batch job (%s:%s) recovered from db with status: %s",
+                    "AWS batch-db (%s:%s) status: %s",
                     db_job.job_name,
                     db_job.job_id,
                     db_job.status,
