@@ -126,24 +126,39 @@ class AWSBatchJob:
         type is optional, used only for job arrays
 
     :param container_overrides: a dictionary of container overrides.
-        Overrides include 'vcpus', 'memory', 'instanceType',
-        'environment', and 'resourceRequirements'. If the `command`
-        parameter is defined, it overrides the `container_overrides['command']`
+        Overrides include 'instanceType', 'environment', and 'resourceRequirements'.
 
-        The container_overrides might not override job definition ResourceRequirement
-        values. To override VCPU and MEMORY requirements that are in the
-        ResourceRequirement in the job definition, ResourceRequirement must be
-        specified in the SubmitJob request.
+        If the `command` parameter is defined, it overrides `container_overrides['command']`
 
-        vcpus (int): This parameter maps to CpuShares in the Create a container
+        To override VCPU and MEMORY requirements in the ResourceRequirement of the
+        job definition, a ResourceRequirement must be specified in the SubmitJob request.
+
+        https://docs.aws.amazon.com/batch/latest/APIReference/API_ResourceRequirement.html
+
+        VCPU (int): This parameter maps to CpuShares in the Create a container
         section of the Docker Remote API and the --cpu-shares option to docker run.
         Each vCPU is equivalent to 1,024 CPU shares. This parameter is supported for
         jobs that run on EC2 resources, but isn't supported for jobs that run on
         Fargate resources.
 
-        memory (int):  This parameter indicates the amount of memory (in MiB) that is
+        MEMORY (int):  This parameter indicates the amount of memory (in MiB) that is
         reserved for the job. This parameter is supported for jobs that run on EC2
         resources, but isn't supported for jobs that run on Fargate resources.
+
+        .. code-block::
+
+           container_overrides = {
+                "resourceRequirements": [
+                    {
+                        "type": "VCPU",
+                        "value": "2"
+                    },
+                    {
+                        "type": "MEMORY",
+                        "value": str(int(gib_to_mib(6)))
+                    }
+                ]
+            }
 
     :param max_tries: an optional limit to the number of job retries, which
         can apply in the job-manager function to any job with a SPOT failure
