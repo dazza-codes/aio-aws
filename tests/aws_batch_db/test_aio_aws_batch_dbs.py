@@ -59,12 +59,12 @@ async def aioredis_jobs_db(redis_url) -> AioAWSBatchDB:
     batch_db = AioAWSBatchRedisDB(redis_url=redis_url)
     assert isinstance(batch_db, AioAWSBatchDB)
     key_count = 0
-    jobs_db = await batch_db.jobs_db_alive
-    async for key in jobs_db.scan_iter():
-        key_count += 1
-    logs_db = await batch_db.logs_db_alive
-    async for key in logs_db.scan_iter():
-        key_count += 1
+    async with batch_db.jobs_db_alive as jobs_db:
+        async for _ in jobs_db.scan_iter():
+            key_count += 1
+    async with batch_db.logs_db_alive as logs_db:
+        async for _ in logs_db.scan_iter():
+            key_count += 1
     assert key_count == 0
     yield batch_db
 

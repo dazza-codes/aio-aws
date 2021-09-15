@@ -254,7 +254,10 @@ async def aio_batch_job_submit(
                     job.job_tries.append(job.job_id)
                     job.num_tries += 1
                     if config.aio_batch_db:
-                        await config.aio_batch_db.save_job(job)
+                        batch_db = config.aio_batch_db
+                        assert isinstance(batch_db, AioAWSBatchDB)
+                        async with batch_db.db_semaphore:
+                            await batch_db.save_job(job)
                     LOGGER.info(
                         "AWS %s (%s:%s) try: %d of %d",
                         task_name,
