@@ -176,3 +176,8 @@ Focus on aio-aws
 -------------------
 - Use lazy aioredis connection
 
+
+0.16.3 (2021-09-14)
+-------------------
+- Revise redis batch-db client details
+
