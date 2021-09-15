@@ -56,16 +56,17 @@ def redis_url(redisdb) -> str:
 @pytest.fixture
 @pytest.mark.asyncio
 async def aioredis_jobs_db(redis_url) -> AioAWSBatchDB:
-    batch_jobs_db = AioAWSBatchRedisDB(redis_url=redis_url)
-    assert isinstance(batch_jobs_db, AioAWSBatchDB)
+    batch_db = AioAWSBatchRedisDB(redis_url=redis_url)
+    assert isinstance(batch_db, AioAWSBatchDB)
     key_count = 0
-    async for key in batch_jobs_db.jobs_db.scan_iter():
+    jobs_db = await batch_db.jobs_db_alive
+    async for key in jobs_db.scan_iter():
         key_count += 1
-    async for key in batch_jobs_db.logs_db.scan_iter():
+    logs_db = await batch_db.logs_db_alive
+    async for key in logs_db.scan_iter():
         key_count += 1
     assert key_count == 0
-    yield batch_jobs_db
-    await batch_jobs_db.db_close()
+    yield batch_db
 
 
 @pytest.fixture

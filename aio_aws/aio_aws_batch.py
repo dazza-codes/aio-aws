@@ -1055,7 +1055,7 @@ def find_incomplete_jobs(
 
         # First check the job itself before checking the jobs_db
         if job.job_id and job.status == "SUCCEEDED":
-            LOGGER.info(
+            LOGGER.debug(
                 "AWS Batch job (%s:%s) has status: %s",
                 job.job_name,
                 job.job_id,
@@ -1083,11 +1083,11 @@ def find_incomplete_jobs(
             if db_job is None:
                 # these jobs are new jobs
                 if job.job_id is None:
-                    LOGGER.info("AWS Batch job (%s) has no db entry", job.job_name)
+                    LOGGER.debug("AWS Batch job (%s) has no db entry", job.job_name)
                     yield job
                     continue
 
-            LOGGER.info(
+            LOGGER.debug(
                 "AWS Batch job (%s:%s) has db status: %s",
                 db_job.job_name,
                 db_job.job_id,
