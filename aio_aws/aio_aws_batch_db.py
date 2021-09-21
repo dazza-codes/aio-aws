@@ -12,6 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+AioAWS Batch-DB
+===============
+
+"""
+
 import abc
 import asyncio
 import json
@@ -209,7 +215,7 @@ class AioAWSBatchDB(abc.ABC):
 @dataclass
 class AioAWSBatchRedisDB(AioAWSBatchDB):
     """
-    AWS Batch job databases
+    AWS Batch job databases - aioredis implementation
 
     The jobs and logs are kept in separate DBs so
     that performance on the jobs_db is not compromised
@@ -711,7 +717,7 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
 @dataclass
 class AioAWSBatchTinyDB(AioAWSBatchDB):
     """
-    AWS Batch job databases
+    AWS Batch job databases - TinyDB implementation
 
     The jobs and logs are kept in separate DBs so
     that performance on the jobs_db is not compromised
