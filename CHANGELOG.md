@@ -188,3 +188,8 @@ Focus on aio-aws
 - Add a job submission timestamp to AWSBatchJob
 - Allow batch utils to provide a custom config
 
+
+0.16.5 (2021-09-21)
+-------------------
+- Add batch jobs-db by-status tools
+
