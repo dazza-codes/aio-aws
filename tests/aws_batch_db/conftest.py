@@ -2,6 +2,54 @@ import pytest
 
 from aio_aws.aws_batch_models import AWSBatchJob
 
+#
+# TODO: create fixtures for the same job-name with different job-id and different status
+#
+
+#
+# TODO: create fixtures for the same job-name with different status
+#
+
+#
+# TODO: change all fixtures with different job-name and job-id with different status
+#
+
+
+@pytest.fixture
+def aws_batch_job_submitted() -> AWSBatchJob:
+    # "87e36046-c675-4c84-bedd-7cffbca0528c"
+    job_data = {
+        "job_id": "1aac2eab-897a-4b89-9eb3-08986fbb7144",
+        "job_name": "sleep-1-job",
+        "job_queue": "arn:aws:batch:us-west-2:123456789012:job-queue/moto_test_job_queue",
+        "job_definition": "arn:aws:batch:us-west-2:123456789012:job-definition/moto_test_job_definition:1",
+        "job_submission": {
+            "ResponseMetadata": {
+                "HTTPHeaders": {
+                    "content-length": "75",
+                    "content-type": "text/html; charset=utf-8",
+                    "date": "Mon, 23 Mar 2020 15:29:33 GMT",
+                    "server": "amazon.com",
+                },
+                "HTTPStatusCode": 200,
+                "RetryAttempts": 0,
+            },
+            "jobName": "sleep-1-job",
+            "jobId": "1aac2eab-897a-4b89-9eb3-08986fbb7144",
+        },
+        "job_description": None,
+        "container_overrides": {
+            "command": ["/bin/sh", "-c", "echo Hello && sleep 1 && echo Bye"]
+        },
+        "command": ["/bin/sh", "-c", "echo Hello && sleep 1 && echo Bye"],
+        "depends_on": [],
+        "status": "SUBMITTED",
+        "job_tries": ["1aac2eab-897a-4b89-9eb3-08986fbb7144"],
+        "max_tries": 4,
+        "num_tries": 1,
+    }
+    return AWSBatchJob(**job_data)
+
 
 @pytest.fixture
 def aws_batch_job() -> AWSBatchJob:
@@ -11,6 +59,7 @@ def aws_batch_job() -> AWSBatchJob:
         "job_id": "1aac2eab-897a-4b89-9eb3-08986fbb7144",
         "job_name": "sleep-1-job",
         "job_queue": "arn:aws:batch:us-west-2:123456789012:job-queue/moto_test_job_queue",
+        "job_definition": "arn:aws:batch:us-west-2:123456789012:job-definition/moto_test_job_definition:1",
         "job_submission": {
             "ResponseMetadata": {
                 "HTTPHeaders": {
@@ -34,7 +83,6 @@ def aws_batch_job() -> AWSBatchJob:
             "command": ["/bin/sh", "-c", "echo Hello && sleep 0.2 && echo Bye"]
         },
         "depends_on": [],
-        "job_definition": "arn:aws:batch:us-west-2:123456789012:job-definition/moto_test_job_definition:1",
         "job_description": {
             "container": {
                 "command": [

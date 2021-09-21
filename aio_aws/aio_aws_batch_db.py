@@ -373,7 +373,7 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
         jobs_saved = await self.find_by_job_name(job_name)
         if jobs_saved:
             db_jobs = [AWSBatchJob(**job_dict) for job_dict in jobs_saved]
-            db_jobs = sorted(db_jobs, key=lambda j: j.created)
+            db_jobs = sorted(db_jobs, key=lambda j: j.created or j.submitted)
             db_job = db_jobs[-1]
             return db_job
 
@@ -746,7 +746,7 @@ class AioAWSBatchTinyDB(AioAWSBatchDB):
         jobs_saved = await self.find_by_job_name(job_name)
         if jobs_saved:
             db_jobs = [AWSBatchJob(**job_doc) for job_doc in jobs_saved]
-            db_jobs = sorted(db_jobs, key=lambda j: j.created)
+            db_jobs = sorted(db_jobs, key=lambda j: j.created or j.submitted)
             db_job = db_jobs[-1]
             return db_job
 
