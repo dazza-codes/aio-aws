@@ -26,12 +26,14 @@ Batch Job metadata models.
 import enum
 from dataclasses import dataclass
 from functools import total_ordering
+from math import floor
 from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Union
 
 from aio_aws.logger import get_logger
+from aio_aws.utils import http_date_to_timestamp
 
 LOGGER = get_logger(__name__)
 
@@ -283,22 +285,53 @@ class AWSBatchJob:
         self.logs = None
 
     @property
+    def submitted(self) -> Optional[int]:
+        """Timestamp (seconds since the epoch) for job submission"""
+        if self.job_submission:
+            try:
+                metadata = self.job_submission.get("ResponseMetadata", {})
+                date = metadata.get("HTTPHeaders", {}).get("date")
+                if date:
+                    # as an integer, it cannot round up into the future
+                    return floor(http_date_to_timestamp(date))
+            except Exception as err:
+                LOGGER.error(err)
+
+    @property
     def created(self) -> Optional[int]:
+        """
+        Timestamp (seconds since the epoch) for job createdAt;
+        this depends on updates to the jobDescription.
+        """
         if self.job_description:
             return self.job_description.get("createdAt")
 
     @property
     def started(self) -> Optional[int]:
+        """
+        Timestamp (seconds since the epoch) for job startedAt;
+        this depends on updates to the jobDescription.
+        """
         if self.job_description:
             return self.job_description.get("startedAt")
 
     @property
     def stopped(self) -> Optional[int]:
+        """
+        Timestamp (seconds since the epoch) for job stoppedAt;
+        this depends on updates to the jobDescription.
+        """
         if self.job_description:
             return self.job_description.get("stoppedAt")
 
     @property
     def elapsed(self) -> Optional[int]:
+        """
+        Timestamp (seconds since the epoch) for job elapsed time;
+        this depends on updates to the jobDescription;
+        it is the difference between createdAt and stoppedAt
+        (this can include long periods in a job queue).
+        """
         created = self.created
         stopped = self.stopped
         if stopped and created:
@@ -306,6 +339,11 @@ class AWSBatchJob:
 
     @property
     def runtime(self) -> Optional[int]:
+        """
+        Timestamp (seconds since the epoch) for job run time;
+        this depends on updates to the jobDescription;
+        it is the difference between startedAt and stoppedAt.
+        """
         started = self.started
         stopped = self.stopped
         if started and stopped:
@@ -313,6 +351,11 @@ class AWSBatchJob:
 
     @property
     def spinup(self) -> Optional[int]:
+        """
+        Timestamp (seconds since the epoch) for job startup time;
+        this depends on updates to the jobDescription;
+        it is the difference between createdAt and startedAt.
+        """
         created = self.created
         started = self.started
         if started and created:
