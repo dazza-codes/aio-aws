@@ -15,6 +15,7 @@
 """
 Test Aio AWS Batch DB
 """
+from typing import Counter
 from typing import Dict
 from typing import List
 from typing import Set
@@ -31,6 +32,7 @@ from aio_aws.aio_aws_batch_db import AioAWSBatchDB
 from aio_aws.aio_aws_batch_db import AioAWSBatchRedisDB
 from aio_aws.aio_aws_batch_db import AioAWSBatchTinyDB
 from aio_aws.aws_batch_models import AWSBatchJob
+from aio_aws.aws_batch_models import AWSBatchJobStates
 from aio_aws.utils import timestamp_to_http_date
 
 
@@ -328,6 +330,58 @@ async def test_batch_find_jobs_by_status_with_jobs_db(jobs_dbs, aws_batch_jobs):
         for job in find_running_jobs(jobs=[job_succeeded, job_failed], jobs_db=jobs_db):
             assert job.job_id
             raise RuntimeError("Should not find any")
+
+
+@pytest.mark.asyncio
+async def test_batch_job_db_count_jobs_by_status(jobs_dbs, aws_batch_jobs):
+
+    job_succeeded, job_failed, job_running = aws_batch_jobs
+    test_jobs = {
+        "RUNNING": job_running,
+        "SUCCEEDED": job_succeeded,
+        "FAILED": job_failed,
+    }
+
+    for jobs_db in jobs_dbs:
+        for status, job in test_jobs.items():
+            job_id = await jobs_db.save_job(job)
+            assert job_id == job.job_id
+
+        job_counts = await jobs_db.count_by_job_status()
+        assert isinstance(job_counts, Counter)
+        for job_status in AWSBatchJobStates:
+            assert job_status.name in job_counts
+            if job_status.name in test_jobs:
+                assert job_counts[job_status.name] == 1
+            else:
+                assert job_counts[job_status.name] == 0
+
+
+@pytest.mark.asyncio
+async def test_batch_job_db_group_jobs_by_status(jobs_dbs, aws_batch_jobs):
+
+    job_succeeded, job_failed, job_running = aws_batch_jobs
+    test_jobs = {
+        "RUNNING": job_running,
+        "SUCCEEDED": job_succeeded,
+        "FAILED": job_failed,
+    }
+
+    for jobs_db in jobs_dbs:
+        for status, job in test_jobs.items():
+            job_id = await jobs_db.save_job(job)
+            assert job_id == job.job_id
+
+        job_groups = await jobs_db.group_by_job_status()
+        assert isinstance(job_groups, Dict)
+        for job_status in AWSBatchJobStates:
+            assert job_status.name in job_groups
+
+        for status, test_job in test_jobs.items():
+            jobs = job_groups[status]
+            assert isinstance(jobs, List)
+            assert len(jobs) == 1
+            assert jobs[0] == (test_job.job_id, test_job.job_name, test_job.status)
 
 
 @pytest.mark.asyncio
