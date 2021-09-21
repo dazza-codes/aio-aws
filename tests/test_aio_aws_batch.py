@@ -27,7 +27,9 @@ according to the moto license (Apache-2.0).
 """
 import asyncio
 import inspect
+import time
 from contextlib import asynccontextmanager
+from math import floor
 from unittest.mock import MagicMock
 
 import botocore.exceptions
@@ -58,6 +60,7 @@ from aio_aws.aio_aws_batch import batch_update_jobs
 from aio_aws.aws_batch_models import AWSBatchJob
 from aio_aws.aws_batch_models import AWSBatchJobStates
 from aio_aws.utils import response_success
+from aio_aws.utils import utc_timestamp
 from tests.fixtures.aiomoto_fixtures import AioAwsBatchClients
 from tests.fixtures.aiomoto_fixtures import AioAwsBatchInfrastructure
 from tests.fixtures.aiomoto_fixtures import aio_batch_infrastructure
@@ -231,6 +234,9 @@ async def test_aio_batch_list_jobs(
 
 @pytest.mark.asyncio
 async def test_async_batch_job_submit(aws_batch_sleep1_job, batch_config):
+    # moto/docker job submission timestamps seem to be too slow (why ?)
+    utc_now = floor(utc_timestamp())
+    time.sleep(1.0)
     job = aws_batch_sleep1_job
     await aio_batch_job_submit(job, config=batch_config)
     response = job.job_submission
@@ -242,6 +248,7 @@ async def test_async_batch_job_submit(aws_batch_sleep1_job, batch_config):
     assert job.job_id in job.job_tries
     assert job.num_tries == 1
     assert job.num_tries <= job.max_tries
+    assert job.submitted > utc_now
     assert job.status in AWSBatchJob.STATES
     assert AWSBatchJobStates[job.status] == AWSBatchJobStates.SUBMITTED
 
