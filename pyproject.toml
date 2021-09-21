@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "aio-aws"
-version = "0.16.3"
+version = "0.16.4"
 description = "aio-aws"
 authors = [
     "Darren Weber <dazza-codes@github.com>",

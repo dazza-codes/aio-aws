@@ -181,3 +181,10 @@ Focus on aio-aws
 -------------------
 - Revise redis batch-db client details
 
+
+0.16.4 (2021-09-20)
+-------------------
+- Revise jobs-db to fallback on job.submitted for latest job by name
+- Add a job submission timestamp to AWSBatchJob
+- Allow batch utils to provide a custom config
+
