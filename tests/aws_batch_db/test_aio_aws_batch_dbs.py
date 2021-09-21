@@ -15,7 +15,6 @@
 """
 Test Aio AWS Batch DB
 """
-import asyncio
 from typing import Dict
 from typing import List
 from typing import Set
@@ -32,6 +31,7 @@ from aio_aws.aio_aws_batch_db import AioAWSBatchDB
 from aio_aws.aio_aws_batch_db import AioAWSBatchRedisDB
 from aio_aws.aio_aws_batch_db import AioAWSBatchTinyDB
 from aio_aws.aws_batch_models import AWSBatchJob
+from aio_aws.utils import timestamp_to_http_date
 
 
 @pytest.fixture
@@ -429,31 +429,63 @@ async def test_batch_job_db_saved_filter_jobs_to_run_for_recovery(
 
 
 @pytest.mark.asyncio
-async def test_batch_job_db_find_latest_job_name(jobs_dbs, aws_batch_job):
-    for jobs_db in jobs_dbs:
-        job = AWSBatchJob(**aws_batch_job.db_data)
-        assert job.job_id
-        assert job.status == "SUCCEEDED"
-        job_id = await jobs_db.save_job(job)
-        assert job_id == job.job_id
+async def test_batch_job_db_find_latest_job_name(
+    jobs_dbs, aws_batch_job, aws_batch_job_submitted
+):
 
-        # Fake another submission of the same job-name
+    assert aws_batch_job.job_id == aws_batch_job_submitted.job_id
+    assert aws_batch_job.job_name == aws_batch_job_submitted.job_name
+
+    for jobs_db in jobs_dbs:
+        job_submitted = AWSBatchJob(**aws_batch_job_submitted.db_data)
+        assert job_submitted.job_id
+        assert job_submitted.status == "SUBMITTED"
+        job_id = await jobs_db.save_job(job_submitted)
+        assert job_id == job_submitted.job_id
+
+        # Simulate the submitted job has FAILED
+        job_failed = AWSBatchJob(**aws_batch_job.db_data)
+        assert job_submitted.job_id == job_failed.job_id
+        assert job_failed.job_id
+        job_failed.status = "FAILED"
+        job_failed.job_description["status"] = job_failed.status
+        job_failed.job_description["createdAt"] += 5
+        job_failed.job_description["startedAt"] += 5
+        job_failed.job_description["stoppedAt"] += 5
+        job_id = await jobs_db.save_job(job_failed)
+        assert job_id == job_failed.job_id
+
+        # Fake another submission of the same job-name (with SUBMITTED status);
+        # with a job.submitted timestamp later than the FAILED job
+        failed_at = job_failed.job_description["stoppedAt"]
+        resubmitted_at = failed_at + (20 * 60)  # 20 min later
+        resubmitted_str = timestamp_to_http_date(resubmitted_at)
+        # 'Mon, 23 Mar 2020 15:49:46 GMT'
+
         new_job = AWSBatchJob(**aws_batch_job.db_data)
-        new_job.job_id = job.job_id.replace("08986fbb7144", "08986fbb7145")
+        new_job.job_id = job_submitted.job_id.replace("08986fbb7144", "08986fbb7146")
+        new_job.status = "SUBMITTED"
+        new_job.job_description = None
         new_job.job_submission["jobId"] = new_job.job_id
-        new_job.job_description["status"] = "SUCCEEDED"
-        new_job.status = job.job_description["status"]
-        new_job.job_description["createdAt"] += 5
-        new_job.job_description["startedAt"] += 5
-        new_job.job_description["stoppedAt"] += 5
+        new_job.job_submission["ResponseMetadata"] = {
+            "HTTPHeaders": {
+                "content-length": "75",
+                "content-type": "text/html; charset=utf-8",
+                "date": resubmitted_str,
+                "server": "amazon.com",
+            },
+            "HTTPStatusCode": 200,
+            "RetryAttempts": 0,
+        }
         job_id = await jobs_db.save_job(new_job)
         assert job_id == new_job.job_id
-        job_dicts = await jobs_db.find_by_job_name(job.job_name)
+
+        job_dicts = await jobs_db.find_by_job_name(job_submitted.job_name)
         assert len(job_dicts) == 2
         assert sorted([j["job_id"] for j in job_dicts]) == sorted(
-            [job.job_id, new_job.job_id]
+            [job_submitted.job_id, new_job.job_id]
         )
-        job_found = await jobs_db.find_latest_job_name(job.job_name)
+        job_found = await jobs_db.find_latest_job_name(job_submitted.job_name)
         assert job_found.job_id == new_job.job_id
 
 
