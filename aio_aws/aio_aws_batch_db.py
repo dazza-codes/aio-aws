@@ -15,16 +15,20 @@
 import abc
 import asyncio
 import json
+from collections import Counter
+from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Set
+from typing import Tuple
 
 import tinydb
 
 from aio_aws.aws_batch_models import AWSBatchJob
+from aio_aws.aws_batch_models import AWSBatchJobStates
 from aio_aws.logger import get_logger
 from aio_aws.uuid_utils import valid_uuid4
 
@@ -41,6 +45,32 @@ class AioAWSBatchDB(abc.ABC):
     async def all_job_ids(self) -> Set[str]:
         """
         Find all jobId.
+        """
+        pass
+
+    @abc.abstractmethod
+    async def count_by_job_status(self) -> Counter:
+        """
+        Count all jobs by jobStatus
+
+        :return: a Counter of jobs by job status (could contain multiple
+            entries for the same jobName, if it is run more than once)
+        """
+        pass
+
+    @abc.abstractmethod
+    async def group_by_job_status(self) -> Dict[str, List[Tuple[str, str, str]]]:
+        """
+        Group all jobId by jobStatus
+
+        :return: a dictionary of job info by job status (could contain multiple
+            entries with the same jobName if it is run multiple times);
+            the dictionary values contain a list of job information tuples, e.g.
+
+            .. code-block::
+
+                { status: [ (job.job_id, job.job_name, job.status), ] }
+
         """
         pass
 
@@ -339,6 +369,55 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
                         job_dict = json.loads(job_json)
                         jobs.append(job_dict)
         return jobs
+
+    async def count_by_job_status(self) -> Counter:
+        """
+        Count all jobs by jobStatus
+
+        :return: a Counter of jobs by job status (could contain multiple
+            entries for the same jobName, if it is run more than once)
+        """
+        counter = Counter()
+        for job_status in AWSBatchJobStates:
+            counter[job_status.name] = 0
+        jobs_db = await self.jobs_db_alive
+        async for key in jobs_db.scan_iter():
+            if valid_uuid4(key):
+                # The key is a jobId that conforms to UUID
+                job_json = await jobs_db.get(key)
+                if job_json:
+                    job_dict = json.loads(job_json)
+                    job = AWSBatchJob(**job_dict)
+                    counter[job.status] += 1
+        return counter
+
+    async def group_by_job_status(self) -> Dict[str, List[Tuple[str, str, str]]]:
+        """
+        Group all jobId by jobStatus
+
+        :return: a dictionary of job info by job status (could contain multiple
+            entries with the same jobName if it is run multiple times);
+            the dictionary values contain a list of job information tuples, e.g.
+
+            .. code-block::
+
+                { status: [ (job.job_id, job.job_name, job.status), ] }
+
+        """
+        groups = defaultdict(list)
+        for job_status in AWSBatchJobStates:
+            groups[job_status.name] = []
+        jobs_db = await self.jobs_db_alive
+        async for key in jobs_db.scan_iter():
+            if valid_uuid4(key):
+                # The key is a jobId that conforms to UUID
+                job_json = await jobs_db.get(key)
+                if job_json:
+                    job_dict = json.loads(job_json)
+                    job = AWSBatchJob(**job_dict)
+                    job_info = (job.job_id, job.job_name, job.status)
+                    groups[job.status].append(job_info)
+        return groups
 
     async def find_by_job_id(self, job_id: str) -> Optional[Dict]:
         """
@@ -710,6 +789,45 @@ class AioAWSBatchTinyDB(AioAWSBatchDB):
                 if valid_uuid4(job_id):
                     job_ids.add(job_id)
             return job_ids
+
+    async def count_by_job_status(self) -> Counter:
+        """
+        Count all jobs by jobStatus
+
+        :return: a Counter of jobs by job status (could contain multiple
+            entries for the same jobName, if it is run more than once)
+        """
+        counter = Counter()
+        for job_status in AWSBatchJobStates:
+            counter[job_status.name] = 0
+        async with self.db_semaphore:
+            for job_doc in self.jobs_db.all():
+                job = AWSBatchJob(**job_doc)
+                counter[job.status] += 1
+        return counter
+
+    async def group_by_job_status(self) -> Dict[str, List[Tuple[str, str, str]]]:
+        """
+        Group all jobId by jobStatus
+
+        :return: a dictionary of job info by job status (could contain multiple
+            entries with the same jobName if it is run multiple times);
+            the dictionary values contain a list of job information tuples, e.g.
+
+            .. code-block::
+
+                { status: [ (job.job_id, job.job_name, job.status), ] }
+
+        """
+        groups = defaultdict(list)
+        for job_status in AWSBatchJobStates:
+            groups[job_status.name] = []
+        async with self.db_semaphore:
+            for job_doc in self.jobs_db.all():
+                job = AWSBatchJob(**job_doc)
+                job_info = (job.job_id, job.job_name, job.status)
+                groups[job.status].append(job_info)
+        return groups
 
     async def find_by_job_id(self, job_id: str) -> Optional[tinydb.database.Document]:
         """
