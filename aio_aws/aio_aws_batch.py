@@ -1115,124 +1115,163 @@ def find_incomplete_jobs(
             yield db_job
 
 
-def batch_run_jobs(jobs: List[AWSBatchJob], jobs_db: AioAWSBatchDB = None):
+def batch_run_jobs(
+    jobs: List[AWSBatchJob],
+    jobs_db: AioAWSBatchDB = None,
+    aio_batch_config: AWSBatchConfig = None,
+):
     """
     Submit jobs that have not been submitted yet,
     and monitor all jobs until they complete.
 
     :param jobs: any AWSBatchJob
-    :param jobs_db: an optional jobs-db to persist job data
+    :param jobs_db: an optional jobs-db to persist job data;
+        this is only applied if an aio_batch_config is not provided
+    :param aio_batch_config: a custom AWSBatchConfig; if provided,
+        it is responsible for providing any optional jobs-db
     :return: each job maintains state, so this function returns nothing
     """
     # The polling is kept to a minimum to avoid interference with the batch API;
     # max_pool_connections = 1 is used because of details in aio-aws where it
     # creates a new client for each monitoring task (that could change in new
     # releases of aio-aws).
-    aio_batch_config = AWSBatchConfig(
-        aio_batch_db=jobs_db,
-        min_pause=10,
-        max_pause=20,
-        start_pause=60,
-        max_pool_connections=1,
-        sem=500,
-    )
+    if aio_batch_config is None:
+        aio_batch_config = AWSBatchConfig(
+            aio_batch_db=jobs_db,
+            min_pause=10,
+            max_pause=20,
+            start_pause=60,
+            max_pool_connections=1,
+            sem=500,
+        )
     asyncio.run(aio_batch_run_jobs(jobs=jobs, config=aio_batch_config))
 
 
-def batch_submit_jobs(jobs: List[AWSBatchJob], jobs_db: AioAWSBatchDB = None):
+def batch_submit_jobs(
+    jobs: List[AWSBatchJob],
+    jobs_db: AioAWSBatchDB = None,
+    aio_batch_config: AWSBatchConfig = None,
+):
     """
     Submit jobs that have not been submitted yet.
 
     :param jobs: any AWSBatchJob
-    :param jobs_db: an optional jobs-db to persist job data
+    :param jobs_db: an optional jobs-db to persist job data;
+        this is only applied if an aio_batch_config is not provided
+    :param aio_batch_config: a custom AWSBatchConfig; if provided,
+        it is responsible for providing any optional jobs-db
     :return: each job maintains state, so this function returns nothing
     """
     # The job submission can run fairly fast (without any monitoring).
     # max_pool_connections = 1 is used because of details in aio-aws where it
     # creates a new client for each monitoring task (that could change in new
     # releases of aio-aws).
-    aio_batch_config = AWSBatchConfig(
-        aio_batch_db=jobs_db,
-        min_pause=2,
-        max_pause=10,
-        start_pause=10,
-        max_pool_connections=1,
-        sem=500,
-    )
+    if aio_batch_config is None:
+        aio_batch_config = AWSBatchConfig(
+            aio_batch_db=jobs_db,
+            min_pause=2,
+            max_pause=10,
+            start_pause=10,
+            max_pool_connections=1,
+            sem=500,
+        )
     asyncio.run(aio_batch_submit_jobs(jobs=jobs, config=aio_batch_config))
 
 
-def batch_monitor_jobs(jobs: List[AWSBatchJob], jobs_db: AioAWSBatchDB = None):
+def batch_monitor_jobs(
+    jobs: List[AWSBatchJob],
+    jobs_db: AioAWSBatchDB = None,
+    aio_batch_config: AWSBatchConfig = None,
+):
     """
     Monitor submitted jobs until they complete.
 
     :param jobs: any AWSBatchJob
-    :param jobs_db: an optional jobs-db to persist job data
+    :param jobs_db: an optional jobs-db to persist job data;
+        this is only applied if an aio_batch_config is not provided
+    :param aio_batch_config: a custom AWSBatchConfig; if provided,
+        it is responsible for providing any optional jobs-db
     :return: each job maintains state, so this function returns nothing
     """
     # The polling is kept to a minimum to avoid interference with the batch API;
     # max_pool_connections = 1 is used because of details in aio-aws where it
     # creates a new client for each monitoring task (that could change in new
     # releases of aio-aws).
-    aio_batch_config = AWSBatchConfig(
-        aio_batch_db=jobs_db,
-        min_pause=10,
-        max_pause=20,
-        start_pause=60,
-        max_pool_connections=1,
-        sem=500,
-    )
+    if aio_batch_config is None:
+        aio_batch_config = AWSBatchConfig(
+            aio_batch_db=jobs_db,
+            min_pause=10,
+            max_pause=20,
+            start_pause=60,
+            max_pool_connections=1,
+            sem=500,
+        )
     asyncio.run(aio_batch_monitor_jobs(jobs=jobs, config=aio_batch_config))
 
 
-def batch_update_jobs(jobs: List[AWSBatchJob], jobs_db: AioAWSBatchDB = None):
+def batch_update_jobs(
+    jobs: List[AWSBatchJob],
+    jobs_db: AioAWSBatchDB = None,
+    aio_batch_config: AWSBatchConfig = None,
+):
     """
     Update job descriptions.
 
     :param jobs: any AWSBatchJob
-    :param jobs_db: an optional jobs-db to persist job data
+    :param jobs_db: an optional jobs-db to persist job data;
+        this is only applied if an aio_batch_config is not provided
+    :param aio_batch_config: a custom AWSBatchConfig; if provided,
+        it is responsible for providing any optional jobs-db
     :return: each job maintains state, so this function returns nothing
     """
     # The polling is kept to a minimum to avoid interference with the batch API;
     # max_pool_connections = 1 is used because of details in aio-aws where it
     # creates a new client for each monitoring task (that could change in new
     # releases of aio-aws).
-    aio_batch_config = AWSBatchConfig(
-        aio_batch_db=jobs_db,
-        min_pause=10,
-        max_pause=20,
-        start_pause=60,
-        max_pool_connections=1,
-        sem=500,
-    )
+    if aio_batch_config is None:
+        aio_batch_config = AWSBatchConfig(
+            aio_batch_db=jobs_db,
+            min_pause=10,
+            max_pause=20,
+            start_pause=60,
+            max_pool_connections=1,
+            sem=500,
+        )
     asyncio.run(aio_batch_update_jobs(jobs=jobs, config=aio_batch_config))
 
 
 def batch_get_logs(
     jobs: List[AWSBatchJob],
     jobs_db: AioAWSBatchDB = None,
+    aio_batch_config: AWSBatchConfig = None,
 ):
     """
     Get job logs.
 
     :param jobs: any AWSBatchJob
-    :param jobs_db: an optional jobs-db to persist job data
+    :param jobs_db: an optional jobs-db to persist job data;
+        this is only applied if an aio_batch_config is not provided
+    :param aio_batch_config: a custom AWSBatchConfig; if provided,
+        it is responsible for providing any optional jobs-db
     :return: each job maintains state, so this function returns nothing
     """
     # The polling is kept to a minimum to avoid interference with the batch API;
     # max_pool_connections = 1 is used because of details in aio-aws where it
     # creates a new client for each monitoring task (that could change in new
     # releases of aio-aws).
-    aio_batch_config = AWSBatchConfig(
-        aio_batch_db=jobs_db,
-        min_jitter=2,
-        max_jitter=5,
-        min_pause=1,
-        max_pause=2,
-        start_pause=1,
-        max_pool_connections=1,
-        sem=100,
-    )
+    if aio_batch_config is None:
+        # AWS Batch logs has limited bandwidth, so default
+        # settings try to avoid rate throttling
+        aio_batch_config = AWSBatchConfig(
+            aio_batch_db=jobs_db,
+            min_jitter=3,
+            max_jitter=8,
+            min_pause=2,
+            max_pause=10,
+            start_pause=2,
+            max_pool_connections=1,
+            sem=100,
+        )
     asyncio.run(aio_batch_get_logs(jobs=jobs, config=aio_batch_config))
 
 
@@ -1240,24 +1279,29 @@ def batch_cancel_jobs(
     jobs: List[AWSBatchJob],
     reason: str = "User cancelled job",
     jobs_db: AioAWSBatchDB = None,
+    aio_batch_config: AWSBatchConfig = None,
 ):
     """
     Cancel jobs that can be cancelled (if they are not running or complete).
 
     :param jobs: any AWSBatchJob
-    :param jobs_db: an optional jobs-db to persist job data
+    :param jobs_db: an optional jobs-db to persist job data;
+        this is only applied if an aio_batch_config is not provided
+    :param aio_batch_config: a custom AWSBatchConfig; if provided,
+        it is responsible for providing any optional jobs-db
     :return: each job maintains state, so this function returns nothing
     """
     # The tasks can run fairly fast (without any monitoring).
     # max_pool_connections = 1 is used because a new client is used for each task
-    aio_batch_config = AWSBatchConfig(
-        aio_batch_db=jobs_db,
-        min_pause=2,
-        max_pause=10,
-        start_pause=10,
-        max_pool_connections=1,
-        sem=500,
-    )
+    if aio_batch_config is None:
+        aio_batch_config = AWSBatchConfig(
+            aio_batch_db=jobs_db,
+            min_pause=2,
+            max_pause=10,
+            start_pause=10,
+            max_pool_connections=1,
+            sem=500,
+        )
     asyncio.run(
         aio_batch_cancel_jobs(jobs=jobs, reason=reason, config=aio_batch_config)
     )
@@ -1267,24 +1311,29 @@ def batch_terminate_jobs(
     jobs: List[AWSBatchJob],
     reason: str = "User terminated job",
     jobs_db: AioAWSBatchDB = None,
+    aio_batch_config: AWSBatchConfig = None,
 ):
     """
     Terminate jobs that can be killed (if they are not complete).
 
     :param jobs: any AWSBatchJob
-    :param jobs_db: an optional jobs-db to persist job data
+    :param jobs_db: an optional jobs-db to persist job data;
+        this is only applied if an aio_batch_config is not provided
+    :param aio_batch_config: a custom AWSBatchConfig; if provided,
+        it is responsible for providing any optional jobs-db
     :return: each job maintains state, so this function returns nothing
     """
     # The tasks can run fairly fast (without any monitoring).
     # max_pool_connections = 1 is used because a new client is used for each task
-    aio_batch_config = AWSBatchConfig(
-        aio_batch_db=jobs_db,
-        min_pause=2,
-        max_pause=10,
-        start_pause=10,
-        max_pool_connections=1,
-        sem=500,
-    )
+    if aio_batch_config is None:
+        aio_batch_config = AWSBatchConfig(
+            aio_batch_db=jobs_db,
+            min_pause=2,
+            max_pause=10,
+            start_pause=10,
+            max_pool_connections=1,
+            sem=500,
+        )
     asyncio.run(
         aio_batch_terminate_jobs(jobs=jobs, reason=reason, config=aio_batch_config)
     )
