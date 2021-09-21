@@ -11,26 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+from datetime import datetime
+from email.utils import format_datetime
+from email.utils import formatdate
+from email.utils import parsedate_to_datetime
 from typing import Optional
 
+import pytz
 from botocore.exceptions import ClientError
 
 from aio_aws.logger import get_logger
 
 LOGGER = get_logger(__name__)
-
-
-def response_code(response) -> int:
-    return int(response.get("ResponseMetadata", {}).get("HTTPStatusCode"))
-
-
-def response_success(response) -> bool:
-    code = response_code(response)
-    if code:
-        return 200 <= code < 300
-    else:
-        return False
 
 
 def handle_head_error_code(error: ClientError, item: str = None) -> Optional[bool]:
@@ -45,3 +37,65 @@ def handle_head_error_code(error: ClientError, item: str = None) -> Optional[boo
         LOGGER.debug("GET HEAD 404: object missing: %s", item)
         return False
     return None
+
+
+def response_code(response) -> int:
+    return int(response.get("ResponseMetadata", {}).get("HTTPStatusCode"))
+
+
+def response_success(response) -> bool:
+    code = response_code(response)
+    if code:
+        return 200 <= code < 300
+    else:
+        return False
+
+
+def utc_now() -> datetime:
+    return datetime.utcnow().replace(tzinfo=pytz.UTC)
+
+
+def utc_timestamp() -> float:
+    return utc_now().timestamp()
+
+
+def http_date_to_datetime(http_date: str) -> datetime:
+    """
+    Parse a HTTP date string into a datetime.
+
+    :param http_date: e.g. "Mon, 23 Mar 2020 15:29:33 GMT"
+    :return: a datetime
+    """
+    return parsedate_to_datetime(http_date)
+
+
+def http_date_to_timestamp(http_date: str) -> float:
+    """
+    Parse a HTTP date string into a timestamp as
+    seconds since the epoch.
+
+    :param http_date: e.g. "Mon, 23 Mar 2020 15:29:33 GMT"
+    :return: a timestamp (seconds since the epoch)
+    """
+    return parsedate_to_datetime(http_date).timestamp()
+
+
+def datetime_to_http_date(dt: datetime) -> str:
+    """
+    Parse a datetime into an HTTP date string (using GMT).
+
+    :param dt: a datetime
+    :return: an HTTP date string, e.g. "Mon, 23 Mar 2020 15:29:33 GMT"
+    """
+    return format_datetime(dt, usegmt=True)
+
+
+def timestamp_to_http_date(ts: float) -> str:
+    """
+    Parse a timestamp (seconds since the epoch)
+    into an HTTP date string (using GMT).
+
+    :param ts: a timestamp (seconds since the epoch)
+    :return: an HTTP date string, e.g. "Mon, 23 Mar 2020 15:29:33 GMT"
+    """
+    return formatdate(ts, usegmt=True)
