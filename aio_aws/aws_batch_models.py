@@ -254,13 +254,15 @@ class AWSBatchJob:
 
     def allow_submit_job(self) -> bool:
         """
-        - jobs with an existing job.job_id should skip
-        submission to avoid resubmission for the same job
+        Logic to determine whether a job can be submitted
+        or resubmitted:
 
+        - jobs with an existing job.job_id should skip
+          submission to avoid resubmission for the same job
         - jobs with too many tries cannot be resubmitted
 
         The :py:meth:`AWSBatchJob.reset()` can be applied
-        in order to resubmit any job that is no allowed.
+        in order to resubmit any job that is not allowed.
 
         :return: True if it is allowed
         """
