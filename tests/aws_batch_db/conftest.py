@@ -15,8 +15,8 @@ def aws_batch_job() -> AWSBatchJob:
             "ResponseMetadata": {
                 "HTTPHeaders": {
                     "content-length": "75",
-                    "content-type": "text/html; " "charset=utf-8",
-                    "date": "Mon, 23 Mar " "2020 " "15:29:33 GMT",
+                    "content-type": "text/html; charset=utf-8",
+                    "date": "Mon, 23 Mar 2020 15:29:33 GMT",
                     "server": "amazon.com",
                 },
                 "HTTPStatusCode": 200,
