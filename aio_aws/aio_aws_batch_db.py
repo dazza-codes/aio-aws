@@ -25,6 +25,7 @@ from collections import Counter
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
+from typing import AsyncIterator
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -48,11 +49,35 @@ class AioAWSBatchDB(abc.ABC):
     """
 
     @abc.abstractmethod
-    async def all_job_ids(self) -> Set[str]:
+    async def all_jobs(self) -> List[AWSBatchJob]:
         """
-        Find all jobId.
+        Collect all jobs.
+
+        Warning: this could exceed memory, try to use
+        the :py:meth:`gen_all_jobs` wherever possible.
         """
         pass
+
+    @abc.abstractmethod
+    async def gen_all_jobs(self) -> AsyncIterator[AWSBatchJob]:
+        """
+        Generate all jobs.
+        """
+        yield
+
+    @abc.abstractmethod
+    async def all_job_ids(self) -> Set[str]:
+        """
+        Collect all jobIds.
+        """
+        pass
+
+    @abc.abstractmethod
+    async def gen_job_ids(self) -> AsyncIterator[str]:
+        """
+        Generate all jobIds.
+        """
+        yield
 
     @abc.abstractmethod
     async def count_by_job_status(self) -> Counter:
@@ -376,6 +401,49 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
                         jobs.append(job_dict)
         return jobs
 
+    async def all_job_ids(self) -> Set[str]:
+        """
+        Collect all jobIds.
+        """
+        job_ids = set()
+        async for key in self.gen_job_ids():
+            job_ids.add(key)
+        return job_ids
+
+    async def gen_job_ids(self) -> AsyncIterator[str]:
+        """
+        Generate all jobIds.
+        """
+        jobs_db = await self.jobs_db_alive
+        async for key in jobs_db.scan_iter():
+            if valid_uuid4(key):
+                yield key
+
+    async def all_jobs(self) -> List[AWSBatchJob]:
+        """
+        Collect all jobs.
+
+        Warning: this could exceed memory, try to use
+        the :py:meth:`gen_all_jobs` wherever possible.
+        """
+        jobs = []
+        async for j in self.gen_all_jobs():
+            jobs.append(j)
+        return jobs
+
+    async def gen_all_jobs(self) -> AsyncIterator[AWSBatchJob]:
+        """
+        Generate all jobs.
+        """
+        jobs_db = await self.jobs_db_alive
+        async for key in jobs_db.scan_iter():
+            if valid_uuid4(key):
+                # The key is a jobId that conforms to UUID
+                job_json = await jobs_db.get(key)
+                if job_json:
+                    job_dict = json.loads(job_json)
+                    yield AWSBatchJob(**job_dict)
+
     async def count_by_job_status(self) -> Counter:
         """
         Count all jobs by jobStatus
@@ -606,17 +674,6 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
             return await logs_db.set(job.job_id, json.dumps(job.db_logs_data))
         LOGGER.error("FAIL to save_job_logs")
 
-    async def all_job_ids(self) -> Set[str]:
-        """
-        Find all jobId keys.
-        """
-        job_ids = set()
-        jobs_db = await self.jobs_db_alive
-        async for key in jobs_db.scan_iter():
-            if valid_uuid4(key):
-                job_ids.add(key)
-        return job_ids
-
     async def find_jobs_to_run(self) -> List[AWSBatchJob]:
         """
         Find all jobs that have not SUCCEEDED.
@@ -787,14 +844,46 @@ class AioAWSBatchTinyDB(AioAWSBatchDB):
             self._db_sem = asyncio.Semaphore()
         return self._db_sem
 
-    async def all_job_ids(self) -> Set[str]:
+    async def all_jobs(self) -> List[AWSBatchJob]:
+        """
+        Collect all jobs.
+
+        Warning: this could exceed memory, try to use
+        the :py:meth:`gen_all_jobs` wherever possible.
+        """
+        jobs = []
+        async for j in self.gen_all_jobs():
+            jobs.append(j)
+        return jobs
+
+    async def gen_all_jobs(self) -> AsyncIterator[AWSBatchJob]:
+        """
+        Generate all jobs.
+        """
         async with self.db_semaphore:
-            job_ids = set()
             for job_doc in self.jobs_db.all():
                 job_id = job_doc.get("job_id", "")
                 if valid_uuid4(job_id):
-                    job_ids.add(job_id)
-            return job_ids
+                    yield AWSBatchJob(**job_doc)
+
+    async def all_job_ids(self) -> Set[str]:
+        """
+        Collect all jobIds.
+        """
+        job_ids = set()
+        async for job_id in self.gen_job_ids():
+            job_ids.add(job_id)
+        return job_ids
+
+    async def gen_job_ids(self) -> AsyncIterator[str]:
+        """
+        Generate all jobIds.
+        """
+        async with self.db_semaphore:
+            for job_doc in self.jobs_db.all():
+                job_id = job_doc.get("job_id", "")
+                if valid_uuid4(job_id):
+                    yield job_id
 
     async def count_by_job_status(self) -> Counter:
         """
