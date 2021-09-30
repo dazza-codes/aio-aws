@@ -59,8 +59,11 @@ from aio_aws.aio_aws_batch import batch_terminate_jobs
 from aio_aws.aio_aws_batch import batch_update_jobs
 from aio_aws.aws_batch_models import AWSBatchJob
 from aio_aws.aws_batch_models import AWSBatchJobStates
+from aio_aws.utils import datetime_to_unix_milliseconds
 from aio_aws.utils import response_success
+from aio_aws.utils import utc_now
 from aio_aws.utils import utc_timestamp
+from aio_aws.utils import utc_unix_milliseconds
 from tests.fixtures.aiomoto_fixtures import AioAwsBatchClients
 from tests.fixtures.aiomoto_fixtures import AioAwsBatchInfrastructure
 from tests.fixtures.aiomoto_fixtures import aio_batch_infrastructure
@@ -235,7 +238,8 @@ async def test_aio_batch_list_jobs(
 @pytest.mark.asyncio
 async def test_async_batch_job_submit(aws_batch_sleep1_job, batch_config):
     # moto/docker job submission timestamps seem to be too slow (why ?)
-    utc_now = floor(utc_timestamp())
+    utc_dt = utc_now()
+    utc_ts = datetime_to_unix_milliseconds(utc_dt)
     time.sleep(1.0)
     job = aws_batch_sleep1_job
     await aio_batch_job_submit(job, config=batch_config)
@@ -248,9 +252,11 @@ async def test_async_batch_job_submit(aws_batch_sleep1_job, batch_config):
     assert job.job_id in job.job_tries
     assert job.num_tries == 1
     assert job.num_tries <= job.max_tries
-    assert job.submitted > utc_now
+    assert job.submitted > utc_ts
+    assert job.submitted_datetime > utc_dt
     assert job.status in AWSBatchJob.STATES
     assert AWSBatchJobStates[job.status] == AWSBatchJobStates.SUBMITTED
+    assert job.job_description is None
 
 
 @pytest.mark.asyncio
@@ -317,6 +323,10 @@ async def test_async_batch_job_submit_retry(
 
 def test_batch_jobs_utils(aws_batch_sleep1_job, batch_config, mocker):
     # Test convenient synchronous functions that wrap async functions
+    utc_dt = utc_now()
+    utc_ts = datetime_to_unix_milliseconds(utc_dt)
+    time.sleep(1.0)
+
     job1 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
     job2 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
     jobs = [job1, job2]
@@ -327,6 +337,8 @@ def test_batch_jobs_utils(aws_batch_sleep1_job, batch_config, mocker):
     batch_submit_jobs(jobs=jobs)
     for job in jobs:
         assert AWSBatchJobStates[job.status] == AWSBatchJobStates.SUBMITTED
+        assert job.submitted > utc_ts
+        assert job.submitted_datetime > utc_dt
 
     batch_update_jobs(jobs=jobs)
     for job in jobs:
@@ -335,6 +347,18 @@ def test_batch_jobs_utils(aws_batch_sleep1_job, batch_config, mocker):
     batch_monitor_jobs(jobs=jobs)
     for job in jobs:
         assert AWSBatchJobStates[job.status] == AWSBatchJobStates.SUCCEEDED
+        # TODO: add these tests when moto supports millisecond timestamps
+        #       - https://github.com/spulec/moto/issues/4364
+        # assert job.started > job.submitted > utc_ts
+        # assert job.started_datetime > job.submitted_datetime > utc_dt
+        # assert job.created
+        # assert job.created_datetime
+        assert job.started
+        assert job.started_datetime
+        assert job.stopped
+        assert job.stopped_datetime
+        assert job.stopped > job.started
+        assert job.stopped_datetime > job.started_datetime
 
     batch_get_logs(jobs=jobs)
     for job in jobs:
