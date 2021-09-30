@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from datetime import datetime
+from datetime import timezone
 from email.utils import format_datetime
 from email.utils import formatdate
 from email.utils import parsedate_to_datetime
+from math import floor
 from typing import Optional
 
-import pytz
 from botocore.exceptions import ClientError
 
 from aio_aws.logger import get_logger
@@ -52,11 +53,24 @@ def response_success(response) -> bool:
 
 
 def utc_now() -> datetime:
-    return datetime.utcnow().replace(tzinfo=pytz.UTC)
+    """UTC datetime - tz aware"""
+    return datetime.utcnow().replace(tzinfo=timezone.utc)
 
 
 def utc_timestamp() -> float:
+    """Unix timestamp - time since the epoch in seconds"""
     return utc_now().timestamp()
+
+
+def utc_unix_milliseconds() -> int:
+    """Unix timestamp - time since the epoch in milliseconds"""
+    return floor(utc_timestamp() * 1e3)
+
+
+def datetime_to_unix_milliseconds(dt: datetime) -> int:
+    """datetime to unix timestamp - time since the epoch in milliseconds"""
+    utc_dt = dt.astimezone(timezone.utc)
+    return floor(utc_dt.timestamp() * 1e3)
 
 
 def http_date_to_datetime(http_date: str) -> datetime:
@@ -99,3 +113,7 @@ def timestamp_to_http_date(ts: float) -> str:
     :return: an HTTP date string, e.g. "Mon, 23 Mar 2020 15:29:33 GMT"
     """
     return formatdate(ts, usegmt=True)
+
+
+def datetime_from_unix_milliseconds(msec: float) -> datetime:
+    return datetime.utcfromtimestamp(msec / 1e3).replace(tzinfo=timezone.utc)
