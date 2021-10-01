@@ -193,3 +193,10 @@ Focus on aio-aws
 -------------------
 - Add batch jobs-db by-status tools
 
+
+0.16.6 (2021-10-01)
+-------------------
+- Revise batch job timestamp and datetime values
+- Add jobs-db methods for all jobs and jobs-ids
+- Update docs
+
