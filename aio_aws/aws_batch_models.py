@@ -25,6 +25,7 @@ Batch Job metadata models.
 
 import enum
 from dataclasses import dataclass
+from datetime import datetime
 from functools import total_ordering
 from math import floor
 from typing import Dict
@@ -33,6 +34,7 @@ from typing import Optional
 from typing import Union
 
 from aio_aws.logger import get_logger
+from aio_aws.utils import datetime_from_unix_milliseconds
 from aio_aws.utils import http_date_to_timestamp
 
 LOGGER = get_logger(__name__)
@@ -288,48 +290,100 @@ class AWSBatchJob:
 
     @property
     def submitted(self) -> Optional[int]:
-        """Timestamp (seconds since the epoch) for job submission"""
+        """Timestamp (milliseconds since the epoch) for job submission"""
         if self.job_submission:
             try:
                 metadata = self.job_submission.get("ResponseMetadata", {})
                 date = metadata.get("HTTPHeaders", {}).get("date")
                 if date:
                     # as an integer, it cannot round up into the future
-                    return floor(http_date_to_timestamp(date))
+                    return floor(http_date_to_timestamp(date) * 1e3)
             except Exception as err:
                 LOGGER.error(err)
 
     @property
+    def submitted_datetime(self) -> Optional[datetime]:
+        """
+        Datetime for job submission;
+        this depends on setting the `job_submission`.
+        """
+        submitted_msec = self.submitted
+        if submitted_msec:
+            return datetime_from_unix_milliseconds(submitted_msec)
+
+    @property
     def created(self) -> Optional[int]:
         """
-        Timestamp (seconds since the epoch) for job createdAt;
+        Timestamp (milliseconds since the epoch) for job createdAt;
         this depends on updates to the jobDescription.
+
+        The Unix timestamp (in milliseconds) for when the job was created. For non-array jobs
+        and parent array jobs, this is when the job entered the SUBMITTED state (at the time
+        SubmitJob was called). For array child jobs, this is when the child job was spawned
+        by its parent and entered the PENDING state.
         """
         if self.job_description:
             return self.job_description.get("createdAt")
 
     @property
+    def created_datetime(self) -> Optional[datetime]:
+        """
+        Datetime for job createdAt;
+        this depends on updates to the jobDescription.
+        """
+        created_msec = self.created
+        if created_msec:
+            return datetime_from_unix_milliseconds(created_msec)
+
+    @property
     def started(self) -> Optional[int]:
         """
-        Timestamp (seconds since the epoch) for job startedAt;
+        Timestamp (milliseconds since the epoch) for job startedAt;
         this depends on updates to the jobDescription.
+
+        The Unix timestamp (in milliseconds) for when the job was started (when the job
+        transitioned from the STARTING state to the RUNNING state). This parameter isn't
+        provided for child jobs of array jobs or multi-node parallel jobs.
         """
         if self.job_description:
             return self.job_description.get("startedAt")
 
     @property
+    def started_datetime(self) -> Optional[datetime]:
+        """
+        Datetime for job startedAt;
+        this depends on updates to the jobDescription.
+        """
+        started_msec = self.started
+        if started_msec:
+            return datetime_from_unix_milliseconds(started_msec)
+
+    @property
     def stopped(self) -> Optional[int]:
         """
-        Timestamp (seconds since the epoch) for job stoppedAt;
+        Timestamp (milliseconds since the epoch) for job stoppedAt;
         this depends on updates to the jobDescription.
+
+        The Unix timestamp (in milliseconds) for when the job was stopped (when the job
+        transitioned from the RUNNING state to a terminal state, such as SUCCEEDED or FAILED).
         """
         if self.job_description:
             return self.job_description.get("stoppedAt")
 
     @property
+    def stopped_datetime(self) -> Optional[datetime]:
+        """
+        Datetime for job stoppedAt;
+        this depends on updates to the jobDescription.
+        """
+        stopped_msec = self.stopped
+        if stopped_msec:
+            return datetime_from_unix_milliseconds(stopped_msec)
+
+    @property
     def elapsed(self) -> Optional[int]:
         """
-        Timestamp (seconds since the epoch) for job elapsed time;
+        Timestamp (milliseconds since the epoch) for job elapsed time;
         this depends on updates to the jobDescription;
         it is the difference between createdAt and stoppedAt
         (this can include long periods in a job queue).
@@ -342,7 +396,7 @@ class AWSBatchJob:
     @property
     def runtime(self) -> Optional[int]:
         """
-        Timestamp (seconds since the epoch) for job run time;
+        Timestamp (milliseconds since the epoch) for job run time;
         this depends on updates to the jobDescription;
         it is the difference between startedAt and stoppedAt.
         """
@@ -354,7 +408,7 @@ class AWSBatchJob:
     @property
     def spinup(self) -> Optional[int]:
         """
-        Timestamp (seconds since the epoch) for job startup time;
+        Timestamp (milliseconds since the epoch) for job startup time;
         this depends on updates to the jobDescription;
         it is the difference between createdAt and startedAt.
         """
