@@ -104,6 +104,96 @@ async def test_batch_job_db_save(jobs_dbs, aws_batch_job):
 
 
 @pytest.mark.asyncio
+async def test_batch_job_db_gen_job_ids(jobs_dbs, aws_batch_jobs):
+
+    job_succeeded, job_failed, job_running = aws_batch_jobs
+
+    job_ids = [j.job_id for j in aws_batch_jobs]
+
+    for jobs_db in jobs_dbs:
+        job_id = await jobs_db.save_job(job_succeeded)
+        assert job_id == job_succeeded.job_id
+        job_id = await jobs_db.save_job(job_failed)
+        assert job_id == job_failed.job_id
+        job_id = await jobs_db.save_job(job_running)
+        assert job_id == job_running.job_id
+
+        job_count = 0
+        async for job_id in jobs_db.gen_job_ids():
+            job_count += 1
+            assert job_id in job_ids
+        assert job_count == 3
+
+
+@pytest.mark.asyncio
+async def test_batch_job_db_get_all_job_ids(jobs_dbs, aws_batch_jobs):
+
+    job_succeeded, job_failed, job_running = aws_batch_jobs
+
+    job_ids = [j.job_id for j in aws_batch_jobs]
+
+    for jobs_db in jobs_dbs:
+        job_id = await jobs_db.save_job(job_succeeded)
+        assert job_id == job_succeeded.job_id
+        job_id = await jobs_db.save_job(job_failed)
+        assert job_id == job_failed.job_id
+        job_id = await jobs_db.save_job(job_running)
+        assert job_id == job_running.job_id
+
+        job_count = 0
+        all_jobs_ids = await jobs_db.all_job_ids()
+        for job_id in all_jobs_ids:
+            job_count += 1
+            assert job_id in job_ids
+        assert job_count == 3
+
+
+@pytest.mark.asyncio
+async def test_batch_job_db_gen_all_jobs(jobs_dbs, aws_batch_jobs):
+
+    job_succeeded, job_failed, job_running = aws_batch_jobs
+
+    job_ids = [j.job_id for j in aws_batch_jobs]
+
+    for jobs_db in jobs_dbs:
+        job_id = await jobs_db.save_job(job_succeeded)
+        assert job_id == job_succeeded.job_id
+        job_id = await jobs_db.save_job(job_failed)
+        assert job_id == job_failed.job_id
+        job_id = await jobs_db.save_job(job_running)
+        assert job_id == job_running.job_id
+
+        job_count = 0
+        async for job in jobs_db.gen_all_jobs():
+            job_count += 1
+            assert job.job_id in job_ids
+        assert job_count == 3
+
+
+@pytest.mark.asyncio
+async def test_batch_job_db_get_all_jobs(jobs_dbs, aws_batch_jobs):
+
+    job_succeeded, job_failed, job_running = aws_batch_jobs
+
+    job_ids = [j.job_id for j in aws_batch_jobs]
+
+    for jobs_db in jobs_dbs:
+        job_id = await jobs_db.save_job(job_succeeded)
+        assert job_id == job_succeeded.job_id
+        job_id = await jobs_db.save_job(job_failed)
+        assert job_id == job_failed.job_id
+        job_id = await jobs_db.save_job(job_running)
+        assert job_id == job_running.job_id
+
+        job_count = 0
+        jobs = await jobs_db.all_jobs()
+        for job in jobs:
+            job_count += 1
+            assert job.job_id in job_ids
+        assert job_count == 3
+
+
+@pytest.mark.asyncio
 async def test_batch_job_db_find_by_job_id(jobs_dbs, aws_batch_job):
     job = aws_batch_job
     for jobs_db in jobs_dbs:
