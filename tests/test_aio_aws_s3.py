@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Dict
 
 import aiobotocore
 import aiobotocore.client
@@ -25,6 +26,21 @@ from aio_aws.aio_aws_s3 import aio_s3_buckets_access
 from aio_aws.aio_aws_s3 import aio_s3_buckets_list
 from aio_aws.aio_aws_s3 import aio_s3_object_head
 from aio_aws.utils import response_success
+
+
+def valid_head_response(resp: Dict, head: Dict) -> bool:
+    resp_meta = resp["ResponseMetadata"]
+    resp_headers = resp_meta["HTTPHeaders"]
+    resp_headers.pop("x-amzn-requestid", None)
+
+    head_meta = head["ResponseMetadata"]
+    head_headers = resp_meta["HTTPHeaders"]
+    head_headers.pop("x-amzn-requestid", None)
+
+    assert resp_meta["HTTPStatusCode"] == 200
+    assert head_meta["HTTPStatusCode"] == 200
+    assert resp_headers == head_headers
+    return True
 
 
 def test_s3_parts(aio_s3_uri):
@@ -63,7 +79,7 @@ async def test_aio_s3_bucket_head(aio_s3_bucket, aio_aws_s3_client, s3_config):
         aio_s3_bucket, config=s3_config, s3_client=aio_aws_s3_client
     )
     assert response_success(head)
-    assert resp == head
+    assert valid_head_response(resp=resp, head=head)
 
 
 @pytest.mark.asyncio
@@ -95,7 +111,6 @@ async def test_aio_s3_buckets_list(aio_s3_buckets, aio_aws_s3_client, s3_config)
     assert buckets == aio_s3_buckets
 
 
-@pytest.mark.skip("Problems with test loop vs. code loop for some reason - why?")
 @pytest.mark.asyncio
 async def test_aio_s3_buckets_access(aio_s3_buckets, aio_aws_s3_client, s3_config):
     result = await aio_s3_buckets_access(
@@ -125,7 +140,7 @@ async def test_aio_s3_object_head(
         aio_s3_uri, config=s3_config, s3_client=aio_aws_s3_client
     )
     assert response_success(head)
-    assert resp == head
+    assert valid_head_response(resp=resp, head=head)
 
 
 @pytest.mark.asyncio
@@ -139,6 +154,24 @@ async def test_aio_s3_object_head_for_missing_object(
     msg = err.value.args[0]
     assert "HeadObject operation" in msg
     assert "404" in msg
+
+
+@pytest.mark.asyncio
+async def test_aio_s3_bucket_head_not_authorized():
+
+    session = aiobotocore.get_session()
+    aio_config = aiobotocore.config.AioConfig(max_pool_connections=1)
+    session.set_default_client_config(aio_config)
+    session.set_credentials("fake_AWS_ACCESS_KEY_ID", "fake_AWS_SECRET_ACCESS_KEY")
+
+    async with session.create_client("s3") as client:
+        with pytest.raises(botocore.exceptions.ClientError) as err:
+            await client.head_bucket(Bucket="missing-bucket")
+
+    msg = err.value.args[0]
+    assert "HeadBucket operation" in msg
+    assert "403" in msg
+    assert "Forbidden" in msg
 
 
 @pytest.mark.skip("https://github.com/aio-libs/aiobotocore/issues/781")
@@ -158,7 +191,7 @@ async def test_aio_s3_bucket_head_too_many_requests():
         with pytest.raises(botocore.exceptions.ClientError) as err:
             await client.head_bucket(Bucket="missing-bucket")
 
-        msg = err.value.args[0]
-        assert "HeadBucket operation" in msg
-        assert "403" in msg
-        assert "Forbidden" in msg
+    msg = err.value.args[0]
+    assert "HeadBucket operation" in msg
+    assert "403" in msg
+    assert "Forbidden" in msg
