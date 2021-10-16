@@ -365,10 +365,10 @@ def test_batch_jobs_utils(aws_batch_sleep1_job, batch_config, mocker):
         assert job.logs
 
 
-def test_batch_jobs_cancel(aws_batch_sleep1_job, batch_config, mocker):
+def test_batch_jobs_cancel(aws_batch_sleep5_job, batch_config, mocker):
     # Test convenient synchronous functions that wrap async functions
-    job1 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
-    job2 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
+    job1 = AWSBatchJob(**aws_batch_sleep5_job.db_data)
+    job2 = AWSBatchJob(**aws_batch_sleep5_job.db_data)
     jobs = [job1, job2]
 
     mock_config = mocker.patch("aio_aws.aio_aws_batch.AWSBatchConfig")
@@ -378,15 +378,16 @@ def test_batch_jobs_cancel(aws_batch_sleep1_job, batch_config, mocker):
     for job in jobs:
         assert AWSBatchJobStates[job.status] == AWSBatchJobStates.SUBMITTED
 
+    # TODO: see https://github.com/spulec/moto/issues/4423
     batch_cancel_jobs(jobs=jobs)
     for job in jobs:
         assert AWSBatchJobStates[job.status] == AWSBatchJobStates.FAILED
 
 
-def test_batch_jobs_terminate(aws_batch_sleep1_job, batch_config, mocker):
+def test_batch_jobs_terminate(aws_batch_sleep5_job, batch_config, mocker):
     # Test convenient synchronous functions that wrap async functions
-    job1 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
-    job2 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
+    job1 = AWSBatchJob(**aws_batch_sleep5_job.db_data)
+    job2 = AWSBatchJob(**aws_batch_sleep5_job.db_data)
     jobs = [job1, job2]
 
     mock_config = mocker.patch("aio_aws.aio_aws_batch.AWSBatchConfig")
@@ -441,9 +442,9 @@ async def test_async_batch_update_jobs(aws_batch_sleep1_job, batch_config):
 
 
 @pytest.mark.asyncio
-async def test_async_batch_cancel_jobs(aws_batch_sleep1_job, batch_config):
-    job1 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
-    job2 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
+async def test_async_batch_cancel_jobs(aws_batch_sleep5_job, batch_config):
+    job1 = AWSBatchJob(**aws_batch_sleep5_job.db_data)
+    job2 = AWSBatchJob(**aws_batch_sleep5_job.db_data)
     jobs = [job1, job2]
     await aio_batch_submit_jobs(jobs, config=batch_config)
     for job in jobs:
@@ -452,14 +453,15 @@ async def test_async_batch_cancel_jobs(aws_batch_sleep1_job, batch_config):
 
     await aio_batch_cancel_jobs(jobs=jobs, config=batch_config)
     # The cancel jobs function should wait for it to fail and set status FAILED
+    # TODO: see https://github.com/spulec/moto/issues/4423
     for job in jobs:
         assert AWSBatchJobStates[job.status] == AWSBatchJobStates.FAILED
 
 
 @pytest.mark.asyncio
-async def test_async_batch_terminate_jobs(aws_batch_sleep1_job, batch_config):
-    job1 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
-    job2 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
+async def test_async_batch_terminate_jobs(aws_batch_sleep5_job, batch_config):
+    job1 = AWSBatchJob(**aws_batch_sleep5_job.db_data)
+    job2 = AWSBatchJob(**aws_batch_sleep5_job.db_data)
     jobs = [job1, job2]
     await aio_batch_submit_jobs(jobs, config=batch_config)
     for job in jobs:
@@ -472,8 +474,6 @@ async def test_async_batch_terminate_jobs(aws_batch_sleep1_job, batch_config):
         assert AWSBatchJobStates[job.status] == AWSBatchJobStates.FAILED
 
 
-# The moto mock server indicates SUCCEEDED instead of FAILED
-@pytest.mark.skip("https://github.com/spulec/moto/issues/2829")
 @pytest.mark.asyncio
 async def test_async_batch_job_failed(aws_batch_fail_job, batch_config):
     job = aws_batch_fail_job
@@ -524,6 +524,7 @@ async def test_async_batch_job_cancel(aws_batch_sleep5_job, batch_config):
     await aio_batch_job_submit(job, config=batch_config)
     assert job.job_id
 
+    # TODO: see https://github.com/spulec/moto/issues/4423
     reason = "test-job-cancel"  # not a SPOT failure
     await aio_batch_job_cancel(job=job, reason=reason, config=batch_config)
     # It waits for the job to cancel and updates the job.
