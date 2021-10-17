@@ -21,6 +21,7 @@ import io
 import json
 import zipfile
 from contextlib import asynccontextmanager
+from typing import Dict
 
 import botocore.client
 import botocore.exceptions
@@ -185,9 +186,7 @@ async def test_async_lambda_invoke_success(aws_lambda_func, lambda_config):
 
         # since this function should work, test the response data
         assert lambda_func.json == {"statusCode": 200, "body": event}
-        # # moto is returning html content type, should be JSON
-        # # https://github.com/spulec/moto/issues/3991
-        # assert lambda_func.content_type == "application/json"
+        assert lambda_func.content_type == "application/json"
         assert lambda_func.content_length > 0
         assert lambda_func.status_code == 200
 
@@ -195,6 +194,7 @@ async def test_async_lambda_invoke_success(aws_lambda_func, lambda_config):
 @pytest.mark.skip("https://github.com/spulec/moto/issues/3988")
 @pytest.mark.asyncio
 async def test_async_lambda_invoke_too_large(aws_lambda_func, lambda_config):
+    # TODO: see also stub issue at https://github.com/aio-libs/aiobotocore/issues/781
 
     func: AWSLambdaFunction = aws_lambda_func
 
@@ -232,18 +232,9 @@ async def test_async_lambda_invoke_error(aws_lambda_func, lambda_config):
         assert lambda_func.status_code == 200
         assert response_success(lambda_func.response)
         assert lambda_func.json is None
-        assert lambda_func.error  # == lambda_error
-        assert isinstance(lambda_func.error, str)
         assert lambda_func.content_length > 0
-        LOGGER.info(lambda_func.error)
-        LOGGER.info(lambda_func.data)
 
-        # TODO: should the error be like the following:
-        # {
-        #     "errorType": "RuntimeError",
-        #     "errorMessage": "Unknown action",
-        #     "stackTrace": [
-        #         "File \"/var/task/lambda_function.py\", line 14, in lambda_handler\\n" \
-        #         " raise RuntimeError(\"Unknown action\")\\n"
-        #     ]
-        # }
+        assert isinstance(lambda_func.error, Dict)
+        assert lambda_func.error.get("errorType") == "RuntimeError"
+        assert lambda_func.error.get("errorMessage") == "runtime-error"
+        assert lambda_func.error.get("stackTrace")

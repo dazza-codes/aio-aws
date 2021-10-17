@@ -92,7 +92,7 @@ docs = [
 
 [tool.poetry.dev-dependencies]
 
-moto = {version = "~1.3.16", extras = ["server"]}
+moto = {version = "^2.0.0", extras = ["all","server"]}
 
 # py-dev-deps is used as a common denominator for many
 # development dependencies

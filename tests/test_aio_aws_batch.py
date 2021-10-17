@@ -29,7 +29,6 @@ import asyncio
 import inspect
 import time
 from contextlib import asynccontextmanager
-from math import floor
 from unittest.mock import MagicMock
 
 import botocore.exceptions
@@ -62,8 +61,6 @@ from aio_aws.aws_batch_models import AWSBatchJobStates
 from aio_aws.utils import datetime_to_unix_milliseconds
 from aio_aws.utils import response_success
 from aio_aws.utils import utc_now
-from aio_aws.utils import utc_timestamp
-from aio_aws.utils import utc_unix_milliseconds
 from tests.fixtures.aiomoto_fixtures import AioAwsBatchClients
 from tests.fixtures.aiomoto_fixtures import AioAwsBatchInfrastructure
 from tests.fixtures.aiomoto_fixtures import aio_batch_infrastructure
@@ -365,28 +362,45 @@ def test_batch_jobs_utils(aws_batch_sleep1_job, batch_config, mocker):
         assert job.logs
 
 
-def test_batch_jobs_cancel(aws_batch_sleep1_job, batch_config, mocker):
+def test_batch_jobs_cancel(
+    aws_batch_sleep1_job, aws_batch_sleep5_job, batch_config, mocker
+):
     # Test convenient synchronous functions that wrap async functions
-    job1 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
-    job2 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
-    jobs = [job1, job2]
 
     mock_config = mocker.patch("aio_aws.aio_aws_batch.AWSBatchConfig")
     mock_config.return_value = batch_config
+    batch_config.start_pause = 1.0
+    batch_config.min_pause = 0.4
+    batch_config.max_pause = 0.8
 
-    batch_submit_jobs(jobs=jobs)
-    for job in jobs:
+    pre_job = AWSBatchJob(**aws_batch_sleep1_job.db_data)
+    pre_job.job_name = "pre-job"
+    batch_submit_jobs(jobs=[pre_job])
+    assert AWSBatchJobStates[pre_job.status] == AWSBatchJobStates.SUBMITTED
+
+    depends_on = [{"jobId": pre_job.job_id, "type": "SEQUENTIAL"}]
+
+    job1 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
+    job1.job_name = "cancel-job-1"
+    job1.depends_on = depends_on
+    job2 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
+    job2.job_name = "cancel-job-2"
+    job2.depends_on = depends_on
+    cancel_jobs = [job1, job2]
+
+    batch_submit_jobs(jobs=cancel_jobs)
+    for job in cancel_jobs:
         assert AWSBatchJobStates[job.status] == AWSBatchJobStates.SUBMITTED
 
-    batch_cancel_jobs(jobs=jobs)
-    for job in jobs:
+    batch_cancel_jobs(jobs=cancel_jobs)
+    for job in cancel_jobs:
         assert AWSBatchJobStates[job.status] == AWSBatchJobStates.FAILED
 
 
-def test_batch_jobs_terminate(aws_batch_sleep1_job, batch_config, mocker):
+def test_batch_jobs_terminate(aws_batch_sleep5_job, batch_config, mocker):
     # Test convenient synchronous functions that wrap async functions
-    job1 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
-    job2 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
+    job1 = AWSBatchJob(**aws_batch_sleep5_job.db_data)
+    job2 = AWSBatchJob(**aws_batch_sleep5_job.db_data)
     jobs = [job1, job2]
 
     mock_config = mocker.patch("aio_aws.aio_aws_batch.AWSBatchConfig")
@@ -442,24 +456,39 @@ async def test_async_batch_update_jobs(aws_batch_sleep1_job, batch_config):
 
 @pytest.mark.asyncio
 async def test_async_batch_cancel_jobs(aws_batch_sleep1_job, batch_config):
+
+    batch_config.start_pause = 1.0
+    batch_config.min_pause = 0.4
+    batch_config.max_pause = 0.8
+
+    pre_job = AWSBatchJob(**aws_batch_sleep1_job.db_data)
+    pre_job.job_name = "pre-job"
+    await aio_batch_submit_jobs(jobs=[pre_job], config=batch_config)
+    assert AWSBatchJobStates[pre_job.status] == AWSBatchJobStates.SUBMITTED
+
+    depends_on = [{"jobId": pre_job.job_id, "type": "SEQUENTIAL"}]
+
     job1 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
+    job1.job_name = "cancel-job-1"
+    job1.depends_on = depends_on
     job2 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
-    jobs = [job1, job2]
-    await aio_batch_submit_jobs(jobs, config=batch_config)
-    for job in jobs:
-        assert job.job_id
+    job2.job_name = "cancel-job-2"
+    job2.depends_on = depends_on
+    cancel_jobs = [job1, job2]
+
+    await aio_batch_submit_jobs(jobs=cancel_jobs, config=batch_config)
+    for job in cancel_jobs:
         assert AWSBatchJobStates[job.status] == AWSBatchJobStates.SUBMITTED
 
-    await aio_batch_cancel_jobs(jobs=jobs, config=batch_config)
-    # The cancel jobs function should wait for it to fail and set status FAILED
-    for job in jobs:
+    await aio_batch_cancel_jobs(jobs=cancel_jobs, config=batch_config)
+    for job in cancel_jobs:
         assert AWSBatchJobStates[job.status] == AWSBatchJobStates.FAILED
 
 
 @pytest.mark.asyncio
-async def test_async_batch_terminate_jobs(aws_batch_sleep1_job, batch_config):
-    job1 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
-    job2 = AWSBatchJob(**aws_batch_sleep1_job.db_data)
+async def test_async_batch_terminate_jobs(aws_batch_sleep5_job, batch_config):
+    job1 = AWSBatchJob(**aws_batch_sleep5_job.db_data)
+    job2 = AWSBatchJob(**aws_batch_sleep5_job.db_data)
     jobs = [job1, job2]
     await aio_batch_submit_jobs(jobs, config=batch_config)
     for job in jobs:
@@ -472,8 +501,6 @@ async def test_async_batch_terminate_jobs(aws_batch_sleep1_job, batch_config):
         assert AWSBatchJobStates[job.status] == AWSBatchJobStates.FAILED
 
 
-# The moto mock server indicates SUCCEEDED instead of FAILED
-@pytest.mark.skip("https://github.com/spulec/moto/issues/2829")
 @pytest.mark.asyncio
 async def test_async_batch_job_failed(aws_batch_fail_job, batch_config):
     job = aws_batch_fail_job
@@ -519,17 +546,33 @@ async def test_async_batch_job_manager(aws_batch_sleep1_job, batch_config):
 
 
 @pytest.mark.asyncio
-async def test_async_batch_job_cancel(aws_batch_sleep5_job, batch_config):
-    job = aws_batch_sleep5_job
+async def test_async_batch_job_cancel(aws_batch_sleep1_job, batch_config):
+
+    batch_config.start_pause = 1.0
+    batch_config.min_pause = 0.4
+    batch_config.max_pause = 0.8
+
+    pre_job = AWSBatchJob(**aws_batch_sleep1_job.db_data)
+    pre_job.job_name = "pre-job"
+    await aio_batch_submit_jobs(jobs=[pre_job], config=batch_config)
+    assert AWSBatchJobStates[pre_job.status] == AWSBatchJobStates.SUBMITTED
+
+    depends_on = [{"jobId": pre_job.job_id, "type": "SEQUENTIAL"}]
+
+    job = AWSBatchJob(**aws_batch_sleep1_job.db_data)
+    job.job_name = "cancel-job-1"
+    job.depends_on = depends_on
+
     await aio_batch_job_submit(job, config=batch_config)
     assert job.job_id
+    assert AWSBatchJobStates[job.status] == AWSBatchJobStates.SUBMITTED
 
     reason = "test-job-cancel"  # not a SPOT failure
     await aio_batch_job_cancel(job=job, reason=reason, config=batch_config)
     # It waits for the job to cancel and updates the job.
     assert job.job_description["statusReason"] == reason
     assert job.status in AWSBatchJob.STATES
-    assert job.status == "FAILED"
+    assert AWSBatchJobStates[job.status] == AWSBatchJobStates.FAILED
 
 
 @pytest.mark.asyncio
