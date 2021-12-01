@@ -200,3 +200,12 @@ Focus on aio-aws
 - Add jobs-db methods for all jobs and jobs-ids
 - Update docs
 
+
+0.17.0 (2021-11-30)
+-------------------
+- Add compatible version of s3fs
+- Fix aiobotocore.session.get_session()
+- Update aiobotocore to 2.x releases
+- Update tests for moto 2.x
+- Bump moto to 2.x
+
