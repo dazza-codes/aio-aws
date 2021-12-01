@@ -16,6 +16,7 @@ from typing import Dict
 import aiobotocore
 import aiobotocore.client
 import aiobotocore.config
+import aiobotocore.session
 import botocore.exceptions
 import pytest
 
@@ -159,7 +160,7 @@ async def test_aio_s3_object_head_for_missing_object(
 @pytest.mark.asyncio
 async def test_aio_s3_bucket_head_not_authorized():
 
-    session = aiobotocore.get_session()
+    session = aiobotocore.session.get_session()
     aio_config = aiobotocore.config.AioConfig(max_pool_connections=1)
     session.set_default_client_config(aio_config)
     session.set_credentials("fake_AWS_ACCESS_KEY_ID", "fake_AWS_SECRET_ACCESS_KEY")
@@ -178,7 +179,7 @@ async def test_aio_s3_bucket_head_not_authorized():
 @pytest.mark.asyncio
 async def test_aio_s3_bucket_head_too_many_requests():
 
-    session = aiobotocore.get_session()
+    session = aiobotocore.session.get_session()
     aio_config = aiobotocore.config.AioConfig(max_pool_connections=1)
     session.set_default_client_config(aio_config)
     session.set_credentials("fake_AWS_ACCESS_KEY_ID", "fake_AWS_SECRET_ACCESS_KEY")
