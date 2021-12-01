@@ -149,12 +149,13 @@ def test_s3_head_request_for_success(s3_uri_object, mocker):
     assert boto3.client.call_count == 1
     assert boto3.resource.call_count == 0
     assert isinstance(s3_head, dict)
-    assert list(s3_head.keys()) == [
-        "ResponseMetadata",
-        "LastModified",
+    assert sorted(s3_head.keys()) == [
         "ContentLength",
+        "ContentType",
         "ETag",
+        "LastModified",
         "Metadata",
+        "ResponseMetadata",
     ]
 
 

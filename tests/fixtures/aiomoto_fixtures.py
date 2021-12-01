@@ -164,7 +164,7 @@ def aio_aws_session(aws_credentials, aws_region, event_loop):
     # and it should be set as the default loop for this session
     assert event_loop  # but it's not == asyncio.get_event_loop() ?
 
-    session = aiobotocore.get_session()
+    session = aiobotocore.session.get_session()
     session.user_agent_name = "aiomoto"
 
     assert session.get_default_client_config() is None
