@@ -106,7 +106,7 @@ def aio_aws_default_session() -> aiobotocore.session.AioSession:
     :return: aiobotocore.session.AioSession
     """
     aio_config = aio_aws_default_config()
-    aio_session = aiobotocore.get_session()
+    aio_session = aiobotocore.session.get_session()
     aio_session.user_agent_name = "aio-aws"
     aio_session.set_default_client_config(aio_config)
     # aio_session.full_config
@@ -129,7 +129,7 @@ def aio_aws_session(
     """
     if aio_aws_config is None:
         aio_aws_config = aio_aws_default_config()
-    session = aiobotocore.get_session()
+    session = aiobotocore.session.get_session()
     session.user_agent_name = "aio-aws"
     # session.set_stream_logger("aio-aws")  # for debugging
     session.set_default_client_config(aio_aws_config)
@@ -142,7 +142,7 @@ async def aio_aws_client(
 ) -> aiobotocore.client.AioBaseClient:
     """
     Yield an asyncio AWS client with an option to provide a client-specific config; this is a
-    thin wrapper on ``aiobotocore.get_session().create_client()`` and the additional
+    thin wrapper on ``aiobotocore.session.get_session().create_client()`` and the additional
     kwargs as passed through to ``session.create_client(**kwargs)``.
 
     It is possible to pass through additional args and kwargs
