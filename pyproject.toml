@@ -31,6 +31,9 @@ packages = [
 python = "^3.7"
 
 aiobotocore = {version = "~2.0.0", extras = ["boto3"]}
+# Include a compatible version of s3fs, since this helps to
+# resolve the dependency tree when s3fs is also required.
+s3fs = "^2021.11.1"
 # Use AWS SDK libs compatible with current AWS lambda python runtime.
 # For AWS Lambda, the latest versions are listed at:
 # https://docs.aws.amazon.com/lambda/latest/dg/lambda-python.html
