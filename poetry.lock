@@ -693,6 +693,36 @@ optional = false
 python-versions = ">=3.6"
 
 [[package]]
+name = "fsspec"
+version = "2021.11.1"
+description = "File-system specification"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.extras]
+abfs = ["adlfs"]
+adl = ["adlfs"]
+arrow = ["pyarrow (>=1)"]
+dask = ["dask", "distributed"]
+dropbox = ["dropboxdrivefs", "requests", "dropbox"]
+entrypoints = ["importlib-metadata"]
+fuse = ["fusepy"]
+gcs = ["gcsfs"]
+git = ["pygit2"]
+github = ["requests"]
+gs = ["gcsfs"]
+gui = ["panel"]
+hdfs = ["pyarrow (>=1)"]
+http = ["requests", "aiohttp"]
+libarchive = ["libarchive-c"]
+oci = ["ocifs"]
+s3 = ["s3fs"]
+sftp = ["paramiko"]
+smb = ["smbprotocol"]
+ssh = ["paramiko"]
+
+[[package]]
 name = "future"
 version = "0.18.2"
 description = "Clean single-source support for Python 3 and 2"
@@ -1948,6 +1978,23 @@ python-versions = ">=3.5, <4"
 pyasn1 = ">=0.1.3"
 
 [[package]]
+name = "s3fs"
+version = "2021.11.1"
+description = "Convenient Filesystem interface over S3"
+category = "main"
+optional = false
+python-versions = ">= 3.6"
+
+[package.dependencies]
+aiobotocore = ">=2.0.1,<2.1.0"
+aiohttp = "<=4"
+fsspec = "2021.11.1"
+
+[package.extras]
+awscli = ["aiobotocore[awscli] (>=2.0.1,<2.1.0)"]
+boto3 = ["aiobotocore[boto3] (>=2.0.1,<2.1.0)"]
+
+[[package]]
 name = "s3transfer"
 version = "0.5.0"
 description = "An Amazon S3 Transfer Manager"
@@ -2467,7 +2514,7 @@ docs = ["Sphinx", "sphinx-autoapi", "sphinx-autodoc-typehints", "sphinx-rtd-them
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "0294bf217fb2f49872b50c5a3098fa4bb8014d3a6acdb4fcca15cc2fcc7a78ae"
+content-hash = "a33f93d73e4fa5a7f236d923cd448519dcf5bf48a4e95371141936a30d692d3a"
 
 [metadata.files]
 aiobotocore = [
@@ -3013,6 +3060,10 @@ frozenlist = [
     {file = "frozenlist-1.2.0-cp39-cp39-win32.whl", hash = "sha256:83334e84a290a158c0c4cc4d22e8c7cfe0bba5b76d37f1c2509dabd22acafe15"},
     {file = "frozenlist-1.2.0-cp39-cp39-win_amd64.whl", hash = "sha256:735f386ec522e384f511614c01d2ef9cf799f051353876b4c6fb93ef67a6d1ee"},
     {file = "frozenlist-1.2.0.tar.gz", hash = "sha256:68201be60ac56aff972dc18085800b6ee07973c49103a8aba669dee3d71079de"},
+]
+fsspec = [
+    {file = "fsspec-2021.11.1-py3-none-any.whl", hash = "sha256:bcb136caa37e1470dd8314a7d3917cb9b25dd9da44c10d36df556ab4ef038185"},
+    {file = "fsspec-2021.11.1.tar.gz", hash = "sha256:03683e606651d5e4bd9180525d57477bd5430e5dc68d2e459835dc14cecc3dd4"},
 ]
 future = [
     {file = "future-0.18.2.tar.gz", hash = "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"},
@@ -3807,6 +3858,10 @@ rfc3986 = [
 rsa = [
     {file = "rsa-4.7.2-py3-none-any.whl", hash = "sha256:78f9a9bf4e7be0c5ded4583326e7461e3a3c5aae24073648b4bdfa797d78c9d2"},
     {file = "rsa-4.7.2.tar.gz", hash = "sha256:9d689e6ca1b3038bc82bf8d23e944b6b6037bc02301a574935b2dd946e0353b9"},
+]
+s3fs = [
+    {file = "s3fs-2021.11.1-py3-none-any.whl", hash = "sha256:e807f8a6191e13008248df588b510a5643a587c888be0bd59ff8321b3a3c689d"},
+    {file = "s3fs-2021.11.1.tar.gz", hash = "sha256:1a9ea7596663cda3a5dc6802f11eb468b397de35a8793750e9a98c65abd1a114"},
 ]
 s3transfer = [
     {file = "s3transfer-0.5.0-py3-none-any.whl", hash = "sha256:9c1dc369814391a6bda20ebbf4b70a0f34630592c9aa520856bf384916af2803"},
