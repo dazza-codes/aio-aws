@@ -30,18 +30,14 @@ packages = [
 [tool.poetry.dependencies]
 python = "^3.7"
 
-aiofiles = {version = "^0.7.0"}
-
-# Try to update to the latest aio-botocore, a fork of
-# aiobotocore with relaxed dependency versions for
-# botocore and boto3
-aio-botocore = {version = "~1.3.0"}
-
+aiobotocore = {version = "~2.0.0", extras = ["boto3"]}
 # Use AWS SDK libs compatible with current AWS lambda python runtime.
 # For AWS Lambda, the latest versions are listed at:
 # https://docs.aws.amazon.com/lambda/latest/dg/lambda-python.html
-boto3 = "^1.17.100"
-botocore = "^1.20.100"
+boto3 = "^1.18.55"
+botocore = "^1.21.55"
+
+aiofiles = {version = "^0.7.0"}
 
 pydantic = "^1.8.2"
 PyYAML = "^5.2"
