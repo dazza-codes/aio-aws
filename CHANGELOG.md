@@ -209,3 +209,8 @@ Focus on aio-aws
 - Update tests for moto 2.x
 - Bump moto to 2.x
 
+
+0.17.1 (2021-12-03)
+-------------------
+- Relax version of aiobotocore to allow 2.x.y
+
