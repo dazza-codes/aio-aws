@@ -1,7 +1,10 @@
-[![Build Status](https://travis-ci.com/dazza-codes/aio-aws.svg?branch=master)](https://travis-ci.com/dazza-codes/aio-aws)
+# aio-aws
+
+[![Build Status](https://github.com/dazza-codes/aio-aws/actions/workflows/python-test.yml/badge.svg)](https://github.com/dazza-codes/aio-aws/actions/workflows/python-test.yml)
 [![Documentation Status](https://readthedocs.org/projects/aio-aws/badge/?version=latest)](https://aio-aws.readthedocs.io/en/latest/?badge=latest)
 
-# aio-aws
+[![PyPI version](https://img.shields.io/pypi/v/aio-aws.svg)](https://pypi.org/project/aio-aws)
+[![Python versions](https://img.shields.io/pypi/pyversions/aio-aws.svg)](https://pypi.org/project/aio-aws)
 
 Asynchronous functions and tools for AWS services.  There is a
 limited focus on s3 and AWS Batch and Lambda.  Additional services could be
