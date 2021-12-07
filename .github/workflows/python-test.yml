@@ -1,0 +1,58 @@
+name: Python - Test
+
+on: [push]
+
+jobs:
+  test:
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.7"]
+#        python-version: ["3.7", "3.8", "3.9", "3.10"]
+
+    steps:
+
+    # Testing batch-db requires a redis-server
+    - name: install redis
+      run: |
+        sudo apt-get install -y redis-server redis-tools
+        sudo systemctl restart redis-server.service
+
+    - uses: actions/checkout@v2
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install poetry
+      run: |
+        mkdir -p /opt/cache
+        curl -sSL https://install.python-poetry.org | python -
+        export PATH="${HOME}/.local/bin:${PATH}"
+        python -m pip install --upgrade pip
+        poetry --version
+        poetry config cache-dir /opt/cache
+        poetry config virtualenvs.create true
+        poetry config virtualenvs.in-project false
+
+    - uses: actions/cache@v2
+      with:
+        path: /opt/cache
+        key: ${{ env.pythonLocation }}-${{ hashFiles('poetry.lock') }}
+
+    - name: Install dependencies
+      run: make init
+
+      #    - name: Lint with flake8
+#      run: |
+#        # stop the build if there are Python syntax errors or undefined names
+#        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+#        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+#        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    - name: Test with pytest
+      run: make test
