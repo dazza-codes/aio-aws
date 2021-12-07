@@ -18,6 +18,8 @@ from pathlib import Path
 from typing import Dict
 
 import boto3
+from pytest_aiomoto.aws_fixtures import assert_bucket_200
+from pytest_aiomoto.aws_fixtures import assert_object_200
 
 from aio_aws.s3_io import geojson_s3_dump
 from aio_aws.s3_io import geojson_s3_load
@@ -33,8 +35,6 @@ from aio_aws.s3_io import yaml_s3_dump
 from aio_aws.s3_io import yaml_s3_load
 from aio_aws.s3_uri import S3URI
 from aio_aws.s3_uri import S3Info
-from tests.fixtures.aws_fixtures import assert_bucket_200
-from tests.fixtures.aws_fixtures import assert_object_200
 
 
 def test_s3_file_info(aws_s3_client, s3_uri_object, s3_object_text, mocker):

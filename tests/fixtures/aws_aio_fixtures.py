@@ -31,9 +31,8 @@ import aiobotocore.config
 import aiohttp
 import pytest
 from aiobotocore.config import AioConfig
-
-from tests.fixtures.aiomoto_services import CONNECT_TIMEOUT
-from tests.fixtures.aiomoto_services import HOST
+from pytest_aiomoto.aiomoto_services import AWS_HOST
+from pytest_aiomoto.aiomoto_services import CONNECT_TIMEOUT
 
 
 @pytest.fixture(
@@ -112,15 +111,15 @@ def pytest_configure():
 @pytest.fixture
 def aa_fail_proxy_config(monkeypatch):
     # NOTE: name of this fixture must be alphabetically first to run first
-    monkeypatch.setenv("HTTP_PROXY", "http://{}:54321".format(HOST))
-    monkeypatch.setenv("HTTPS_PROXY", "http://{}:54321".format(HOST))
+    monkeypatch.setenv("HTTP_PROXY", "http://{}:54321".format(AWS_HOST))
+    monkeypatch.setenv("HTTPS_PROXY", "http://{}:54321".format(AWS_HOST))
 
 
 @pytest.fixture
 def aa_succeed_proxy_config(monkeypatch):
     # NOTE: name of this fixture must be alphabetically first to run first
-    monkeypatch.setenv("HTTP_PROXY", "http://{}:54321".format(HOST))
-    monkeypatch.setenv("HTTPS_PROXY", "http://{}:54321".format(HOST))
+    monkeypatch.setenv("HTTP_PROXY", "http://{}:54321".format(AWS_HOST))
+    monkeypatch.setenv("HTTPS_PROXY", "http://{}:54321".format(AWS_HOST))
 
     # this will cause us to skip proxying
     monkeypatch.setenv("NO_PROXY", "amazonaws.com")
