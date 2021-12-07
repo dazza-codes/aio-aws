@@ -33,6 +33,9 @@ from unittest.mock import MagicMock
 
 import botocore.exceptions
 import pytest
+from pytest_aiomoto.aiomoto_fixtures import AioAwsBatchClients
+from pytest_aiomoto.aiomoto_fixtures import AioAwsBatchInfrastructure
+from pytest_aiomoto.aiomoto_fixtures import aio_batch_infrastructure
 
 from aio_aws import aio_aws_batch
 from aio_aws.aio_aws_batch import AWSBatchConfig
@@ -61,9 +64,6 @@ from aio_aws.aws_batch_models import AWSBatchJobStates
 from aio_aws.utils import datetime_to_unix_milliseconds
 from aio_aws.utils import response_success
 from aio_aws.utils import utc_now
-from tests.fixtures.aiomoto_fixtures import AioAwsBatchClients
-from tests.fixtures.aiomoto_fixtures import AioAwsBatchInfrastructure
-from tests.fixtures.aiomoto_fixtures import aio_batch_infrastructure
 
 
 def test_async_aws_batch():

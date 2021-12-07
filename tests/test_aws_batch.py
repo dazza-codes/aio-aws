@@ -27,11 +27,11 @@ according to the moto license (Apache-2.0).
 """
 
 import pytest
+from pytest_aiomoto.aws_fixtures import AwsBatchClients
+from pytest_aiomoto.aws_fixtures import AwsBatchInfrastructure
+from pytest_aiomoto.aws_fixtures import batch_infrastructure
 
 from aio_aws.utils import response_success
-from tests.fixtures.aws_fixtures import AwsBatchClients
-from tests.fixtures.aws_fixtures import AwsBatchInfrastructure
-from tests.fixtures.aws_fixtures import batch_infrastructure
 
 
 @pytest.fixture
