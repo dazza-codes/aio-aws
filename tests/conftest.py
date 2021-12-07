@@ -24,9 +24,7 @@ from aio_aws.aio_aws_batch_db import AioAWSBatchTinyDB
 from aio_aws.aws_batch_db import AWSBatchDB
 
 pytest_plugins = [
-    "tests.fixtures.aws_fixtures",
-    "tests.fixtures.aiomoto_fixtures",
-    "tests.fixtures.s3_aio_fixtures",
+    "tests.fixtures.aio_aws_fixtures",
     "tests.fixtures.geojson_fixtures",
 ]
 
