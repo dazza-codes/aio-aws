@@ -93,7 +93,7 @@ docs = [
 
 [tool.poetry.dev-dependencies]
 
-pytest-aiomoto = "^0.2.0"
+pytest-aiomoto = {version = "^0.2.0", extras = ["s3fs"]}
 
 # py-dev-deps is used as a common denominator for many
 # development dependencies
