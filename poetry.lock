@@ -1576,6 +1576,7 @@ moto = {version = ">=2.0.0,<3.0.0", extras = ["all", "server"]}
 pytest = ">=6.2.5,<7.0.0"
 pytest-asyncio = ">=0.14.0,<0.15.0"
 requests = ">=2.23.0,<3.0.0"
+s3fs = {version = ">=0.5.0", optional = true, markers = "extra == \"s3fs\""}
 
 [package.extras]
 s3fs = ["s3fs (>=0.5.0)"]
@@ -2535,7 +2536,7 @@ docs = ["Sphinx", "sphinx-autoapi", "sphinx-autodoc-typehints", "sphinx-rtd-them
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7.1,<4.0.0"
-content-hash = "e67e8b27625b40518796178fe0c587930074dfcbf5ac9dd80bb5c08aaf0fdca8"
+content-hash = "da365b96db773f8377b6c93015d9528faed2ae07e9ce044272f41c4fa5f8b5d5"
 
 [metadata.files]
 aiobotocore = [
