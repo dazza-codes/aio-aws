@@ -28,7 +28,7 @@ packages = [
 
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = ">=3.7.1,<4.0.0"
 
 aiobotocore = {version = "^2.0.0", extras = ["boto3"]}
 
@@ -93,7 +93,7 @@ docs = [
 
 [tool.poetry.dev-dependencies]
 
-pytest-aiomoto = "^0.1.0"
+pytest-aiomoto = "^0.2.0"
 
 # py-dev-deps is used as a common denominator for many
 # development dependencies
