@@ -386,7 +386,7 @@ async def aio_batch_update_jobs(jobs: Iterable[AWSBatchJob], config: AWSBatchCon
 
 
 async def aio_batch_job_logs(
-    job: AWSBatchJob, config: AWSBatchConfig = None
+    job: AWSBatchJob, config: AWSBatchConfig = None, skip_existing: bool = False
 ) -> Optional[List[Dict]]:
     """
     Asynchronous coroutine to get logs for a batch job log stream.  All
@@ -396,6 +396,8 @@ async def aio_batch_job_logs(
 
     :param job: A set of job parameters
     :param config: settings for task pauses between retries
+    :param skip_existing: skip jobs that already have logs; this is useful
+        if some jobs already have complete log events captured
     :return: a list of all the log events from get_log_events responses
     :raises: botocore.exceptions.ClientError
     :raises: RetryError if it exceeds retries
@@ -406,8 +408,16 @@ async def aio_batch_job_logs(
     if config is None:
         config = AWSBatchConfig.get_default_config()
 
+    if not job.job_id:
+        LOGGER.warning("AWS Batch job has no jobId, cannot fetch logs")
+        return
+
     if not job.job_description:
         LOGGER.warning("AWS Batch job has no description, cannot fetch logs")
+        return
+
+    if skip_existing and job.logs:
+        LOGGER.warning("AWS Batch job has logs, skip fetch logs enabled")
         return
 
     log_stream_name = job.job_description.get("container", {}).get("logStreamName")
@@ -440,13 +450,23 @@ async def aio_batch_job_logs(
                     await jitter(task_name, 0.0001, 0.01)
                     response = await logs_client.get_log_events(**kwargs)
 
-                    events = response.get("events", [])
-                    log_events.extend(events)
+                    log_page_events = response.get("events", [])
+                    log_events.extend(log_page_events)
 
-                    if forward_token != response["nextForwardToken"]:
-                        forward_token = response["nextForwardToken"]
-                    else:
+                    # # Note: for the record, cannot read the response as a stream
+                    # if response and response_success(response):
+                    #     response_events = response.get("events")
+                    #     if response_events:
+                    #         async with response_events as stream:
+                    #             log_page_events = await stream.read()
+                    #             log_events.extend(log_page_events)
+
+                    next_forward_token = response.get("nextForwardToken")
+                    if next_forward_token is None:
                         break
+                    if forward_token == next_forward_token:
+                        break
+                    forward_token = next_forward_token
 
                 if log_events:
                     LOGGER.info(
@@ -850,20 +870,27 @@ async def aio_batch_terminate_jobs(
             LOGGER.error(err)
 
 
-async def aio_batch_get_logs(jobs: Iterable[AWSBatchJob], config: AWSBatchConfig):
+async def aio_batch_get_logs(
+    jobs: Iterable[AWSBatchJob], config: AWSBatchConfig, skip_existing: bool = False
+):
     """
     Get job logs.  The logs should be updated in any
     configured jobs-db.
 
     :param jobs: any AWSBatchJob
     :param config: an AWSBatchConfig
+    :param skip_existing: skip jobs that already have logs; this is useful
+        if some jobs already have complete log events captured
     :return: each job maintains state, so this function returns nothing
     """
-    batch_tasks = [
-        asyncio.create_task(aio_batch_job_logs(job=job, config=config))
-        for job in jobs
-        if job.job_id
-    ]
+    batch_tasks = []
+    for job in jobs:
+        if job.job_id and job.job_description:
+            if skip_existing and job.logs:
+                continue
+            task = asyncio.create_task(aio_batch_job_logs(job=job, config=config))
+            batch_tasks.append(task)
+
     for task in asyncio.as_completed(batch_tasks):
         try:
             result = await task
@@ -1266,6 +1293,7 @@ def batch_get_logs(
     jobs: List[AWSBatchJob],
     jobs_db: AioAWSBatchDB = None,
     aio_batch_config: AWSBatchConfig = None,
+    skip_existing: bool = False,
 ):
     """
     Get job logs.
@@ -1275,6 +1303,8 @@ def batch_get_logs(
         this is only applied if an aio_batch_config is not provided
     :param aio_batch_config: a custom AWSBatchConfig; if provided,
         it is responsible for providing any optional jobs-db
+    :param skip_existing: skip jobs that already have logs; this is useful
+        if some jobs already have complete log events captured
     :return: each job maintains state, so this function returns nothing
     """
     # The polling is kept to a minimum to avoid interference with the batch API;
@@ -1286,15 +1316,19 @@ def batch_get_logs(
         # settings try to avoid rate throttling
         aio_batch_config = AWSBatchConfig(
             aio_batch_db=jobs_db,
-            min_jitter=3,
-            max_jitter=8,
-            min_pause=2,
+            min_jitter=5,
+            max_jitter=10,
+            min_pause=4,
             max_pause=10,
             start_pause=2,
-            max_pool_connections=1,
+            max_pool_connections=100,  # match semaphere (sem) value
             sem=100,
         )
-    asyncio.run(aio_batch_get_logs(jobs=jobs, config=aio_batch_config))
+    asyncio.run(
+        aio_batch_get_logs(
+            jobs=jobs, config=aio_batch_config, skip_existing=skip_existing
+        )
+    )
 
 
 def batch_cancel_jobs(
