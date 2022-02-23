@@ -899,6 +899,35 @@ async def aio_batch_get_logs(
             LOGGER.error(err)
 
 
+def get_logs_by_status(
+    jobs: Iterable[AWSBatchJob],
+    job_states: List[str],
+    jobs_db: AioAWSBatchDB,
+    print_logs: bool = False,
+):
+    """
+    A utility function to get AWS Batch logs by job status, to
+    update the logs in a jobs-db, with an option to print the logs.
+
+    :param jobs: any :py:class:`AwsBatchJob` to filter by status
+    :param job_states: any AWS Batch job status
+    :param jobs_db: an instance of a :py:class:`AioAwsBatchDb`
+    :param print_logs: an option to print the logs
+    :return: None
+    """
+    jobs_by_status = list(
+        find_jobs_by_status(jobs=jobs, job_states=job_states, jobs_db=jobs_db)
+    )
+    if not jobs_by_status:
+        LOGGER.error("There are no jobs for: %s", job_states)
+        return
+    batch_get_logs(jobs=jobs_by_status, jobs_db=jobs_db)
+    if print_logs:
+        for job in jobs_by_status:
+            if job.logs:
+                print(job.logs)
+
+
 def job_for_status(job, job_states) -> Optional[AWSBatchJob]:
     if job.job_id and job.status in job_states:
         LOGGER.info(
@@ -1164,6 +1193,38 @@ def find_incomplete_jobs(
             yield db_job
 
 
+def find_latest_jobs_with_jobs_db(
+    jobs: Iterable[AWSBatchJob],
+    jobs_db: AioAWSBatchDB = None,
+) -> Generator[AWSBatchJob, None, None]:
+    """
+    Find the latest jobs data, using the job itself or a fallback to
+    check the latest data in the jobs-db.
+
+    This is most often used when jobs are regenerated for jobs that could
+    exist in the jobs-db; there are alternative methods on the jobs-db to
+    find all jobs matching various job states.
+
+    :param jobs: any AWSBatchJob
+    :param jobs_db: a jobs-db to check the latest
+        job status from the jobs-db, if it is not
+        available on the job (highly recommended)
+    :return: yield jobs found
+    """
+    LOGGER.info("Listing jobs")
+
+    for job in jobs:
+
+        # First check the job itself before checking the jobs_db
+        if job.job_id and job.status:
+            yield job
+
+        if jobs_db:
+            db_job = asyncio.run(jobs_db.find_latest_job_name(job.job_name))
+            if db_job:
+                yield db_job
+
+
 def batch_run_jobs(
     jobs: List[AWSBatchJob],
     jobs_db: AioAWSBatchDB = None,
@@ -1287,6 +1348,36 @@ def batch_update_jobs(
             sem=500,
         )
     asyncio.run(aio_batch_update_jobs(jobs=jobs, config=aio_batch_config))
+
+
+def batch_update_jobs_db(jobs_db: AioAWSBatchDB):
+    """
+    Update all the jobs-db job descriptions.  This is a synchronous wrapper
+    on :py:func:`aio_batch_update_jobs` for all jobs in a jobs-db.
+
+    :param jobs_db: a jobs-db to update
+    :return: the jobs-db is updated, so this function returns nothing
+    """
+    LOGGER.info("Updating jobs-db")
+
+    job_ids = list(asyncio.run(jobs_db.all_job_ids()))
+
+    aio_batch_config = AWSBatchConfig(
+        aio_batch_db=jobs_db,
+        min_pause=10,
+        max_pause=20,
+        start_pause=60,
+        max_pool_connections=1,
+        sem=500,
+    )
+    update_limit = 100  # AWS limit
+
+    for offset in range(0, len(job_ids), update_limit):
+        jobs_to_update = []
+        for job_id in job_ids[offset : offset + update_limit]:
+            job_doc = asyncio.run(jobs_db.find_by_job_id(job_id))
+            jobs_to_update.append(AWSBatchJob(**job_doc))
+        asyncio.run(aio_batch_update_jobs(jobs_to_update, aio_batch_config))
 
 
 def batch_get_logs(
