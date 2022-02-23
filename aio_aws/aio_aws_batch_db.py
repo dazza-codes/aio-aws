@@ -230,9 +230,15 @@ class AioAWSBatchDB(abc.ABC):
         pass
 
     @abc.abstractmethod
-    async def jobs_recovery(self, jobs: List[AWSBatchJob]) -> List[AWSBatchJob]:
+    async def jobs_recovery(
+        self, jobs: List[AWSBatchJob], include_logs: bool = False
+    ) -> List[AWSBatchJob]:
         """
         Use the job.job_name to find any jobs_db records to recover job data.
+
+        :param jobs: a List[AWSBatchJob] to recover
+        :param: include_logs: also recover any saved logs
+        :return: List[AWSBatchJob] with saved data for any saved jobs
         """
         pass
 
@@ -749,9 +755,15 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
 
         return jobs_outstanding
 
-    async def jobs_recovery(self, jobs: List[AWSBatchJob]) -> List[AWSBatchJob]:
+    async def jobs_recovery(
+        self, jobs: List[AWSBatchJob], include_logs: bool = False
+    ) -> List[AWSBatchJob]:
         """
         Use the job.job_name to find any jobs_db records to recover job data.
+
+        :param jobs: a List[AWSBatchJob] to recover
+        :param: include_logs: also recover any saved logs
+        :return: List[AWSBatchJob] with saved data for any saved jobs
         """
         jobs_recovered = []
         for job in jobs:
@@ -765,6 +777,10 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
                     db_job.status,
                 )
                 jobs_recovered.append(db_job)
+                if include_logs and db_job.logs is None:
+                    db_logs_data = await self.find_job_logs(db_job.job_id)
+                    if db_logs_data:
+                        db_job.logs = db_logs_data["logs"]
             else:
                 jobs_recovered.append(job)
 
@@ -1138,9 +1154,15 @@ class AioAWSBatchTinyDB(AioAWSBatchDB):
 
         return jobs_outstanding
 
-    async def jobs_recovery(self, jobs: List[AWSBatchJob]) -> List[AWSBatchJob]:
+    async def jobs_recovery(
+        self, jobs: List[AWSBatchJob], include_logs: bool = False
+    ) -> List[AWSBatchJob]:
         """
         Use the job.job_name to find any jobs_db records to recover job data.
+
+        :param jobs: a List[AWSBatchJob] to recover
+        :param: include_logs: also recover any saved logs
+        :return: List[AWSBatchJob] with saved data for any saved jobs
         """
         jobs_recovered = []
         for job in jobs:
@@ -1154,6 +1176,10 @@ class AioAWSBatchTinyDB(AioAWSBatchDB):
                     db_job.status,
                 )
                 jobs_recovered.append(db_job)
+                if include_logs and db_job.logs is None:
+                    db_logs_data = await self.find_job_logs(db_job.job_id)
+                    if db_logs_data:
+                        db_job.logs = db_logs_data["logs"]
             else:
                 jobs_recovered.append(job)
 
