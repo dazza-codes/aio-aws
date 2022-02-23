@@ -214,3 +214,18 @@ Focus on aio-aws
 -------------------
 - Relax version of aiobotocore to allow 2.x.y
 
+
+0.17.2 (2022-02-23)
+-------------------
+- Add s3 utils to check existence of s3 URIs
+- Add batch utils for updating jobs, jobs-db and logs
+- Add options for more efficient retrieval of AWS Batch logs
+- Revise AWSBatchConfig settings and client creation with args, kwargs
+- Revise batch-db jobs_recovery with option to include logs
+- Add pytest-aiomoto[s3fs] extra
+- Update to pytest-aiomoto 0.2.x
+- Update tests to use pytest-aiomoto fixtures
+- Use pytest-aiomoto from pypi at 0.1.1
+- Update github actions
+- Create python-publish.yml
+
