@@ -176,6 +176,12 @@ class RetryError(RuntimeError):
 @dataclass
 class AWSBatchConfig(AioAWSConfig):
 
+    #: defines a limit to the number of client connections
+    max_pool_connections: int = 100
+    # An asyncio.Semaphore to limit the number of concurrent clients;
+    # this defaults to the session client connection pool
+    sem: int = 100
+
     #: a batch job startup pause, ``random.uniform(start_pause, start_pause * 2)``;
     #: this applies when the job status is in ["SUBMITTED", "PENDING", "RUNNABLE"]
     start_pause: float = BATCH_STARTUP_PAUSE
@@ -183,24 +189,40 @@ class AWSBatchConfig(AioAWSConfig):
     #: an optional AioAWSBatchDB
     aio_batch_db: Optional[AioAWSBatchDB] = None
 
+    @property
+    def default_client_config(self) -> botocore.client.Config:
+        # botocore/config.py lists all the options
+        config = botocore.client.Config(
+            connect_timeout=30,
+            read_timeout=240,
+            max_pool_connections=self.max_pool_connections,
+        )
+        if self.aws_region:
+            config.region_name = self.aws_region
+        return config
+
     @asynccontextmanager
-    async def create_batch_client(self) -> aiobotocore.client.AioBaseClient:
+    async def create_batch_client(
+        self, *args, **kwargs
+    ) -> aiobotocore.client.AioBaseClient:
         """
         Create and yield an AWS Batch client using the ``AWSBatchConfig.session``
 
         :yield: an aiobotocore.client.AioBaseClient for AWS Batch
         """
-        async with self.session.create_client("batch") as client:
+        async with self.session.create_client("batch", *args, **kwargs) as client:
             yield client
 
     @asynccontextmanager
-    async def create_logs_client(self) -> aiobotocore.client.AioBaseClient:
+    async def create_logs_client(
+        self, *args, **kwargs
+    ) -> aiobotocore.client.AioBaseClient:
         """
         Create and yield an AWS CloudWatchLogs client using the ``AWSBatchConfig.session``
 
         :yield: an aiobotocore.client.AioBaseClient for AWS CloudWatchLogs
         """
-        async with self.session.create_client("logs") as client:
+        async with self.session.create_client("logs", *args, **kwargs) as client:
             yield client
 
 
