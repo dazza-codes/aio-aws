@@ -73,6 +73,7 @@ import concurrent.futures
 import time
 from dataclasses import dataclass
 from typing import Dict
+from typing import Iterable
 from typing import List
 from typing import Tuple
 
@@ -422,7 +423,7 @@ async def aio_s3_objects_list(
 
 
 async def aio_s3_objects_access(
-    s3_uris: List[str],
+    s3_uris: Iterable[str],
     config: AioAWSConfig,
     s3_client: AioBaseClient,
 ) -> Dict[str, bool]:
@@ -446,6 +447,41 @@ async def aio_s3_objects_access(
         object_access[s3_uri] = access
 
     return object_access
+
+
+async def aio_s3_access(s3_uris: Iterable[str]) -> Dict[str, bool]:
+    """
+    Asynchronous coroutine to issue HEAD requests on all available
+    s3 objects to check if each s3_object allows access.
+
+    :param s3_uris: an iterable of s3 uris in the form 's3://bucket-name/key'
+    :return: dict of ``{s3_uri: str, access: bool}``
+    """
+    aio_config = AioAWSConfig(
+        max_pool_connections=40,
+        min_pause=0.2,
+        max_pause=0.6,
+        min_jitter=0.2,
+        max_jitter=0.8,
+    )
+    async with aio_config.create_client("s3") as s3_client:
+        return await aio_s3_objects_access(
+            s3_uris=s3_uris, config=aio_config, s3_client=s3_client
+        )
+
+
+def validate_s3_files(s3_uris: Iterable[str]) -> Dict[str, bool]:
+    """
+    Synchronous wrapper on :py:func:`aio_s3_access`, the
+    coroutines that issue HEAD requests on all available
+    s3 objects to check if each s3_object allows access.
+    This uses :py:func:`asyncio.run`.
+
+    :param s3_uris: an iterable of s3 uris in the form 's3://bucket-name/key'
+    :return: dict of ``{s3_uri: str, access: bool}``
+    """
+    LOGGER.info("Validating s3 input files")
+    return asyncio.run(aio_s3_access(s3_uris))
 
 
 if __name__ == "__main__":
@@ -534,22 +570,22 @@ if __name__ == "__main__":
                 config=aio_config,
                 s3_client=s3_client,
             )
-            aio_s3_uris = [
+            s3_uris = [
                 f"s3://{noaa_goes_bucket}/{obj['Key']}" for obj in aio_s3_objects
             ]
-            print(f"found {len(aio_s3_uris)} s3 objects")
+            print(f"found {len(s3_uris)} s3 objects")
             end = time.perf_counter() - start
             print(f"finished in {end:0.2f} seconds.\n")
-            set_aio_s3_uris = set(aio_s3_uris)
-            assert len(aio_s3_uris) == len(set_aio_s3_uris)  # are they unique?
+            set_aio_s3_uris = set(s3_uris)
+            assert len(s3_uris) == len(set_aio_s3_uris)  # are they unique?
 
             print()
             print("aio-aws checks for access to all objects in a bucket-prefix.")
             start = time.perf_counter()
-            aio_s3_access = await aio_s3_objects_access(
-                s3_uris=aio_s3_uris, config=aio_config, s3_client=s3_client
+            s3_access = await aio_s3_objects_access(
+                s3_uris=s3_uris, config=aio_config, s3_client=s3_client
             )
-            print(f"checked access to {len(aio_s3_access)} s3 objects")
+            print(f"checked access to {len(s3_access)} s3 objects")
             end = time.perf_counter() - start
             print(f"finished in {end:0.2f} seconds.\n")
 
