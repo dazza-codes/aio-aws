@@ -229,3 +229,8 @@ Focus on aio-aws
 - Update github actions
 - Create python-publish.yml
 
+
+0.17.3 (2022-02-27)
+-------------------
+- Modify repr(S3URI)
+
