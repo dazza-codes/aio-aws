@@ -74,10 +74,9 @@ package-publish: package-check
 .PHONY: poetry
 poetry:
 	@if ! command -v poetry > /dev/null; then \
-		curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/install-poetry.py -o /tmp/install-poetry.py; \
-		python /tmp/install-poetry.py; \
+		curl -sSL https://install.python-poetry.org | python -; \
 	fi
-	if ! echo "$PATH" | grep -Eq "(^|:)${HOME}/.local/bin($|:)" ; then \
+	if ! echo "$PATH" | grep -Eq "(^|:)${HOME}/.local/bin($|:)"; then \
 		export PATH="${HOME}/.local/bin:${PATH}"; \
 	fi
 	poetry --version
