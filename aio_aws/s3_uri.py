@@ -257,7 +257,11 @@ class S3Paths:
         return hash(self.s3_uri)
 
     def __repr__(self):
-        return "%s:%r" % (self.__class__, self.s3_uri)
+        return "%s.%s(%r)" % (
+            self.__class__.__module__,
+            self.__class__.__name__,
+            self.s3_uri,
+        )
 
     def __str__(self):
         return self.s3_uri
