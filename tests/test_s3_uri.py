@@ -59,8 +59,10 @@ def test_hash_s3_uri(s3_uri):
 
 
 def test_s3_uri_repr(s3_uri):
-    assert S3URI.__name__ in repr(s3_uri)
-    assert s3_uri.s3_uri in repr(s3_uri)
+    s3_uri_repr = repr(s3_uri)
+    assert S3URI.__module__ in s3_uri_repr
+    assert S3URI.__name__ in s3_uri_repr
+    assert s3_uri.s3_uri in s3_uri_repr
 
 
 def test_s3_uri_str(s3_uri):
