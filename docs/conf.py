@@ -25,9 +25,9 @@ copyright = "2019-2021, Darren Weber"
 author = "Darren Weber"
 
 # The short X.Y version
-version = "0.17.3"
+version = "0.17.4"
 # The full version, including alpha/beta/rc tags
-release = "0.17.3"
+release = "0.17.4"
 
 
 # -- General configuration ---------------------------------------------------

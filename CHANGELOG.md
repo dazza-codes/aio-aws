@@ -234,3 +234,8 @@ Focus on aio-aws
 -------------------
 - Modify repr(S3URI)
 
+
+0.17.4 (2022-03-11)
+-------------------
+- Add warning about missing job-name in jobs-db
+
