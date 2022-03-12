@@ -976,6 +976,8 @@ async def aio_find_jobs_by_status(
             if db_job:
                 if job_for_status(db_job, job_states):
                     yield db_job
+            else:
+                LOGGER.warning("Did not find job-name: %s", job.job_name)
 
 
 async def aio_find_complete_jobs(
@@ -1059,6 +1061,8 @@ def find_jobs_by_status(
             if db_job:
                 if job_for_status(db_job, job_states):
                     yield db_job
+            else:
+                LOGGER.warning("Did not find job-name: %s", job.job_name)
 
 
 def find_complete_jobs(
@@ -1223,6 +1227,8 @@ def find_latest_jobs_with_jobs_db(
             db_job = asyncio.run(jobs_db.find_latest_job_name(job.job_name))
             if db_job:
                 yield db_job
+            else:
+                LOGGER.warning("Did not find job-name: %s", job.job_name)
 
 
 def batch_run_jobs(
