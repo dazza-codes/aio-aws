@@ -239,3 +239,8 @@ Focus on aio-aws
 -------------------
 - Add warning about missing job-name in jobs-db
 
+
+0.18.0 (2022-03-11)
+-------------------
+- Update s3fs 2022.* and aiobotocore ~2.1.0
+
