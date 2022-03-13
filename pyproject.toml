@@ -97,9 +97,7 @@ docs = [
 
 [tool.poetry.dev-dependencies]
 
-pytest-aiomoto = {version = "^0.2.0", extras = ["s3fs"]}
-# https://github.com/spulec/moto/issues/4913
-responses = "^0.18.0"  # pinned to avoid test crashes
+pytest-aiomoto = {version = "^0.4.0", extras = ["s3fs"]}
 
 # py-dev-deps is used as a common denominator for many
 # development dependencies
