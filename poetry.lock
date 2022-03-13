@@ -1072,11 +1072,11 @@ python-versions = "*"
 
 [[package]]
 name = "moto"
-version = "2.3.2"
+version = "3.1.0"
 description = "A library that allows your python tests to easily mock out the boto library"
 category = "dev"
 optional = false
-python-versions = "*"
+python-versions = ">=3.6"
 
 [package.dependencies]
 aws-xray-sdk = {version = ">=0.93,<0.96 || >0.96", optional = true, markers = "extra == \"all\""}
@@ -1106,13 +1106,15 @@ xmltodict = "*"
 
 [package.extras]
 all = ["PyYAML (>=5.1)", "python-jose[cryptography] (>=3.1.0,<4.0.0)", "ecdsa (!=0.15)", "docker (>=2.5.1)", "graphql-core", "jsondiff (>=1.1.2)", "aws-xray-sdk (>=0.93,!=0.96)", "idna (>=2.5,<4)", "cfn-lint (>=0.4.0)", "sshpubkeys (>=3.1.0)", "setuptools"]
-apigateway = ["python-jose[cryptography] (>=3.1.0,<4.0.0)", "ecdsa (!=0.15)"]
+apigateway = ["PyYAML (>=5.1)", "python-jose[cryptography] (>=3.1.0,<4.0.0)", "ecdsa (!=0.15)"]
+apigatewayv2 = ["PyYAML (>=5.1)"]
 appsync = ["graphql-core"]
 awslambda = ["docker (>=2.5.1)"]
 batch = ["docker (>=2.5.1)"]
 cloudformation = ["docker (>=2.5.1)", "PyYAML (>=5.1)", "cfn-lint (>=0.4.0)"]
 cognitoidp = ["python-jose[cryptography] (>=3.1.0,<4.0.0)", "ecdsa (!=0.15)"]
 ds = ["sshpubkeys (>=3.1.0)"]
+dynamodb = ["docker (>=2.5.1)"]
 dynamodb2 = ["docker (>=2.5.1)"]
 dynamodbstreams = ["docker (>=2.5.1)"]
 ec2 = ["sshpubkeys (>=3.1.0)"]
@@ -1538,7 +1540,7 @@ testing = ["argcomplete", "hypothesis (>=3.56)", "mock", "nose", "requests", "xm
 
 [[package]]
 name = "pytest-aiomoto"
-version = "0.2.0"
+version = "0.4.0"
 description = "pytest-aiomoto"
 category = "dev"
 optional = false
@@ -1546,10 +1548,10 @@ python-versions = ">=3.7.1,<4.0.0"
 
 [package.dependencies]
 aiobotocore = {version = ">=2.0.0,<3.0.0", extras = ["boto3"]}
-aiofiles = ">=0.7.0,<0.8.0"
-moto = {version = ">=2.0.0,<3.0.0", extras = ["all", "server"]}
+aiofiles = ">=0.7.0"
+moto = {version = ">=3.0.0,<4.0.0", extras = ["all", "server"]}
 pytest = ">=6.2.5,<7.0.0"
-pytest-asyncio = ">=0.14.0,<0.15.0"
+pytest-asyncio = ">=0.14.0"
 requests = ">=2.23.0,<3.0.0"
 s3fs = {version = ">=0.5.0", optional = true, markers = "extra == \"s3fs\""}
 
@@ -1928,7 +1930,7 @@ requests = ">=2.0.1,<3.0.0"
 
 [[package]]
 name = "responses"
-version = "0.18.0"
+version = "0.19.0"
 description = "A utility library for mocking out the `requests` Python library."
 category = "dev"
 optional = false
@@ -1939,7 +1941,7 @@ requests = ">=2.0,<3.0"
 urllib3 = ">=1.25.10"
 
 [package.extras]
-tests = ["pytest (>=4.6)", "coverage (>=6.0.0)", "pytest-cov", "pytest-localserver", "flake8", "types-mock", "types-requests", "mypy"]
+tests = ["pytest (>=7.0.0)", "coverage (>=6.0.0)", "pytest-cov", "pytest-asyncio", "pytest-localserver", "flake8", "types-mock", "types-requests", "mypy"]
 
 [[package]]
 name = "restructuredtext-lint"
@@ -2513,7 +2515,7 @@ docs = ["Sphinx", "sphinx-autoapi", "sphinx-autodoc-typehints", "sphinx-rtd-them
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7.1,<4.0.0"
-content-hash = "3753405fd8853d6dfe61c20f32d2d7ff9ac6f33c4bad83c542c3e2d89f4c4b3b"
+content-hash = "7b3c816f610925f576e9015a98c341534cb899dc2e386ffdf8c17b9715a6de82"
 
 [metadata.files]
 aiobotocore = [
@@ -3324,8 +3326,8 @@ mistune = [
     {file = "mistune-0.8.4.tar.gz", hash = "sha256:59a3429db53c50b5c6bcc8a07f8848cb00d7dc8bdb431a4ab41920d201d4756e"},
 ]
 moto = [
-    {file = "moto-2.3.2-py2.py3-none-any.whl", hash = "sha256:0c29f5813d4db69b2f99c5538909a5aba0ba1cb91a74c19eddd9bfdc39ed2ff3"},
-    {file = "moto-2.3.2.tar.gz", hash = "sha256:eaaed229742adbd1387383d113350ecd9222fc1e8f5611a9395a058c1eee4377"},
+    {file = "moto-3.1.0-py2.py3-none-any.whl", hash = "sha256:d45b9b1ed8db073109392ec3dd473a3bf79a2dd2bf740042819e019f3e054947"},
+    {file = "moto-3.1.0.tar.gz", hash = "sha256:c4327b34228cc3d446e8e5434af5f997ab4c5f85cdf93a201833dca1ca0c0717"},
 ]
 multidict = [
     {file = "multidict-6.0.2-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:0b9e95a740109c6047602f4db4da9949e6c5945cefbad34a1299775ddc9a62e2"},
@@ -3630,8 +3632,8 @@ pytest = [
     {file = "pytest-6.2.5.tar.gz", hash = "sha256:131b36680866a76e6781d13f101efb86cf674ebb9762eb70d3082b6f29889e89"},
 ]
 pytest-aiomoto = [
-    {file = "pytest-aiomoto-0.2.0.tar.gz", hash = "sha256:4896453c2845d2a718efc6881631980a2e90df2540879e031dbd6390616072f9"},
-    {file = "pytest_aiomoto-0.2.0-py3-none-any.whl", hash = "sha256:c61822930d55f8249718ba2f115c33952eac51d326e3ca2403b634216fd1802f"},
+    {file = "pytest-aiomoto-0.4.0.tar.gz", hash = "sha256:816e86dab2b6267f670e79d23c0bed63727fd60171acc868f3bdddc5176b615f"},
+    {file = "pytest_aiomoto-0.4.0-py3-none-any.whl", hash = "sha256:0de1d7486797b9ee8349d5afe579101b28cfecf80168946df3e1364be3886a28"},
 ]
 pytest-asyncio = [
     {file = "pytest-asyncio-0.14.0.tar.gz", hash = "sha256:9882c0c6b24429449f5f969a5158b528f39bde47dc32e85b9f0403965017e700"},
@@ -3854,8 +3856,8 @@ requests-toolbelt = [
     {file = "requests_toolbelt-0.9.1-py2.py3-none-any.whl", hash = "sha256:380606e1d10dc85c3bd47bf5a6095f815ec007be7a8b69c878507068df059e6f"},
 ]
 responses = [
-    {file = "responses-0.18.0-py3-none-any.whl", hash = "sha256:15c63ad16de13ee8e7182d99c9334f64fd81f1ee79f90748d527c28f7ca9dd51"},
-    {file = "responses-0.18.0.tar.gz", hash = "sha256:380cad4c1c1dc942e5e8a8eaae0b4d4edf708f4f010db8b7bcfafad1fcd254ff"},
+    {file = "responses-0.19.0-py3-none-any.whl", hash = "sha256:53354b5de163aa2074312c71d8ebccb8bd1ab336cff7053abb75e84dc5637abe"},
+    {file = "responses-0.19.0.tar.gz", hash = "sha256:3fc29c3117e14136b833a0a6d4e7f1217c6301bf08b6086db468e12f1e3290e2"},
 ]
 restructuredtext-lint = [
     {file = "restructuredtext_lint-1.4.0.tar.gz", hash = "sha256:1b235c0c922341ab6c530390892eb9e92f90b9b75046063e047cacfb0f050c45"},
