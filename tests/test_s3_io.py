@@ -18,8 +18,8 @@ from pathlib import Path
 from typing import Dict
 
 import boto3
-from pytest_aiomoto.aws_fixtures import assert_bucket_200
-from pytest_aiomoto.aws_fixtures import assert_object_200
+from pytest_aiomoto.aws_s3 import assert_bucket_200
+from pytest_aiomoto.aws_s3 import assert_object_200
 
 from aio_aws.s3_io import geojson_s3_dump
 from aio_aws.s3_io import geojson_s3_load
