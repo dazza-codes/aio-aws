@@ -177,7 +177,7 @@ class RetryError(RuntimeError):
 class AWSBatchConfig(AioAWSConfig):
 
     #: defines a limit to the number of client connections
-    max_pool_connections: int = 100
+    max_pool_connections: int = 2
     # An asyncio.Semaphore to limit the number of concurrent clients;
     # this defaults to the session client connection pool
     sem: int = 100
@@ -260,46 +260,49 @@ async def aio_batch_job_submit(
 
     task_name = "batch-submit-job"
 
-    async with config.create_batch_client() as batch_client:
-        for tries in range(config.retries + 1):
-            try:
-                await jitter(task_name, 0.0001, 0.01)
-                params = job.params
-                LOGGER.debug("AWS Batch job params: %s", params)
-                response = await batch_client.submit_job(**params)
-                LOGGER.debug("AWS Batch job response: %s", response)
+    async with config.semaphore:
+        async with config.create_batch_client() as batch_client:
+            for tries in range(config.retries + 1):
+                try:
+                    await jitter(task_name, 0.001, 0.1)
+                    params = job.params
+                    LOGGER.debug("AWS Batch job params: %s", params)
+                    response = await batch_client.submit_job(**params)
+                    LOGGER.debug("AWS Batch job response: %s", response)
 
-                job.job_submission = response
-                if response_success(response):
-                    job.job_id = response["jobId"]
-                    job.status = "SUBMITTED"
-                    job.job_tries.append(job.job_id)
-                    job.num_tries += 1
-                    if config.aio_batch_db:
-                        await config.aio_batch_db.save_job(job)
-                    LOGGER.info(
-                        "AWS %s (%s:%s) try: %d of %d",
-                        task_name,
-                        job.job_name,
-                        job.job_id,
-                        job.num_tries,
-                        job.max_tries,
-                    )
-                    return job
-                else:
-                    # TODO: are there some submission failures that could be recovered here?
-                    LOGGER.error("AWS %s (%s:xxx) failure.", task_name, job.job_name)
+                    job.job_submission = response
+                    if response_success(response):
+                        job.job_id = response["jobId"]
+                        job.status = "SUBMITTED"
+                        job.job_tries.append(job.job_id)
+                        job.num_tries += 1
+                        if config.aio_batch_db:
+                            await config.aio_batch_db.save_job(job)
+                        LOGGER.info(
+                            "AWS %s (%s:%s) try: %d of %d",
+                            task_name,
+                            job.job_name,
+                            job.job_id,
+                            job.num_tries,
+                            job.max_tries,
+                        )
+                        return job
+                    else:
+                        # TODO: are there some submission failures that could be recovered here?
+                        LOGGER.error(
+                            "AWS %s (%s:xxx) failure.", task_name, job.job_name
+                        )
 
-            except botocore.exceptions.ClientError as err:
-                job.job_submission = err.response
-                error = err.response.get("Error", {})
-                if error.get("Code") in RETRY_EXCEPTIONS:
-                    # add an extra random sleep period to avoid API throttle
-                    await jitter(task_name, config.min_jitter, config.max_jitter)
-                else:
-                    raise
+                except botocore.exceptions.ClientError as err:
+                    job.job_submission = err.response
+                    error = err.response.get("Error", {})
+                    if error.get("Code") in RETRY_EXCEPTIONS:
+                        # add an extra random sleep period to avoid API throttle
+                        await jitter(task_name, config.min_jitter, config.max_jitter)
+                    else:
+                        raise
 
-        raise RetryError(f"AWS {task_name} exceeded retries")
+            raise RetryError(f"AWS {task_name} exceeded retries")
 
 
 async def aio_batch_describe_jobs(
@@ -319,21 +322,22 @@ async def aio_batch_describe_jobs(
 
     task_name = "batch-describe-jobs"
 
-    async with config.create_batch_client() as batch_client:
-        for tries in range(config.retries + 1):
-            try:
-                await jitter(task_name, 0.0001, 0.01)
-                return await batch_client.describe_jobs(jobs=job_ids)
+    async with config.semaphore:
+        async with config.create_batch_client() as batch_client:
+            for tries in range(config.retries + 1):
+                try:
+                    await jitter(task_name, 0.001, 0.1)
+                    return await batch_client.describe_jobs(jobs=job_ids)
 
-            except botocore.exceptions.ClientError as err:
-                error = err.response.get("Error", {})
-                if error.get("Code") in RETRY_EXCEPTIONS:
-                    # add an extra random sleep period to avoid API throttle
-                    await jitter(task_name, config.min_jitter, config.max_jitter)
-                else:
-                    raise
+                except botocore.exceptions.ClientError as err:
+                    error = err.response.get("Error", {})
+                    if error.get("Code") in RETRY_EXCEPTIONS:
+                        # add an extra random sleep period to avoid API throttle
+                        await jitter(task_name, config.min_jitter, config.max_jitter)
+                    else:
+                        raise
 
-        raise RetryError(f"AWS {task_name} exceeded retries")
+            raise RetryError(f"AWS {task_name} exceeded retries")
 
 
 async def aio_batch_update_jobs(jobs: Iterable[AWSBatchJob], config: AWSBatchConfig):
@@ -429,74 +433,75 @@ async def aio_batch_job_logs(
 
     task_name = "batch-job-logs"
 
-    async with config.create_logs_client() as logs_client:
-        for tries in range(config.retries + 1):
-            try:
-                log_events = []
+    async with config.semaphore:
+        async with config.create_logs_client() as logs_client:
+            for tries in range(config.retries + 1):
+                try:
+                    log_events = []
 
-                forward_token = None
-                while True:
-                    kwargs = {
-                        "logGroupName": "/aws/batch/job",
-                        "logStreamName": log_stream_name,
-                        "startFromHead": True,
-                        # "startTime": 123,
-                        # "endTime": 123,
-                        # "limit": 123,
-                    }
-                    if forward_token:
-                        kwargs["nextToken"] = forward_token
+                    forward_token = None
+                    while True:
+                        kwargs = {
+                            "logGroupName": "/aws/batch/job",
+                            "logStreamName": log_stream_name,
+                            "startFromHead": True,
+                            # "startTime": 123,
+                            # "endTime": 123,
+                            # "limit": 123,
+                        }
+                        if forward_token:
+                            kwargs["nextToken"] = forward_token
 
-                    await jitter(task_name, 0.0001, 0.01)
-                    response = await logs_client.get_log_events(**kwargs)
+                        await jitter(task_name, 0.01, 0.1)
+                        response = await logs_client.get_log_events(**kwargs)
 
-                    log_page_events = response.get("events", [])
-                    log_events.extend(log_page_events)
+                        log_page_events = response.get("events", [])
+                        log_events.extend(log_page_events)
 
-                    # # Note: for the record, cannot read the response as a stream
-                    # if response and response_success(response):
-                    #     response_events = response.get("events")
-                    #     if response_events:
-                    #         async with response_events as stream:
-                    #             log_page_events = await stream.read()
-                    #             log_events.extend(log_page_events)
+                        # # Note: for the record, cannot read the response as a stream
+                        # if response and response_success(response):
+                        #     response_events = response.get("events")
+                        #     if response_events:
+                        #         async with response_events as stream:
+                        #             log_page_events = await stream.read()
+                        #             log_events.extend(log_page_events)
 
-                    next_forward_token = response.get("nextForwardToken")
-                    if next_forward_token is None:
-                        break
-                    if forward_token == next_forward_token:
-                        break
-                    forward_token = next_forward_token
+                        next_forward_token = response.get("nextForwardToken")
+                        if next_forward_token is None:
+                            break
+                        if forward_token == next_forward_token:
+                            break
+                        forward_token = next_forward_token
 
-                if log_events:
-                    LOGGER.info(
-                        "AWS %s (%s:%s) events: %d",
-                        task_name,
-                        job.job_name,
-                        job.job_id,
-                        len(log_events),
-                    )
-                    job.logs = log_events
-                    if config.aio_batch_db:
-                        await config.aio_batch_db.save_job_logs(job)
-                else:
-                    LOGGER.warning(
-                        "AWS Batch job (%s:%s) has no log events",
-                        job.job_name,
-                        job.job_id,
-                    )
+                    if log_events:
+                        LOGGER.info(
+                            "AWS %s (%s:%s) events: %d",
+                            task_name,
+                            job.job_name,
+                            job.job_id,
+                            len(log_events),
+                        )
+                        job.logs = log_events
+                        if config.aio_batch_db:
+                            await config.aio_batch_db.save_job_logs(job)
+                    else:
+                        LOGGER.warning(
+                            "AWS Batch job (%s:%s) has no log events",
+                            job.job_name,
+                            job.job_id,
+                        )
 
-                return log_events
+                    return log_events
 
-            except botocore.exceptions.ClientError as err:
-                error = err.response.get("Error", {})
-                if error.get("Code") in RETRY_EXCEPTIONS:
-                    # add an extra random sleep period to avoid API throttle
-                    await jitter(task_name, config.min_jitter, config.max_jitter)
-                else:
-                    raise
+                except botocore.exceptions.ClientError as err:
+                    error = err.response.get("Error", {})
+                    if error.get("Code") in RETRY_EXCEPTIONS:
+                        # add an extra random sleep period to avoid API throttle
+                        await jitter(task_name, config.min_jitter, config.max_jitter)
+                    else:
+                        raise
 
-        raise RetryError(f"AWS {task_name} exceeded retries")
+            raise RetryError(f"AWS {task_name} exceeded retries")
 
 
 async def aio_batch_job_cancel(
@@ -521,35 +526,36 @@ async def aio_batch_job_cancel(
 
     task_name = "batch-job-cancel"
 
-    async with config.create_batch_client() as batch_client:
+    async with config.semaphore:
+        async with config.create_batch_client() as batch_client:
 
-        for tries in range(config.retries + 1):
-            try:
-                await jitter(task_name, 0.0001, 0.01)
-                LOGGER.info("AWS Batch job to cancel: %s, %s", job.job_id, reason)
-                response = await batch_client.cancel_job(
-                    jobId=job.job_id, reason=reason
-                )
-                LOGGER.debug("AWS Batch job response: %s", response)
+            for tries in range(config.retries + 1):
+                try:
+                    await jitter(task_name, 0.001, 0.1)
+                    LOGGER.info("AWS Batch job to cancel: %s, %s", job.job_id, reason)
+                    response = await batch_client.cancel_job(
+                        jobId=job.job_id, reason=reason
+                    )
+                    LOGGER.debug("AWS Batch job response: %s", response)
 
-                if response_success(response):
-                    # Waiting for the job to complete is necessary; checking the job status
-                    # immediately after terminating it can get a status like RUNNABLE or RUNNING.
-                    # The job-waiter updates the job object (it's authorized for side-effects)
-                    await aio_batch_job_waiter(job=job, config=config)
-                    return job
-                else:
-                    continue
+                    if response_success(response):
+                        # Waiting for the job to complete is necessary; checking the job status
+                        # immediately after terminating it can get a status like RUNNABLE or RUNNING.
+                        # The job-waiter updates the job object (it's authorized for side-effects)
+                        await aio_batch_job_waiter(job=job, config=config)
+                        return job
+                    else:
+                        continue
 
-            except botocore.exceptions.ClientError as err:
-                error = err.response.get("Error", {})
-                if error.get("Code") in RETRY_EXCEPTIONS:
-                    # add an extra random sleep period to avoid API throttle
-                    await jitter(task_name, config.min_jitter, config.max_jitter)
-                else:
-                    raise err
+                except botocore.exceptions.ClientError as err:
+                    error = err.response.get("Error", {})
+                    if error.get("Code") in RETRY_EXCEPTIONS:
+                        # add an extra random sleep period to avoid API throttle
+                        await jitter(task_name, config.min_jitter, config.max_jitter)
+                    else:
+                        raise err
 
-        raise RetryError(f"AWS {task_name} exceeded retries")
+            raise RetryError(f"AWS {task_name} exceeded retries")
 
 
 async def aio_batch_job_terminate(
@@ -569,32 +575,35 @@ async def aio_batch_job_terminate(
 
     task_name = "batch-job-terminate"
 
-    async with config.create_batch_client() as batch_client:
+    async with config.semaphore:
+        async with config.create_batch_client() as batch_client:
 
-        for tries in range(config.retries + 1):
-            try:
-                await jitter(task_name, 0.0001, 0.01)
-                LOGGER.info("AWS Batch job to terminate: %s, %s", job.job_id, reason)
-                response = await batch_client.terminate_job(
-                    jobId=job.job_id, reason=reason
-                )
-                LOGGER.debug("AWS Batch job response: %s", response)
+            for tries in range(config.retries + 1):
+                try:
+                    await jitter(task_name, 0.001, 0.1)
+                    LOGGER.info(
+                        "AWS Batch job to terminate: %s, %s", job.job_id, reason
+                    )
+                    response = await batch_client.terminate_job(
+                        jobId=job.job_id, reason=reason
+                    )
+                    LOGGER.debug("AWS Batch job response: %s", response)
 
-                if response_success(response):
-                    # Waiting for the job to complete is necessary, to get the final status.
-                    # The job-waiter updates the job object (it's authorized for side-effects)
-                    await aio_batch_job_waiter(job=job, config=config)
-                    return job
+                    if response_success(response):
+                        # Waiting for the job to complete is necessary, to get the final status.
+                        # The job-waiter updates the job object (it's authorized for side-effects)
+                        await aio_batch_job_waiter(job=job, config=config)
+                        return job
 
-            except botocore.exceptions.ClientError as err:
-                error = err.response.get("Error", {})
-                if error.get("Code") in RETRY_EXCEPTIONS:
-                    # add an extra random sleep period to avoid API throttle
-                    await jitter(task_name, config.min_jitter, config.max_jitter)
-                else:
-                    raise
+                except botocore.exceptions.ClientError as err:
+                    error = err.response.get("Error", {})
+                    if error.get("Code") in RETRY_EXCEPTIONS:
+                        # add an extra random sleep period to avoid API throttle
+                        await jitter(task_name, config.min_jitter, config.max_jitter)
+                    else:
+                        raise
 
-        raise RetryError(f"AWS {task_name} exceeded retries")
+            raise RetryError(f"AWS {task_name} exceeded retries")
 
 
 async def aio_batch_job_status(
@@ -1413,13 +1422,13 @@ def batch_get_logs(
         # settings try to avoid rate throttling
         aio_batch_config = AWSBatchConfig(
             aio_batch_db=jobs_db,
-            min_jitter=5,
-            max_jitter=10,
-            min_pause=4,
-            max_pause=10,
+            min_jitter=10,
+            max_jitter=40,
+            min_pause=30,
+            max_pause=60,
             start_pause=2,
-            max_pool_connections=100,  # match semaphere (sem) value
-            sem=100,
+            max_pool_connections=2,
+            sem=50,
         )
     asyncio.run(
         aio_batch_get_logs(
