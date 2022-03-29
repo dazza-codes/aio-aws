@@ -71,7 +71,6 @@ approach uses a client connection limiter, based on ``asyncio.Semaphore(20)``.
 import asyncio
 import concurrent.futures
 import time
-from dataclasses import dataclass
 from typing import Dict
 from typing import Iterable
 from typing import List
@@ -88,35 +87,11 @@ from aio_aws.aio_aws_config import AioAWSConfig
 from aio_aws.aio_aws_config import aio_aws_session
 from aio_aws.aio_aws_config import jitter
 from aio_aws.logger import get_logger
+from aio_aws.s3_uri import S3Parts
 from aio_aws.utils import handle_head_error_code
 from aio_aws.utils import response_success
 
 LOGGER = get_logger(__name__)
-
-
-@dataclass(frozen=True)
-class S3Parts:
-    bucket: str
-    key: str
-
-    PROTOCOL: str = "s3://"
-    DELIMITER: str = "/"
-
-    @property
-    def s3_uri(self):
-        return f"{self.PROTOCOL}{self.bucket}{S3Parts.DELIMITER}{self.key}"
-
-    @staticmethod
-    def parse_s3_uri(uri: str) -> "S3Parts":
-        uri = str(uri).strip()
-        if not uri.startswith(S3Parts.PROTOCOL):
-            raise ValueError(f"S3 URI must start with '{S3Parts.PROTOCOL}'")
-        uri_path = uri.replace(S3Parts.PROTOCOL, "")
-        uri_paths = uri_path.split(S3Parts.DELIMITER)
-        bucket = uri_paths.pop(0)
-        key = S3Parts.DELIMITER.join(uri_paths)
-
-        return S3Parts(bucket, key)
 
 
 def aws_s3_bucket_access(bucket_name: str, s3_client: BaseClient) -> bool:

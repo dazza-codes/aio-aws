@@ -28,6 +28,7 @@ from moto import mock_s3
 
 from aio_aws.s3_uri import LOGGER
 from aio_aws.s3_uri import S3URI
+from aio_aws.s3_uri import S3Parts
 from aio_aws.s3_uri import bucket_validate
 
 
@@ -351,3 +352,14 @@ def test_s3_invalid_bucket():
         bucket_validate("money_buckets")
     assert "The bucket_name is invalid" in err.value.args[0]
     assert bucket_name in err.value.args[0]
+
+
+def test_s3_parts(aio_s3_uri):
+    s3_parts = S3Parts.parse_s3_uri(aio_s3_uri)
+    assert s3_parts.s3_uri == aio_s3_uri
+
+
+def test_s3_parts_with_bad_uri():
+    with pytest.raises(ValueError) as err:
+        S3Parts.parse_s3_uri("file://tmp.txt")
+    assert S3Parts.PROTOCOL in err.value.args[0]
