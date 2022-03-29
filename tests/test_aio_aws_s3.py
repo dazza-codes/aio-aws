@@ -20,12 +20,12 @@ import aiobotocore.session
 import botocore.exceptions
 import pytest
 
-from aio_aws.aio_aws_s3 import S3Parts
 from aio_aws.aio_aws_s3 import aio_s3_bucket_access
 from aio_aws.aio_aws_s3 import aio_s3_bucket_head
 from aio_aws.aio_aws_s3 import aio_s3_buckets_access
 from aio_aws.aio_aws_s3 import aio_s3_buckets_list
 from aio_aws.aio_aws_s3 import aio_s3_object_head
+from aio_aws.s3_uri import S3URI
 from aio_aws.utils import response_success
 
 
@@ -42,17 +42,6 @@ def valid_head_response(resp: Dict, head: Dict) -> bool:
     assert head_meta["HTTPStatusCode"] == 200
     assert resp_headers == head_headers
     return True
-
-
-def test_s3_parts(aio_s3_uri):
-    s3_parts = S3Parts.parse_s3_uri(aio_s3_uri)
-    assert s3_parts.s3_uri == aio_s3_uri
-
-
-def test_s3_parts_with_bad_uri():
-    with pytest.raises(ValueError) as err:
-        S3Parts.parse_s3_uri("file://tmp.txt")
-    assert S3Parts.PROTOCOL in err.value.args[0]
 
 
 @pytest.mark.asyncio
@@ -126,15 +115,15 @@ async def test_aio_s3_buckets_access(aio_s3_buckets, aio_aws_s3_client, s3_confi
 async def test_aio_s3_object_head(
     aio_s3_uri, aio_s3_bucket, aio_s3_object_text, aio_aws_s3_client, s3_config
 ):
-    s3_parts = S3Parts.parse_s3_uri(aio_s3_uri)
+    s3_uri = S3URI.parse_s3_uri(aio_s3_uri)
     resp = await aio_aws_s3_client.put_object(
-        Bucket=s3_parts.bucket,
-        Key=s3_parts.key,
+        Bucket=s3_uri.bucket,
+        Key=s3_uri.key,
         Body=aio_s3_object_text,
         ACL="public-read-write",
     )
     assert response_success(resp)
-    resp = await aio_aws_s3_client.head_object(Bucket=s3_parts.bucket, Key=s3_parts.key)
+    resp = await aio_aws_s3_client.head_object(Bucket=s3_uri.bucket, Key=s3_uri.key)
     assert response_success(resp)
 
     head = await aio_s3_object_head(
