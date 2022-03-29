@@ -755,6 +755,11 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
 
         return jobs_outstanding
 
+    #
+    # TODO: add methods that can async yield rather than collect
+    #       everything into lists
+    #
+
     async def jobs_recovery(
         self, jobs: List[AWSBatchJob], include_logs: bool = False
     ) -> List[AWSBatchJob]:
