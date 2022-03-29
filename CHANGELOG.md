@@ -244,3 +244,15 @@ Focus on aio-aws
 -------------------
 - Update s3fs 2022.* and aiobotocore ~2.1.0
 
+
+0.19.0 (2022-03-29)
+-------------------
+- Add a base class to generate and manage AWS Batch tasks
+- Move S3Parts into s3_uri module
+- Add pydantic base models with S3 IO for JSON/YAML
+- Review dependency specs
+- Add aio_aws.__version__
+- Add python 3.8 to github test matrix
+- Update pytest-aiomoto at 0.4.*
+- Update py-dev-deps at 0.3.*
+
