@@ -12,6 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from aio_aws.version import __version__ as version
+from aio_aws.version import __version__
 
-VERSION = version
+VERSION = __version__

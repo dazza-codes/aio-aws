@@ -26,4 +26,5 @@ def test_aio_aws_package():
 
 def test_aio_aws_version():
     assert aio_aws.version
+    assert aio_aws.__version__
     assert aio_aws.VERSION
