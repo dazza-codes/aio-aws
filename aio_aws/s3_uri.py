@@ -23,6 +23,7 @@ from datetime import datetime
 from pathlib import PurePosixPath
 from typing import Dict
 from typing import Iterable
+from typing import Optional
 from typing import Pattern
 from typing import Union
 
@@ -76,16 +77,20 @@ def bucket_validate(bucket_name: str) -> bool:
 
 @dataclass(frozen=True)
 class S3Object:
-    """Just the bucket_name and key for an :code:`s3.ObjectSummary`.
+    """
+    An immutable value object for the bucket_name and key
+    in an :code:`s3.ObjectSummary`.
 
-    This simple dataclass should work around problems with
+    This frozen dataclass should work around problems with
     :code:`Pickle` for an :code:`s3.ObjectSummary`.
+    This frozen dataclass should work with data structures
+    that require a hashable object.
 
     .. code-block:: python
 
         from aio_aws.s3_uri import S3Object
 
-        # assume obj is an s3.ObjectSummary
+        # obj is s3.ObjectSummary
         S3Object(bucket=obj.bucket_name, key=obj.key)
 
     """
@@ -94,10 +99,59 @@ class S3Object:
     key: str
 
     @property
-    def s3_uri(self):
-        """s3_uri: str for :code:`s3://{bucket}/{key}`"""
+    def s3_uri(self) -> str:
+        """
+        s3_uri: str for :code:`s3://{bucket}/{key}` where the
+        :code:`{bucket}/{key}` are forced into a posix path
+        """
         path = PurePosixPath(self.bucket) / PurePosixPath(self.key)
         return f"s3://{path}"
+
+
+@dataclass(frozen=True)
+class S3Parts:
+    """
+    A frozen value object for s3 parts: a bucket and key.
+    This class uses a default 's3://' protocol and a
+    default '/' delimiter.
+
+    This frozen dataclass should work around problems with
+    :code:`Pickle` or data structures that require a
+    hashable object.
+
+    .. code-block:: python
+
+        from aio_aws.s3_uri import S3Parts
+
+        # assume obj is s3.ObjectSummary
+        S3Parts(bucket=obj.bucket_name, key=obj.key)
+
+        # Parse any s3 URI
+        S3Parts.parse_s3_uri("s3://bucket/key")
+
+    """
+
+    bucket: str
+    key: str
+
+    PROTOCOL: str = "s3://"
+    DELIMITER: str = "/"
+
+    @property
+    def s3_uri(self):
+        return f"{self.PROTOCOL}{self.bucket}{S3Parts.DELIMITER}{self.key}"
+
+    @staticmethod
+    def parse_s3_uri(uri: str) -> "S3Parts":
+        uri = str(uri).strip()
+        if not uri.startswith(S3Parts.PROTOCOL):
+            raise ValueError(f"S3 URI must start with '{S3Parts.PROTOCOL}'")
+        uri_path = uri.replace(S3Parts.PROTOCOL, "")
+        uri_paths = uri_path.split(S3Parts.DELIMITER)
+        bucket = uri_paths.pop(0)
+        key = S3Parts.DELIMITER.join(uri_paths)
+
+        return S3Parts(bucket, key)
 
 
 class S3Paths:
@@ -411,17 +465,45 @@ class S3URI(S3Paths):
 
 @dataclass
 class S3Info:
+    """
+    A mutable value object for s3 object information.
+    This object is used with the results of HEAD requests
+    for s3 URIs.
+
+    This class is mutable and may not satisfy requirements
+    for a hashable object.
+
+    .. code-block:: python
+
+        from aio_aws.s3_uri import S3Info
+
+        s3_uri = s3_uri=S3URI("s3://bucket/key")
+        s3_info = S3Info(s3_uri=s3_uri)
+        s3_head = s3_client.head_object(Bucket=s3_uri.bucket, Key=s3_uri.key)
+        if response_success(s3_head):
+            s3_info.last_modified = s3_head["LastModified"]
+            s3_info.s3_size = int(s3_head["ContentLength"])
+
+    """
+
     s3_uri: S3URI
     s3_size: int = None
     last_modified: datetime = None
 
     @property
-    def iso8601(self):
+    def iso8601(self) -> Optional[str]:
+        """
+        :return: datetime.isoformat(), if possible
+        """
         if self.last_modified:
             return self.last_modified.isoformat()
 
     @property
     def dict(self) -> Dict:
+        """
+        :return: a dict representation with primary data types,
+            which is compatible with JSON serialization
+        """
         return {
             "s3_uri": str(self.s3_uri),
             "s3_size": self.s3_size,
@@ -430,4 +512,7 @@ class S3Info:
 
     @property
     def json(self) -> str:
+        """
+        :return: a JSON representation
+        """
         return json.dumps(self.dict)
