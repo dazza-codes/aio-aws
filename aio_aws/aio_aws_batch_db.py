@@ -256,6 +256,9 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
     """
 
     redis_url: str = "redis://127.0.0.1:6379"
+    jobs_db_n: int = 2
+    logs_db_n: int = 4
+    max_connections: int = 1
 
     # TODO: use files to dump redis-db?
     # #: a file used for dumping jobs-db
@@ -284,10 +287,10 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
         async with self.db_semaphore:
             return aioredis.from_url(
                 self.redis_url,
-                db=2,
+                db=self.jobs_db_n,
                 encoding="utf-8",
                 decode_responses=True,
-                max_connections=1,
+                max_connections=self.max_connections,
             )
 
     @property
@@ -300,10 +303,10 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
         async with self.db_semaphore:
             return aioredis.from_url(
                 self.redis_url,
-                db=4,
+                db=self.logs_db_n,
                 encoding="utf-8",
                 decode_responses=True,
-                max_connections=1,
+                max_connections=self.max_connections,
             )
 
     @property
