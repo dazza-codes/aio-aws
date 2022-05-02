@@ -256,3 +256,8 @@ Focus on aio-aws
 - Update pytest-aiomoto at 0.4.*
 - Update py-dev-deps at 0.3.*
 
+
+0.19.1 (2022-05-02)
+-------------------
+- Expose more redis options for AWS Batch jobs db
+
