@@ -21,9 +21,7 @@ import os
 import sys
 import time
 
-logging.Formatter.converter = time.gmtime
-
-LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
 LOG_FORMAT = " | ".join(
     [
@@ -33,17 +31,36 @@ LOG_FORMAT = " | ".join(
         "%(message)s",
     ]
 )
+
 LOG_DATEFMT = "%Y-%m-%dT%H:%M:%S"
-LOG_FORMATTER = logging.Formatter(LOG_FORMAT, LOG_DATEFMT)
-
-HANDLER = logging.StreamHandler(sys.stdout)
-HANDLER.formatter = LOG_FORMATTER
 
 
-def get_logger(name: str = "aio-aws") -> logging.Logger:
+def get_stderr_handler() -> logging.StreamHandler:
+    logging.Formatter.converter = time.gmtime
+    log_formatter = logging.Formatter(LOG_FORMAT, LOG_DATEFMT)
+    handler = logging.StreamHandler(sys.stderr)
+    handler.formatter = log_formatter
+    return handler
+
+
+def get_stdout_handler() -> logging.StreamHandler:
+    logging.Formatter.converter = time.gmtime
+    log_formatter = logging.Formatter(LOG_FORMAT, LOG_DATEFMT)
+    handler = logging.StreamHandler(sys.stdout)
+    handler.formatter = log_formatter
+    return handler
+
+
+def get_logger(
+    name: str = "aio-aws",
+    log_level: str = LOG_LEVEL,
+    handler: logging.StreamHandler = None,
+) -> logging.Logger:
+    if handler is None:
+        handler = get_stdout_handler()
     logger = logging.getLogger(name)
     if not any(isinstance(h, logging.StreamHandler) for h in logger.handlers):
-        logger.addHandler(HANDLER)
-    logger.setLevel(LOG_LEVEL)
+        logger.addHandler(handler)
+    logger.setLevel(log_level)
     logger.propagate = False
     return logger
