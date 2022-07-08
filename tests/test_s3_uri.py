@@ -17,19 +17,30 @@ Test S3URI
 """
 import datetime
 import inspect
+import json
 import pickle
 from pathlib import Path
+from typing import Union
 
 import boto3
 import botocore
 import botocore.exceptions
 import pytest
 from moto import mock_s3
+from pydantic import BaseModel
+from pydantic import ValidationError
 
 from aio_aws.s3_uri import LOGGER
 from aio_aws.s3_uri import S3URI
 from aio_aws.s3_uri import S3Parts
 from aio_aws.s3_uri import bucket_validate
+
+
+class S3DataSet(BaseModel):
+    s3_prefix: S3URI
+
+    def json(self, *args, **kwargs):
+        return json.dumps(self.dict(), *args, **kwargs)
 
 
 @pytest.fixture
@@ -78,6 +89,59 @@ def test_s3_uri_ordering():
     s3_uri_9 = S3URI.parse_s3_uri("s3://s3-bucket/path/9")
     sorted_uris = sorted([s3_uri_9, s3_uri_b, s3_uri_1, s3_uri_a])
     assert sorted_uris == [s3_uri_1, s3_uri_9, s3_uri_a, s3_uri_b]
+
+
+def test_s3_uri_pydantic_field():
+    s3_data = S3DataSet(s3_prefix="s3://s3-bucket/s3-path/s3-file.txt")
+    assert isinstance(s3_data.s3_prefix, S3URI)
+
+
+def test_s3_uri_json():
+    s3_str = "s3://s3-bucket/s3-path/s3-file.txt"
+    s3_uri = S3URI(s3_str)
+    assert isinstance(s3_uri, S3URI)
+
+    s3_json = s3_uri.json()
+    assert isinstance(s3_json, str)
+    assert s3_json == json.dumps(s3_str)
+    assert json.loads(s3_json) == s3_str
+
+    s3_json = json.dumps(s3_uri)  # test __json__ method
+    assert isinstance(s3_json, str)
+    assert s3_json == json.dumps(s3_str)
+    assert json.loads(s3_json) == s3_str
+
+
+def test_s3_uri_pydantic_json():
+    s3_str = "s3://s3-bucket/s3-path/s3-file.txt"
+    s3_data = S3DataSet(s3_prefix=s3_str)
+    assert isinstance(s3_data.s3_prefix, S3URI)
+    assert s3_data.s3_prefix == S3URI(s3_str)
+    assert str(s3_data.s3_prefix) == s3_str
+    assert f"{s3_data.s3_prefix}" == s3_str
+
+    s3_dict = s3_data.dict()
+    assert s3_dict == {"s3_prefix": S3URI("s3://s3-bucket/s3-path/s3-file.txt")}
+    s3_data = S3DataSet.parse_obj(s3_dict)
+    assert isinstance(s3_data.s3_prefix, S3URI)
+    assert s3_data.s3_prefix == S3URI(s3_str)
+    assert str(s3_data.s3_prefix) == s3_str
+    assert f"{s3_data.s3_prefix}" == s3_str
+
+    obj_json = json.dumps(s3_data.dict())
+    s3_data = S3DataSet.parse_raw(obj_json)
+    assert isinstance(s3_data.s3_prefix, S3URI)
+    assert s3_data.s3_prefix == S3URI(s3_str)
+    assert str(s3_data.s3_prefix) == s3_str
+    assert f"{s3_data.s3_prefix}" == s3_str
+
+    s3_json = s3_data.json()
+    assert s3_json == '{"s3_prefix": "s3://s3-bucket/s3-path/s3-file.txt"}'
+    s3_data = S3DataSet.parse_raw(s3_json)
+    assert isinstance(s3_data.s3_prefix, S3URI)
+    assert s3_data.s3_prefix == S3URI(s3_str)
+    assert str(s3_data.s3_prefix) == s3_str
+    assert f"{s3_data.s3_prefix}" == s3_str
 
 
 def test_s3_uri_has_bucket_str(s3_uri, s3_bucket_name):
@@ -363,3 +427,8 @@ def test_s3_parts_with_bad_uri():
     with pytest.raises(ValueError) as err:
         S3Parts.parse_s3_uri("file://tmp.txt")
     assert S3Parts.PROTOCOL in err.value.args[0]
+
+
+def test_s3_uri_pydantic_validation_error():
+    with pytest.raises(ValidationError, match="s3_uri is invalid"):
+        S3DataSet(s3_prefix="file://tmp.txt")
