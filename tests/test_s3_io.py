@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import json
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -48,7 +48,7 @@ def test_s3_file_info(aws_s3_client, s3_uri_object, s3_object_text, mocker):
     spy_resource = mocker.spy(boto3, "resource")
     s3_info = s3_file_info(s3_uri_object.s3_uri)
     assert isinstance(s3_info, S3Info)
-    s3_dict = s3_info.dict
+    s3_dict = s3_info.dict()
     assert isinstance(s3_dict, Dict)
     assert s3_dict["s3_uri"] == s3_uri_object.s3_uri
     assert s3_dict["s3_size"] == len(s3_object_text)
@@ -56,6 +56,9 @@ def test_s3_file_info(aws_s3_client, s3_uri_object, s3_object_text, mocker):
     assert isinstance(s3_dict["last_modified"], str)
     last_modified = datetime.fromisoformat(s3_dict["last_modified"])
     assert isinstance(last_modified, datetime)
+    # test the JSON representation
+    s3_json = s3_info.json()
+    assert s3_json == json.dumps(s3_dict)
     # the s3 client is used once to get the s3 object data
     assert spy_client.call_count == 1
     assert spy_resource.call_count == 0
