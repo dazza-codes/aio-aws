@@ -21,6 +21,7 @@ from typing import List
 from typing import Set
 
 import pytest
+import pytest_asyncio
 
 from aio_aws.aio_aws_batch import aio_find_complete_jobs
 from aio_aws.aio_aws_batch import aio_find_jobs_by_status
@@ -55,8 +56,7 @@ def redis_url(redisdb) -> str:
         yield f"unix://{redis_client.connection.path}"
 
 
-@pytest.fixture
-@pytest.mark.asyncio
+@pytest_asyncio.fixture
 async def aioredis_jobs_db(redis_url) -> AioAWSBatchDB:
     batch_db = AioAWSBatchRedisDB(redis_url=redis_url)
     assert isinstance(batch_db, AioAWSBatchDB)
@@ -71,8 +71,7 @@ async def aioredis_jobs_db(redis_url) -> AioAWSBatchDB:
     yield batch_db
 
 
-@pytest.fixture
-@pytest.mark.asyncio
+@pytest_asyncio.fixture
 async def jobs_dbs(aioredis_jobs_db, aiotiny_jobs_db) -> List[AioAWSBatchDB]:
     yield [aioredis_jobs_db, aiotiny_jobs_db]
 

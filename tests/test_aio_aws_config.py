@@ -107,7 +107,7 @@ async def test_aio_aws_config(aio_config, aio_aws_s3_server):
     )
 
     async with aio_config.create_client(
-        "s3", endpoint_url=aio_aws_s3_server, config=client_config
+        "s3", endpoint_url=aio_aws_s3_server.endpoint_url, config=client_config
     ) as client:
         assert client
         assert "aiobotocore.client.S3" in str(client)
@@ -118,7 +118,7 @@ async def test_aio_aws_config(aio_config, aio_aws_s3_server):
         assert isinstance(config, botocore.config.Config)
         assert client.meta.config.max_pool_connections == 100
         assert client.meta.config.read_timeout == 360
-        assert client.meta.endpoint_url == aio_aws_s3_server
+        assert client.meta.endpoint_url == aio_aws_s3_server.endpoint_url
 
 
 def test_default_config():
@@ -156,7 +156,7 @@ async def test_aio_aws_client_configs(aio_aws_s3_server):
         max_pool_connections=100,
     )
     async with aio_aws_client(
-        "s3", endpoint_url=aio_aws_s3_server, config=client_config
+        "s3", endpoint_url=aio_aws_s3_server.endpoint_url, config=client_config
     ) as client:
         assert client
         assert "aiobotocore.client.S3" in str(client)
@@ -167,4 +167,4 @@ async def test_aio_aws_client_configs(aio_aws_s3_server):
         assert isinstance(config, botocore.config.Config)
         assert client.meta.config.max_pool_connections == 100
         assert client.meta.config.read_timeout == 360
-        assert client.meta.endpoint_url == aio_aws_s3_server
+        assert client.meta.endpoint_url == aio_aws_s3_server.endpoint_url
