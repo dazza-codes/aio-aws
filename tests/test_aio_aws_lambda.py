@@ -26,6 +26,7 @@ from typing import Dict
 import botocore.client
 import botocore.exceptions
 import pytest
+import pytest_asyncio
 
 from aio_aws import aio_aws_lambda
 from aio_aws.aio_aws_config import AioAWSConfig
@@ -54,17 +55,17 @@ def lambda_config(
         async def create_client(self, service: str):
             if service == "iam":
                 async with aio_aws_session.create_client(
-                    "iam", endpoint_url=aio_aws_iam_server
+                    "iam", endpoint_url=aio_aws_iam_server.endpoint_url
                 ) as client:
                     yield client
             if service == "lambda":
                 async with aio_aws_session.create_client(
-                    "lambda", endpoint_url=aio_aws_lambda_server
+                    "lambda", endpoint_url=aio_aws_lambda_server.endpoint_url
                 ) as client:
                     yield client
             if service == "logs":
                 async with aio_aws_session.create_client(
-                    "logs", endpoint_url=aio_aws_logs_server
+                    "logs", endpoint_url=aio_aws_logs_server.endpoint_url
                 ) as client:
                     yield client
 
@@ -79,7 +80,7 @@ def lambda_config(
     yield config
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def lambda_iam_role(lambda_config):
 
     async with lambda_config.create_client("iam") as client:
@@ -138,7 +139,7 @@ def lambda_handler(event, context):
     return _zip_lambda(lambda_src)
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def aws_lambda_func(
     aws_lambda_zip, lambda_config, lambda_iam_role
 ) -> AWSLambdaFunction:
