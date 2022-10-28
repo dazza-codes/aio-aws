@@ -71,6 +71,7 @@ approach uses a client connection limiter, based on ``asyncio.Semaphore(20)``.
 import asyncio
 import concurrent.futures
 import time
+from typing import AsyncIterable
 from typing import Dict
 from typing import Iterable
 from typing import List
@@ -321,6 +322,20 @@ async def aio_s3_objects_list(
     config: AioAWSConfig,
     s3_client: AioBaseClient,
 ) -> List[Dict]:
+    s3_objects = []
+    async for s3_object in aio_s3_objects_generator(
+        bucket_name, bucket_prefix, config, s3_client
+    ):
+        s3_objects.append(s3_object)
+    return s3_objects
+
+
+async def aio_s3_objects_generator(
+    bucket_name: str,
+    bucket_prefix: str,
+    config: AioAWSConfig,
+    s3_client: AioBaseClient,
+) -> AsyncIterable[Dict]:
     """
     Asynchronous coroutine to collect all objects in a bucket prefix.
 
@@ -342,6 +357,7 @@ async def aio_s3_objects_list(
     .. seealso:
         - https://botocore.amazonaws.com/v1/documentation/api/latest/reference/services/s3.html#S3.Client.list_objects_v2
     """
+    next_token = None
     for tries in range(config.retries + 1):
         try:
             LOGGER.debug(
@@ -349,15 +365,26 @@ async def aio_s3_objects_list(
                 bucket_name,
                 bucket_prefix,
             )
-            response = await s3_client.list_objects_v2(
-                Bucket=bucket_name, Prefix=bucket_prefix
-            )
+            if next_token:
+                response = await s3_client.list_objects_v2(
+                    Bucket=bucket_name,
+                    Prefix=bucket_prefix,
+                    ContinuationToken=next_token,
+                )
+            else:
+                response = await s3_client.list_objects_v2(
+                    Bucket=bucket_name,
+                    Prefix=bucket_prefix,
+                )
             LOGGER.debug("AWS S3 list objects OK? %s", response_success(response))
 
-            s3_objects = []
             while True:
                 if response_success(response):
-                    s3_objects += response["Contents"]
+                    for s3_object in response["Contents"]:
+                        yield s3_object
+                    else:
+                        if not response["IsTruncated"]:
+                            return
 
                     if response["IsTruncated"]:
                         LOGGER.debug(
@@ -379,8 +406,6 @@ async def aio_s3_objects_list(
                         break
                 else:
                     break
-
-            return s3_objects
 
         except ClientError as err:
             LOGGER.debug("AWS S3 list objects error: %s", err.response)
