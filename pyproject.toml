@@ -28,23 +28,23 @@ packages = [
 
 
 [tool.poetry.dependencies]
-python = ">=3.7.1,<4.0.0"
+python = "^3.8"
 
 # follow s3fs at https://github.com/fsspec/s3fs/blob/main/requirements.txt
-aiobotocore = {version = "~2.1.0", extras = ["boto3"]}
+aiobotocore = {version = "~2.4.0", extras = ["boto3"]}
 
 # Include a compatible version of s3fs, since this helps to
 # resolve the dependency tree when s3fs is also required.
-s3fs = "^2022.1.1"
+s3fs = "^2022.10.0"
 
 # Use AWS SDK libs compatible with current AWS lambda python runtime.
 # For AWS Lambda, the latest versions are listed at:
 # https://docs.aws.amazon.com/lambda/latest/dg/lambda-python.html
-# As of 2022-03-11:
+# As of 2022-10:
 #'boto3': '1.20.32',
 #'botocore': '1.23.32',
-boto3 = "^1.20.0"
-botocore = "^1.23.0"
+boto3 = "^1.24.0"
+botocore = "^1.27.0"
 
 aiofiles = "^0.7.0"
 
@@ -57,7 +57,7 @@ tinydb = "^3.15"
 # Optional packages
 #
 
-awscli = {version = "^1.22.0", optional = true}
+awscli = {version = "^1.25.0", optional = true}
 
 aioredis = {extras = ["hiredis"], version = "^2.0", optional = true}
 databases = {extras = ["postgresql", "mysql", "sqlite"], version = "*", optional = true}
