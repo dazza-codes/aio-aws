@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import json
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -50,7 +50,7 @@ async def test_s3_aio_file_info(
     assert s3_info.s3_uri == S3URI(s3_uri)
     assert s3_info.s3_size == len(s3_text)
     assert isinstance(s3_info.last_modified, datetime)
-    s3_dict = s3_info.dict
+    s3_dict = s3_info.dict()
     assert isinstance(s3_dict, Dict)
     assert s3_dict["s3_uri"] == s3_uri
     assert s3_dict["s3_size"] == len(s3_text)
@@ -58,6 +58,9 @@ async def test_s3_aio_file_info(
     assert isinstance(s3_dict["last_modified"], str)
     last_modified = datetime.fromisoformat(s3_dict["last_modified"])
     assert isinstance(last_modified, datetime)
+    # test the JSON representation
+    s3_json = s3_info.json()
+    assert s3_json == json.dumps(s3_dict)
 
 
 @pytest.mark.asyncio

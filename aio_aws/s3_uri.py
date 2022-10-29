@@ -30,10 +30,21 @@ from typing import Union
 import boto3
 import botocore
 import botocore.exceptions
+from pydantic import create_model
 
 from aio_aws.logger import get_logger
 
 LOGGER = get_logger(__name__)
+
+
+def wrapped_default(self, obj):
+    return getattr(obj.__class__, "__json__", wrapped_default.default)(obj)
+
+
+wrapped_default.default = json.JSONEncoder().default
+json.JSONEncoder.original_default = json.JSONEncoder.default
+json.JSONEncoder.default = wrapped_default
+
 
 BUCKET_REGEX = re.compile(r"^[a-z0-9][a-z0-9.-]{2,62}$")  # type: Pattern[str]
 
@@ -163,7 +174,7 @@ class S3Paths:
         """
         This class is usually instantiated by py:meth:`S3Paths.parse_s3_uri`
         rather than directly instantiated.  If it is instantiated directly,
-        it takes either an s3_uri (which takes precedence) or it takes
+        it takes either s3_uri (which takes precedence) or it takes
         both a bucket and a key.
 
         :param s3_uri: the URI in the form of :code:`s3://{bucket}/{key}`
@@ -195,45 +206,19 @@ class S3Paths:
             else:
                 self._key_path = str(key)
 
-    @property
-    def protocol(self) -> str:
-        return "s3://"
+    @classmethod
+    def __get_validators__(cls):
+        # one or more validators may be yielded which will be called in the
+        # order to validate the input, each validator will receive as an input
+        # the value returned from the previous validator
+        yield cls.validate
 
-    @property
-    def bucket(self) -> str:
-        return self._bucket
+    @classmethod
+    def validate(cls, v):
+        return cls.parse_s3_uri(s3_uri=v)
 
-    @property
-    def key(self) -> str:
-        return self._key
-
-    @property
-    def key_path(self) -> str:
-        return self._key_path
-
-    @property
-    def key_file(self) -> str:
-        return self._key_file
-
-    @property
-    def s3_uri(self):
-        """s3_uri: str for :code:`s3://{bucket}/{key}`"""
-        path = PurePosixPath(self.bucket) / PurePosixPath(self.key)
-        return f"s3://{path}"
-
-    def as_uri(self, protocol: str = "s3://") -> str:
-        """a URI for :code:`{protocol}{bucket}/{key}`"""
-        path = PurePosixPath(self.bucket) / PurePosixPath(self.key)
-        return f"{protocol}{path}"
-
-    @staticmethod
-    def is_valid_bucket(bucket: str) -> bool:
-        if BUCKET_REGEX.match(bucket):
-            return True
-        return False
-
-    @staticmethod
-    def parse_s3_uri(s3_uri: str) -> "S3Paths":
+    @classmethod
+    def parse_s3_uri(cls, s3_uri: str) -> "S3Paths":
         """Parse an S3 URI into components; the delimiter must be '/'
 
         :param s3_uri:
@@ -256,6 +241,82 @@ class S3Paths:
             key = str(PurePosixPath(*paths))
 
         return S3Paths(bucket=bucket, key=key)
+
+    @staticmethod
+    def is_valid_bucket(bucket: str) -> bool:
+        """
+        :param bucket: a bucket name
+        :return: True if it is a valid bucket name
+        """
+        if BUCKET_REGEX.match(bucket):
+            return True
+        return False
+
+    @property
+    def protocol(self) -> str:
+        """
+        :return: the 's3://' protocol
+        """
+        return "s3://"
+
+    @property
+    def bucket(self) -> str:
+        """
+        :return: the bucket name
+        """
+        return self._bucket
+
+    @property
+    def key(self) -> str:
+        """
+        :return: the full key
+        """
+        return self._key
+
+    @property
+    def key_path(self) -> str:
+        """
+        :return: the key path, without a file
+        """
+        return self._key_path
+
+    @property
+    def key_file(self) -> str:
+        """
+        :return: the key file, if it has one
+        """
+        return self._key_file
+
+    @property
+    def s3_uri(self):
+        """
+        This returns s3 URI that enforces a :py:class:`PurePosixPath`
+        for the s3 key, so it can be compatible with file system caching.
+
+        :return: a :code:`s3://{bucket}/{key}`
+        """
+        path = PurePosixPath(self.bucket) / PurePosixPath(self.key)
+        return f"s3://{path}"
+
+    def json(self, *args, **kwargs) -> str:
+        """
+        :return: a JSON representation
+        """
+        return json.dumps(self.s3_uri, *args, **kwargs)
+
+    def __json__(self, *args, **kwargs) -> str:
+        """
+        :return: a JSON representation
+        """
+        return self.s3_uri
+
+    def as_uri(self, protocol: str = "s3://") -> str:
+        """
+        :param protocol: a URI protocol [s3://]
+        :return: a URI for :code:`{protocol}{bucket}/{key}`
+        """
+        path = PurePosixPath(self.bucket) / PurePosixPath(self.key)
+        return f"{protocol}{path}"
 
     def glob_pattern(self, glob_pattern: str = "**/*"):
         """
@@ -364,10 +425,21 @@ class S3URI(S3Paths):
     :param key: str for key in :code:`s3://{bucket}/{key}`
     """
 
-    @staticmethod
-    def parse_s3_uri(s3_uri: str) -> "S3URI":
+    @classmethod
+    def parse_s3_uri(cls, s3_uri: str) -> "S3URI":
         s3_paths = S3Paths.parse_s3_uri(s3_uri)
-        return S3URI(bucket=s3_paths.bucket, key=s3_paths.key)
+        return cls(bucket=s3_paths.bucket, key=s3_paths.key)
+
+    @classmethod
+    def __get_validators__(cls):
+        # one or more validators may be yielded which will be called in the
+        # order to validate the input, each validator will receive as an input
+        # the value returned from the previous validator
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, v):
+        return cls.parse_s3_uri(s3_uri=v)
 
     def s3_bucket(self) -> "s3.Bucket":
         """A :code:`boto3.resource('s3').Bucket('bucket')`"""
@@ -406,6 +478,11 @@ class S3URI(S3Paths):
         return {}
 
     def s3_last_modified(self) -> Union[datetime, None]:
+        """The last modified date from s3.ObjectSummary
+        for this S3URI; this does not check if the object exists.
+
+        :return: a datetime when the object was last modified
+        """
         try:
             return self.s3_object_summary().last_modified
 
@@ -415,7 +492,7 @@ class S3URI(S3Paths):
         return None
 
     def s3_object_summary(self) -> "s3.ObjectSummary":
-        """Create an s3.ObjectSummary for this S3URI;
+        """Create s3.ObjectSummary for this S3URI;
         this does not check if the object exists.
 
         :return: s3.ObjectSummary
@@ -498,7 +575,6 @@ class S3Info:
         if self.last_modified:
             return self.last_modified.isoformat()
 
-    @property
     def dict(self) -> Dict:
         """
         :return: a dict representation with primary data types,
@@ -510,9 +586,14 @@ class S3Info:
             "last_modified": self.iso8601,
         }
 
-    @property
-    def json(self) -> str:
+    def json(self, *args, **kwargs) -> str:
         """
         :return: a JSON representation
         """
-        return json.dumps(self.dict)
+        return json.dumps(self.dict(), *args, **kwargs)
+
+    def __json__(self, *args, **kwargs) -> str:
+        """
+        :return: a JSON representation
+        """
+        return json.dumps(self.dict(), *args, **kwargs)
