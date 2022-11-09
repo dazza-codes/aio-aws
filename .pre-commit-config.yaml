@@ -1,6 +1,6 @@
 repos:
     - repo: https://github.com/pre-commit/pre-commit-hooks
-      rev: v4.0.1
+      rev: v4.3.0
       hooks:
         - id: check-yaml
           args: [--unsafe]
@@ -11,15 +11,15 @@ repos:
           exclude: 'CHANGELOG.md'
         - id: check-ast
     - repo: https://github.com/gruntwork-io/pre-commit
-      rev: v0.1.12
+      rev: v0.1.17
       hooks:
         - id: shellcheck
     - repo: https://github.com/psf/black
-      rev: 22.3.0
+      rev: 22.10.0
       hooks:
         - id: black
     - repo: https://github.com/pycqa/isort
-      rev: 5.9.3
+      rev: 5.10.1
       hooks:
         - id: isort
           name: isort (python)
