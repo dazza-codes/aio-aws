@@ -39,13 +39,13 @@ from aio_aws.aio_aws_config import jitter
 
 
 @pytest.fixture
-def aio_config(aio_aws_session, aio_aws_s3_server) -> AioAWSConfig:
-    class TestConfig(AioAWSConfig):
+def aio_config(aio_aws_session, aws_credentials, aio_aws_s3_server) -> AioAWSConfig:
+    class AioTestConfig(AioAWSConfig):
         session = aio_aws_session
 
-    config = TestConfig(
-        min_pause=0.2,
-        max_pause=0.6,
+    config = AioTestConfig(
+        min_pause=0.0,
+        max_pause=0.2,
         min_jitter=0.1,
         max_jitter=0.2,
     )
@@ -93,7 +93,7 @@ async def test_async_jitter_defaults():
 
 
 @pytest.mark.asyncio
-async def test_aio_aws_config(aio_config, aio_aws_s3_server):
+async def test_aio_aws_config(aio_config, aws_credentials, aio_aws_s3_server):
 
     # see also
     # https://botocore.amazonaws.com/v1/documentation/api/latest/reference/config.html
@@ -121,20 +121,20 @@ async def test_aio_aws_config(aio_config, aio_aws_s3_server):
         assert client.meta.endpoint_url == aio_aws_s3_server.endpoint_url
 
 
-def test_default_config():
+def test_default_config(aws_credentials):
     config = aio_aws_default_config()
     assert isinstance(config, aiobotocore.config.AioConfig)
     assert isinstance(config, botocore.config.Config)
 
 
-def test_default_session():
+def test_default_session(aws_credentials):
     session = aio_aws_default_session()
     assert isinstance(session, aiobotocore.session.AioSession)
     assert isinstance(session, botocore.session.Session)
     assert session.user_agent_name == "aio-aws"
 
 
-def test_aio_aws_session():
+def test_aio_aws_session(aws_credentials):
     session = aio_aws_session()
     assert isinstance(session, aiobotocore.session.AioSession)
     assert isinstance(session, botocore.session.Session)
@@ -142,7 +142,7 @@ def test_aio_aws_session():
 
 
 @pytest.mark.asyncio
-async def test_aio_aws_client():
+async def test_aio_aws_client(aws_credentials):
     async with aio_aws_client("s3") as client:
         assert "aiobotocore.client.S3" in str(client)
         assert isinstance(client, aiobotocore.client.AioBaseClient)
@@ -150,7 +150,7 @@ async def test_aio_aws_client():
 
 
 @pytest.mark.asyncio
-async def test_aio_aws_client_configs(aio_aws_s3_server):
+async def test_aio_aws_client_configs(aws_credentials, aio_aws_s3_server):
     client_config = botocore.client.Config(
         read_timeout=360,
         max_pool_connections=100,
