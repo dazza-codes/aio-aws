@@ -63,8 +63,9 @@ aio-aws = ["aio-aws"]
 
 # Contributing
 
-To use the source code, it can be cloned directly. To
-contribute to the project, first fork it and clone the forked repository.
+To use the source code, it can be cloned directly. Contributions are welcome
+via github flow and pull requests.  To contribute to the project, first fork
+it and clone the forked repository.
 
 The following setup assumes that
 [miniconda3](https://docs.conda.io/en/latest/miniconda.html) and
@@ -73,7 +74,7 @@ The following setup assumes that
 
 - https://docs.conda.io/en/latest/miniconda.html
     - recommended for creating virtual environments with required versions of python
-    - see https://github.com/dazza-codes/conda_container/blob/master/conda_venv.sh
+    - see https://github.com/dazza-codes/conda-venv
 - https://python-poetry.org/docs/
     - recommended for managing a python project with pip dependencies for
       both the project itself and development dependencies
@@ -81,11 +82,14 @@ The following setup assumes that
 ```shell
 git clone https://github.com/dazza-codes/aio-aws
 cd aio-aws
-conda create -n aio-aws python=3.7
+conda create -n aio-aws python=3.8
 conda activate aio-aws
 make init  # calls poetry install
 make test
 ```
+
+Note: on OSX, install GNU make >= 4.x using homebrew and substitute
+`gmake` for `make`.
 
 # License
 
