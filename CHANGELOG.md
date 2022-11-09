@@ -261,3 +261,22 @@ Focus on aio-aws
 -------------------
 - Expose more redis options for AWS Batch jobs db
 
+
+0.20.0 (2022-11-08)
+-------------------
+- Update AWS Lambda test configs
+- Fix mock AWS credentials for config tests
+- Set redis-exec option for linux or OSX in make test
+- Set the pytest base tmp directory to /tmp/pytest
+- Update development dependencies
+- Publish prerelease for 0.20.0a0
+- Update github actions for test matrix
+- Update additional core dependencies
+- Update aiobotocore 2.4.x with s3fs 2022.10.x
+- Add json and pydantic support for S3URI
+- Add aio_s3_objects_generator function
+- Update tests for latest pytest-aiomoto with pytest 7
+- Update pytest 7.x and pytest-aiomoto fixtures
+- update pytest.ini
+- Refactor logger
+
