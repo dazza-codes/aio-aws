@@ -43,12 +43,13 @@ def test_async_aws_lambda():
 
 @pytest.fixture
 def lambda_config(
+    aws_credentials,
     aio_aws_session,
     aio_aws_iam_server,
     aio_aws_lambda_server,
     aio_aws_logs_server,
 ) -> AioAWSConfig:
-    class TestConfig(AioAWSConfig):
+    class AioTestConfig(AioAWSConfig):
         session = aio_aws_session
 
         @asynccontextmanager
@@ -69,7 +70,7 @@ def lambda_config(
                 ) as client:
                     yield client
 
-    config = TestConfig(
+    config = AioTestConfig(
         max_pool_connections=1,
         min_pause=0.2,
         max_pause=0.6,
