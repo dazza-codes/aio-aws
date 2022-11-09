@@ -44,11 +44,22 @@ lint: clean
 	@poetry run pylint --disable=missing-docstring tests
 	@poetry run pylint $(LIB)
 
+
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+	REDIS_EXEC = /usr/bin/redis-server
+endif
+ifeq ($(UNAME_S),Darwin)
+	REDIS_EXEC = /usr/local/bin/redis-server
+endif
+
 .PHONY: test
 test: clean
-	@poetry run pytest \
+	@poetry run pytest -v \
+		--benchmark-disable \
 		--durations=10 \
 		--show-capture=no \
+		--redis-exec=$(REDIS_EXEC) \
 		--cov-config .coveragerc \
 		--cov-report html \
 		--cov-report term \
