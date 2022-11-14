@@ -1,0 +1,17 @@
+[pytest]
+log_format = %(asctime)s - %(name)-12s - %(levelname)-8s - %(message)s
+log_date_format = %Y-%m-%d %H:%M:%S
+
+addopts = --basetemp=/tmp/pytest
+
+redis_exec = /usr/local/bin/redis-server
+
+filterwarnings =
+    ignore:.*botocore.*:DeprecationWarning
+    ignore:distutils Version classes are deprecated
+
+markers =
+    aws_live: tests that require credentials for live AWS requests
+    skip_ci: tests that should not run in CI
+
+asyncio_mode = strict
