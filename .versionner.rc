@@ -1,0 +1,37 @@
+# https://msztolcman.github.io/versionner/
+
+[versionner]
+file = ./VERSION.md
+date_format = %Y-%m-%d
+up_part = patch
+
+[vcs]
+engine = git
+commit_message = 'Bump version %(version)s'
+
+[file:pyproject.toml]
+enabled = true
+search = ^\s*version\s*=.*$
+replace = version = "%(version)s"
+date_format = %Y-%m-%d
+match = line
+search_flags =
+encoding = utf-8
+
+[file:aio_aws/version.py]
+enabled = true
+search = ^\s*__version__\s*=.*$
+replace = __version__ = "%(version)s"
+date_format = %Y-%m-%d
+match = line
+search_flags =
+encoding = utf-8
+
+[file:docs/conf.py]
+enabled = true
+search = ^\s*version:\s.*$
+replace = version: "%(version)s"
+date_format = %Y-%m-%d
+match = line
+search_flags =
+encoding = utf-8

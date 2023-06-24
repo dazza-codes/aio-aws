@@ -91,6 +91,21 @@ make test
 Note: on OSX, install GNU make >= 4.x using homebrew and substitute
 `gmake` for `make`.
 
+## Release Versions
+
+Install [pipx](https://pypa.github.io/pipx/) and use it to install
+[versionner](https://msztolcman.github.io/versionner/).
+
+```shell
+pipx install versionner
+ver --help
+```
+
+With `pipx` and `versionner` installed, it can be used to manage releases
+for any python library.  See the documentation for `ver` for details on
+how to manage sem-ver library releases.  See `.versionner.rc` file for
+details of the project configuration.
+
 # License
 
 ```text

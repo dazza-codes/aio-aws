@@ -12,14 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pylint: disable=line-too-long
-# fmt: off
 """
-A version module managed by the invoke-release task
+A version module managed by versionner
 
-See also tasks.py
+See also .versionner.rc
 """
 
-__version_info__ = (0, 20, 0)
-__version__ = '-'.join(filter(None, ['.'.join(map(str, __version_info__[:3])), (__version_info__[3:] or [None])[0]]))
-# fmt: on
+__version__ = "0.20.0"
