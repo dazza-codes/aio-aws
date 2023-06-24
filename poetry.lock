@@ -3049,41 +3049,39 @@ testing = ["argcomplete", "attrs (>=19.2.0)", "hypothesis (>=3.56)", "mock", "no
 
 [[package]]
 name = "pytest-aiomoto"
-version = "0.6.3"
+version = "0.7.1"
 description = "pytest-aiomoto"
 optional = false
 python-versions = ">=3.8,<4.0"
 files = [
-    {file = "pytest_aiomoto-0.6.3-py3-none-any.whl", hash = "sha256:0dd2aaa43d42a3efb41ffa27eb9e5e4cdc80e98673ba3d87444b70db087cbfd3"},
-    {file = "pytest_aiomoto-0.6.3.tar.gz", hash = "sha256:3f08bdf8020dd2f8634507f9205ef7f02a80d2c5bfa1796e7445f5eb9701068c"},
+    {file = "pytest_aiomoto-0.7.1-py3-none-any.whl", hash = "sha256:e84c46be37c29c865189b4bd5dd98860db95af4a5a7f87d50695ecdd20f1e797"},
+    {file = "pytest_aiomoto-0.7.1.tar.gz", hash = "sha256:df6bf2f967e11da3968db85dd59530b9f45f7b6e5215f2f83b1b8c38bd72a53a"},
 ]
 
 [package.dependencies]
-aiobotocore = {version = ">=2.0.0,<3.0.0", extras = ["boto3"]}
 aiofiles = ">=22.0,<23.0"
-moto = {version = ">=4.0.0,<5.0.0", extras = ["all", "server"]}
+moto = {version = ">=4.0,<5.0", extras = ["all", "server"]}
 pytest = ">=7.0,<8.0"
-pytest-asyncio = ">=0.20,<0.21"
-requests = ">=2.0.0,<3.0.0"
-s3fs = {version = ">=0.5.0", optional = true, markers = "extra == \"s3fs\""}
+pytest-asyncio = ">=0.21,<0.22"
+requests = ">=2.0,<3.0"
+s3fs = {version = ">=2023.0,<2024.0", extras = ["awscli", "boto3"]}
 
 [package.extras]
-docs = ["mkdocs (>=1.3.0,<2.0.0)", "mkdocs-material (>=8.0.0,<9.0.0)", "mkdocstrings[python] (>=0.19.0,<0.20.0)"]
-s3fs = ["s3fs (>=0.5.0)"]
+docs = ["mkdocs (>=1.3,<2.0)", "mkdocs-material (>=8.0,<9.0)", "mkdocstrings[python] (>=0.19.0,<0.20.0)"]
 
 [[package]]
 name = "pytest-asyncio"
-version = "0.20.3"
+version = "0.21.0"
 description = "Pytest support for asyncio"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "pytest-asyncio-0.20.3.tar.gz", hash = "sha256:83cbf01169ce3e8eb71c6c278ccb0574d1a7a3bb8eaaf5e50e0ad342afb33b36"},
-    {file = "pytest_asyncio-0.20.3-py3-none-any.whl", hash = "sha256:f129998b209d04fcc65c96fc85c11e5316738358909a8399e93be553d7656442"},
+    {file = "pytest-asyncio-0.21.0.tar.gz", hash = "sha256:2b38a496aef56f56b0e87557ec313e11e1ab9276fc3863f6a7be0f1d0e415e1b"},
+    {file = "pytest_asyncio-0.21.0-py3-none-any.whl", hash = "sha256:f2b3366b7cd501a4056858bd39349d5af19742aed2d81660b7998b6341c7eb9c"},
 ]
 
 [package.dependencies]
-pytest = ">=6.1.0"
+pytest = ">=7.0.0"
 
 [package.extras]
 docs = ["sphinx (>=5.3)", "sphinx-rtd-theme (>=1.0)"]
@@ -4688,4 +4686,4 @@ redis = ["redis"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "5f7a447f5ebd2704d3d38a4e5d9db497beece9468c0911fc38e91c5f30df62d3"
+content-hash = "68a3e21ac1dccb23871cf5b4d09aa5b8f2307d15c059520121a9ab78ebd18d08"
