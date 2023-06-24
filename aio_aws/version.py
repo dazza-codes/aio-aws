@@ -18,4 +18,4 @@ A version module managed by versionner
 See also .versionner.rc
 """
 
-__version__ = "0.20.0"
+__version__ = "0.21.0"
