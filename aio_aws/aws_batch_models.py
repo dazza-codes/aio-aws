@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 # pylint: disable=bad-continuation
 
-# Copyright 2019-2022 Darren Weber
+# Copyright 2019-2023 Darren Weber
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
