@@ -33,7 +33,7 @@ To add a project dependency using poetry_:
 License
 =======
 
-    Copyright 2019-2022 Darren Weber
+    Copyright 2019-2023 Darren Weber
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.

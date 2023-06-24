@@ -29,8 +29,17 @@ encoding = utf-8
 
 [file:docs/conf.py]
 enabled = true
-search = ^\s*version:\s.*$
-replace = version: "%(version)s"
+search = ^\s*version =\s.*$
+replace = version = "%(major)s.%(minor)s"
+date_format = %Y-%m-%d
+match = line
+search_flags =
+encoding = utf-8
+
+[file:2:docs/conf.py]
+enabled = true
+search = ^\s*release =\s.*$
+replace = release = "%(version)s"
 date_format = %Y-%m-%d
 match = line
 search_flags =

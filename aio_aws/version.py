@@ -1,4 +1,4 @@
-# Copyright 2019-2022 Darren Weber
+# Copyright 2019-2023 Darren Weber
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,4 +18,4 @@ A version module managed by versionner
 See also .versionner.rc
 """
 
-__version__ = "0.20.0"
+__version__ = "0.21.0"
