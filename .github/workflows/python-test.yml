@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10"]
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
 
     steps:
 
@@ -26,7 +26,10 @@ jobs:
         sudo apt-get install -y redis-server redis-tools
         sudo systemctl restart redis-server.service
 
-    - uses: actions/checkout@v2
+    - name: Checkout source
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2

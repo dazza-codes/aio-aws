@@ -278,7 +278,7 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
     @property
     async def jobs_db(self):
         # lazy load this optional dependency
-        import aioredis
+        from redis import asyncio as aioredis
 
         # need to instantiate redis-connection on-demand to avoid
         # Future <Future pending> attached to a different loop
@@ -296,7 +296,7 @@ class AioAWSBatchRedisDB(AioAWSBatchDB):
     @property
     async def logs_db(self):
         # lazy load this optional dependency
-        import aioredis
+        from redis import asyncio as aioredis
 
         # need to instantiate redis-connection on-demand to avoid
         # Future <Future pending> attached to a different loop
