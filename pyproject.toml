@@ -12,10 +12,10 @@ repository = "https://github.com/dazza-codes/aio-aws.git"
 homepage = "https://github.com/dazza-codes/aio-aws"
 
 keywords = [
-    "Development Status :: 2 - Pre-Alpha",
+    "Development Status :: 3 - Alpha",
+    "Topic :: Utilities",
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
-    "Topic :: Utilities",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
