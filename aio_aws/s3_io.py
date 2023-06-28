@@ -31,6 +31,7 @@ from typing import Dict
 from typing import Iterable
 from typing import List
 from typing import Optional
+from typing import Tuple
 from typing import Union
 
 import boto3
@@ -183,33 +184,56 @@ def s3_file_wait(
 
 
 def s3_file_copy(
-    src_s3_uri: str, dst_s3_uri: str, *args, s3_client: BaseClient = None, **kwargs
+    src_s3_uri: str,
+    dst_s3_uri: str,
+    src_s3_ver: Optional[str] = None,
+    s3_client: BaseClient = None,
+    s3_client_args: Optional[Tuple] = None,
+    s3_client_kwargs: Optional[Dict] = None,
+    s3_copy_kwargs: Optional[Dict] = None,
 ) -> bool:
     """
     Copy s3 URI for source to destination.
 
-    The copy uses a recommended ACL='bucket-owner-full-control', but
+    The default copy uses an ACL='bucket-owner-full-control', but
     otherwise uses all default options for S3Client.copy_object().
+    Optional `s3_copy_kwargs` can be provided to override this default
+    and add any additional options to the copy command.
 
     :param src_s3_uri: a fully qualified S3 URI for the source
     :param dst_s3_uri: a fully qualified S3 URI for the destination
+    :param src_s3_ver: an optional s3 object VersionId for the source
     :param s3_client: an optional botocore.client.BaseClient for s3
+    :param s3_client_args: optional tuple of arguments for the s3_io_client
+    :param s3_client_kwargs: optional dictionary of options for the s3_io_client
+    :param s3_copy_kwargs: optional dictionary of options for the s3.copy_object
     :return: boolean (True on success, False on failure)
     """
     # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/copy_object.html
     # CopySource={‘Bucket’: ‘bucket’, ‘Key’: ‘key’, ‘VersionId’: ‘id’}
     # Note that the VersionId key is optional and may be omitted.
     if s3_client is None:
-        s3_client = s3_io_client(*args, **kwargs)
+        if s3_client_args is None:
+            s3_client_args = tuple()
+        if s3_client_kwargs is None:
+            s3_client_kwargs = dict()
+        s3_client = s3_io_client(*s3_client_args, **s3_client_kwargs)
+    if s3_copy_kwargs is None:
+        s3_copy_kwargs = dict(
+            ACL="bucket-owner-full-control",
+        )
     try:
         src_s3_uri = S3URI(src_s3_uri)
         dst_s3_uri = S3URI(dst_s3_uri)
         LOGGER.info(f"Copy: {src_s3_uri} to {dst_s3_uri}")
+        copy_source = {"Bucket": src_s3_uri.bucket, "Key": src_s3_uri.key}
+        if src_s3_ver:
+            copy_source["VersionId"] = src_s3_ver
         response = s3_client.copy_object(
-            ACL="bucket-owner-full-control",
             Bucket=dst_s3_uri.bucket,
             Key=dst_s3_uri.key,
-            CopySource={"Bucket": src_s3_uri.bucket, "Key": src_s3_uri.key},
+            CopySource=copy_source,
+            **s3_copy_kwargs,
         )
         if response:
             return True
