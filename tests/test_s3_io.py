@@ -32,6 +32,7 @@ from aio_aws.s3_io import geojsons_s3_load
 from aio_aws.s3_io import get_s3_content
 from aio_aws.s3_io import json_s3_dump
 from aio_aws.s3_io import json_s3_load
+from aio_aws.s3_io import s3_file_copy
 from aio_aws.s3_io import s3_file_info
 from aio_aws.s3_io import s3_file_wait
 from aio_aws.s3_io import s3_files_info
@@ -39,6 +40,28 @@ from aio_aws.s3_io import yaml_s3_dump
 from aio_aws.s3_io import yaml_s3_load
 from aio_aws.s3_uri import S3URI
 from aio_aws.s3_uri import S3Info
+
+
+def test_s3_file_copy(aws_s3_client, s3_uri_object, mocker):
+    assert_bucket_200(s3_uri_object.bucket, aws_s3_client)
+    assert_object_200(s3_uri_object.bucket, s3_uri_object.key, aws_s3_client)
+    src_s3_obj = s3_uri_object
+    dst_bucket = src_s3_obj.bucket
+    dst_file_path = "s3_file_test_copy"
+    dst_file_name = "s3_file_test_copy.txt"
+    dst_s3_uri = f"s3://{dst_bucket}/{dst_file_path}/{dst_file_name}"
+    spy_client = mocker.spy(boto3, "client")
+    spy_resource = mocker.spy(boto3, "resource")
+    success = s3_file_copy(src_s3_uri=s3_uri_object.s3_uri, dst_s3_uri=dst_s3_uri)
+    assert success
+    # the s3 client is used once to get the s3 object data
+    assert spy_client.call_count == 1
+    assert spy_resource.call_count == 0
+    # check the destination can be read OK
+    s3_info = s3_file_info(dst_s3_uri)
+    assert isinstance(s3_info, S3Info)
+    assert s3_info.s3_uri.key_file == dst_file_name
+    assert s3_info.s3_size > 0
 
 
 def test_s3_file_info(aws_s3_client, s3_uri_object, s3_object_text, mocker):

@@ -182,6 +182,43 @@ def s3_file_wait(
         raise err
 
 
+def s3_file_copy(
+    src_s3_uri: str, dst_s3_uri: str, *args, s3_client: BaseClient = None, **kwargs
+) -> bool:
+    """
+    Copy s3 URI for source to destination.
+
+    The copy uses a recommended ACL='bucket-owner-full-control', but
+    otherwise uses all default options for S3Client.copy_object().
+
+    :param src_s3_uri: a fully qualified S3 URI for the source
+    :param dst_s3_uri: a fully qualified S3 URI for the destination
+    :param s3_client: an optional botocore.client.BaseClient for s3
+    :return: boolean (True on success, False on failure)
+    """
+    # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/copy_object.html
+    # CopySource={‘Bucket’: ‘bucket’, ‘Key’: ‘key’, ‘VersionId’: ‘id’}
+    # Note that the VersionId key is optional and may be omitted.
+    if s3_client is None:
+        s3_client = s3_io_client(*args, **kwargs)
+    try:
+        src_s3_uri = S3URI(src_s3_uri)
+        dst_s3_uri = S3URI(dst_s3_uri)
+        LOGGER.info(f"Copy: {src_s3_uri} to {dst_s3_uri}")
+        response = s3_client.copy_object(
+            ACL="bucket-owner-full-control",
+            Bucket=dst_s3_uri.bucket,
+            Key=dst_s3_uri.key,
+            CopySource={"Bucket": src_s3_uri.bucket, "Key": src_s3_uri.key},
+        )
+        if response:
+            return True
+    except botocore.exceptions.ClientError as err:
+        LOGGER.error(f"Failed S3 Copy: {src_s3_uri} to {dst_s3_uri}")
+        LOGGER.error(err)
+        return False
+
+
 def get_s3_content(s3_uri: str, *args, s3_client: BaseClient = None, **kwargs):
     """
     Read s3 URI
