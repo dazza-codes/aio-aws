@@ -26,13 +26,7 @@ import json
 import os
 import tempfile
 from pathlib import Path
-from typing import Any
-from typing import Dict
-from typing import Iterable
-from typing import List
-from typing import Optional
-from typing import Tuple
-from typing import Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import boto3
 import botocore.client
@@ -40,14 +34,11 @@ import botocore.exceptions
 import yaml
 from botocore.client import BaseClient
 from botocore.config import Config
+from loguru import logger
 from pydantic import BaseModel
 
-from aio_aws.logger import get_logger
-from aio_aws.s3_uri import S3URI
-from aio_aws.s3_uri import S3Info
-from aio_aws.utils import response_success
-
-LOGGER = get_logger(__name__)
+from .s3_uri import S3URI, S3Info
+from .utils import response_success
 
 
 def s3_io_client(*args, **kwargs) -> BaseClient:
@@ -92,10 +83,10 @@ def s3_file_info(s3_uri: Union[S3URI, str], s3_client: BaseClient = None) -> S3I
             # LastModified is a datetime.datetime
             s3_info.last_modified = s3_head["LastModified"]
             s3_info.s3_size = int(s3_head["ContentLength"])
-            LOGGER.debug("Success S3URI info: %s", s3_uri)
+            logger.debug(f"Success S3URI info: {s3_uri}")
     except botocore.exceptions.ClientError as err:
-        LOGGER.debug("Failed S3URI info: %s", s3_uri)
-        LOGGER.debug(err)
+        logger.debug(f"Failed S3URI info: {s3_uri}")
+        logger.debug(err)
     return s3_info
 
 
@@ -130,7 +121,7 @@ def s3_files_info(
                 s3_info = future.result()
                 s3_files.append(s3_info)
             except Exception as err:
-                LOGGER.error(err)
+                logger.error(err)
 
     return s3_files
 
@@ -167,19 +158,19 @@ def s3_file_wait(
         )
         head = s3_client.head_object(Bucket=s3_uri.bucket, Key=s3_uri.key)
         if response_success(head):
-            LOGGER.info("Found file: %s", s3_uri)
+            logger.info(f"Found file: {s3_uri}")
             return s3_uri
         else:
             error = f"Missing file: {s3_uri}"
-            LOGGER.error(error)
+            logger.error(error)
             raise FileNotFoundError(error)
     except botocore.exceptions.WaiterError as err:
-        LOGGER.error("Failed S3 waiter for: %s", s3_uri)
-        LOGGER.error(err)
+        logger.error(f"Failed S3 waiter for: {s3_uri}")
+        logger.error(err)
         raise err
     except botocore.exceptions.ClientError as err:
-        LOGGER.error("Failed S3 waiter for: %s", s3_uri)
-        LOGGER.error(err)
+        logger.error(f"Failed S3 waiter for: {s3_uri}")
+        logger.error(err)
         raise err
 
 
@@ -214,9 +205,9 @@ def s3_file_copy(
     # Note that the VersionId key is optional and may be omitted.
     if s3_client is None:
         if s3_client_args is None:
-            s3_client_args = tuple()
+            s3_client_args = ()
         if s3_client_kwargs is None:
-            s3_client_kwargs = dict()
+            s3_client_kwargs = {}
         s3_client = s3_io_client(*s3_client_args, **s3_client_kwargs)
     if s3_copy_kwargs is None:
         s3_copy_kwargs = dict(
@@ -225,7 +216,7 @@ def s3_file_copy(
     try:
         src_s3_uri = S3URI(src_s3_uri)
         dst_s3_uri = S3URI(dst_s3_uri)
-        LOGGER.info(f"Copy: {src_s3_uri} to {dst_s3_uri}")
+        logger.info(f"Copy: {src_s3_uri} to {dst_s3_uri}")
         copy_source = {"Bucket": src_s3_uri.bucket, "Key": src_s3_uri.key}
         if src_s3_ver:
             copy_source["VersionId"] = src_s3_ver
@@ -238,8 +229,8 @@ def s3_file_copy(
         if response:
             return True
     except botocore.exceptions.ClientError as err:
-        LOGGER.error(f"Failed S3 Copy: {src_s3_uri} to {dst_s3_uri}")
-        LOGGER.error(err)
+        logger.error(f"Failed S3 Copy: {src_s3_uri} to {dst_s3_uri}")
+        logger.error(err)
         return False
 
 
@@ -255,13 +246,13 @@ def get_s3_content(s3_uri: str, *args, s3_client: BaseClient = None, **kwargs):
         s3_client = s3_io_client(*args, **kwargs)
     try:
         s3_uri = S3URI(s3_uri)
-        LOGGER.info("Read s3-uri: %s", s3_uri)
+        logger.info(f"Read S3URI: {s3_uri}")
         content_object = s3_client.get_object(Bucket=s3_uri.bucket, Key=s3_uri.key)
         file_content = content_object["Body"].read().decode("utf-8")
         return file_content
     except botocore.exceptions.ClientError as err:
-        LOGGER.error("Failed S3 GetObject: %s", s3_uri)
-        LOGGER.error(err)
+        logger.error(f"Failed S3 GetObject: {s3_uri}")
+        logger.error(err)
 
 
 def put_s3_content(
@@ -296,8 +287,8 @@ def put_s3_content(
                 )
                 return str(s3_uri)
     except botocore.exceptions.ClientError as err:
-        LOGGER.error("Failed S3 PutObject to: %s", s3_uri)
-        LOGGER.error(err)
+        logger.error(f"Failed S3 PutObject to: {s3_uri}")
+        logger.error(err)
 
 
 def json_s3_dump(
@@ -332,10 +323,10 @@ def json_s3_dump(
             os.unlink(tmp_file)
 
     if success:
-        LOGGER.info("Saved S3URI: %s", str(s3_uri))
+        logger.info(f"Saved S3URI: {s3_uri}")
         return str(s3_uri)
     else:
-        LOGGER.error("Failed to save S3URI: %s", str(s3_uri))
+        logger.error(f"Failed to save S3URI: {s3_uri}")
 
 
 def json_s3_load(s3_uri: str, *args, s3_client: BaseClient = None, **kwargs) -> Any:
@@ -454,10 +445,10 @@ def geojsons_s3_dump(
             os.unlink(tmp_file)
 
     if success:
-        LOGGER.info("Saved GeoJSONSeq to %s", str(s3_uri))
+        logger.info(f"Saved GeoJSONSeq to {s3_uri}")
         return str(s3_uri)
     else:
-        LOGGER.error("Failed to save GeoJSONSeq to %s", s3_uri)
+        logger.error(f"Failed to save GeoJSONSeq to {s3_uri}")
 
 
 def geojsons_dump(
@@ -475,9 +466,9 @@ def geojsons_dump(
             dst.write("\n")
     geojsons_path = Path(geojsons_file)
     if geojsons_path.is_file() and geojsons_path.stat().st_size > 0:
-        LOGGER.info("Saved GeoJSONSeq to %s", geojsons_file)
+        logger.info(f"Saved GeoJSONSeq to {geojsons_file}")
         return geojsons_file
-    LOGGER.error("Failed to save GeoJSONSeq to %s", geojsons_file)
+    logger.error(f"Failed to save GeoJSONSeq to {geojsons_file}")
 
 
 def yaml_s3_dump(
@@ -513,10 +504,10 @@ def yaml_s3_dump(
             os.unlink(tmp_file)
 
     if success:
-        LOGGER.info("Saved S3URI: %s", str(s3_uri))
+        logger.info(f"Saved S3URI: {s3_uri}")
         return str(s3_uri)
     else:
-        LOGGER.error("Failed to save S3URI: %s", str(s3_uri))
+        logger.error(f"Failed to save S3URI: {s3_uri}")
 
 
 def yaml_s3_load(s3_uri: str, *args, s3_client: BaseClient = None, **kwargs) -> Any:
@@ -555,7 +546,7 @@ class JsonBaseModel(BaseModel):
         with open(json_file, "w") as json_fd:
             json.dump(self.json_dict(), json_fd)
         if json_file.exists() and json_file.stat().st_size > 0:
-            LOGGER.info("Saved file: %s", str(json_file))
+            logger.info(f"Saved file: {json_file}")
             return json_file
 
     @classmethod
@@ -564,7 +555,7 @@ class JsonBaseModel(BaseModel):
         json_file = Path(json_file)
         if not json_file.exists():
             raise ValueError("File does not exist: %s", json_file)
-        with open(json_file, "r") as config_fd:
+        with open(json_file) as config_fd:
             json_dict = json.load(config_fd)
             return cls.parse_obj(json_dict)
 
@@ -621,7 +612,7 @@ class YamlBaseModel(JsonBaseModel):
         with open(yaml_file, "w") as yaml_fd:
             yaml.dump(self.json_dict(), yaml_fd)
         if yaml_file.exists() and yaml_file.stat().st_size > 0:
-            LOGGER.info("Saved file: %s", str(yaml_file))
+            logger.info(f"Saved file: {yaml_file}")
             return yaml_file
 
     @classmethod
@@ -630,7 +621,7 @@ class YamlBaseModel(JsonBaseModel):
         yaml_file = Path(yaml_file)
         if not yaml_file.exists():
             raise ValueError("File does not exist: %s", yaml_file)
-        with open(yaml_file, "r") as config_fd:
+        with open(yaml_file) as config_fd:
             yaml_settings = yaml.load(config_fd, Loader=yaml.SafeLoader)
             return cls.parse_obj(yaml_settings)
 
